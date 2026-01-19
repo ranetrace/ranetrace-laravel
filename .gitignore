@@ -20,6 +20,7 @@ composer.lock
 /.idea
 /.vscode
 /.specs
+/specs
 .junie/mcp/mcp.json
 .mcp.json
-/specs
+CLAUDE.md
