@@ -16,8 +16,8 @@
         }
     ],
     "require": {
-        "php": "^8.3",
-        "illuminate/contracts": "^10.0||^11.0||^12.0",
+        "php": "^8.4",
+        "illuminate/contracts": "^11.0||^12.0",
         "jaybizzle/crawler-detect": "^1.3"
     },
     "require-dev": {
@@ -33,31 +33,21 @@
         "phpstan/phpstan-deprecation-rules": "^1.1",
         "phpstan/phpstan-phpunit": "^1.3"
     },
+    "suggest": {
+        "laravel/mcp": "Required for MCP server functionality (^0.1)"
+    },
     "autoload": {
         "psr-4": {
-            "Sorane\\Laravel\\": "src/",
-            "Sorane\\Laravel\\Database\\Factories\\": "database/factories/"
+            "Sorane\\Laravel\\": "src/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "Sorane\\Laravel\\Tests\\": "tests/",
-            "Workbench\\App\\": "workbench/app/"
+            "Sorane\\Laravel\\Tests\\": "tests/"
         }
     },
     "scripts": {
         "post-autoload-dump": "@composer run prepare",
-        "clear": "@php vendor/bin/testbench package:purge-sorane-laravel --ansi",
-        "prepare": "@php vendor/bin/testbench package:discover --ansi",
-        "build": [
-            "@composer run prepare",
-            "@php vendor/bin/testbench workbench:build --ansi"
-        ],
-        "start": [
-            "Composer\\Config::disableProcessTimeout",
-            "@composer run build",
-            "@php vendor/bin/testbench serve"
-        ],
         "analyse": "vendor/bin/phpstan analyse",
         "test": "vendor/bin/pest",
         "test-coverage": "vendor/bin/pest --coverage",
