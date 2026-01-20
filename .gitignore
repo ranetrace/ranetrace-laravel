@@ -24,3 +24,4 @@ composer.lock
 .junie/mcp/mcp.json
 .mcp.json
 CLAUDE.md
+/bin/
