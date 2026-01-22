@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace Sorane\Laravel\Services;
 
+use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
+use RuntimeException;
 use Throwable;
 
 class SoraneApiClient
@@ -217,14 +220,15 @@ class SoraneApiClient
         }
 
         try {
-            $response = Http::withToken($this->apiKey)
+            $response = $this->executeWithRetry(fn () => Http::withToken($this->apiKey)
                 ->withHeaders([
                     'User-Agent' => 'Sorane-Laravel/MCP/1.0',
                     'Accept' => 'application/json',
                     'Sorane-API-Version' => '1.0',
                 ])
                 ->timeout($this->timeout)
-                ->get($this->apiUrl.'/errors', $params);
+                ->get($this->apiUrl.'/errors', $params)
+            );
 
             return $this->formatResponse($response);
         } catch (Throwable $e) {
@@ -244,14 +248,15 @@ class SoraneApiClient
         }
 
         try {
-            $response = Http::withToken($this->apiKey)
+            $response = $this->executeWithRetry(fn () => Http::withToken($this->apiKey)
                 ->withHeaders([
                     'User-Agent' => 'Sorane-Laravel/MCP/1.0',
                     'Accept' => 'application/json',
                     'Sorane-API-Version' => '1.0',
                 ])
                 ->timeout($this->timeout)
-                ->get($this->apiUrl.'/errors/'.$errorId);
+                ->get($this->apiUrl.'/errors/'.$errorId)
+            );
 
             return $this->formatResponse($response);
         } catch (Throwable $e) {
@@ -272,19 +277,76 @@ class SoraneApiClient
         }
 
         try {
-            $response = Http::withToken($this->apiKey)
+            $response = $this->executeWithRetry(fn () => Http::withToken($this->apiKey)
                 ->withHeaders([
                     'User-Agent' => 'Sorane-Laravel/MCP/1.0',
                     'Accept' => 'application/json',
                     'Sorane-API-Version' => '1.0',
                 ])
                 ->timeout($this->timeout)
-                ->get($this->apiUrl.'/errors/stats', $params);
+                ->get($this->apiUrl.'/errors/stats', $params)
+            );
 
             return $this->formatResponse($response);
         } catch (Throwable $e) {
             return $this->formatErrorResponse($e->getMessage());
         }
+    }
+
+    /**
+     * Execute a request with retry logic for transient failures.
+     *
+     * @param  callable(): Response  $request
+     *
+     * @throws Throwable
+     */
+    protected function executeWithRetry(callable $request, int $maxAttempts = 3): Response
+    {
+        $attempt = 0;
+        $lastException = null;
+
+        while ($attempt < $maxAttempts) {
+            try {
+                $response = $request();
+
+                // Retry on 5xx server errors
+                if ($response->serverError() && $attempt < $maxAttempts - 1) {
+                    $attempt++;
+                    $this->sleep($this->calculateBackoff($attempt));
+
+                    continue;
+                }
+
+                return $response;
+            } catch (ConnectionException $e) {
+                $lastException = $e;
+                $attempt++;
+
+                if ($attempt < $maxAttempts) {
+                    $this->sleep($this->calculateBackoff($attempt));
+                }
+            }
+        }
+
+        throw $lastException ?? new RuntimeException('Request failed after retries');
+    }
+
+    /**
+     * Calculate exponential backoff delay in milliseconds.
+     */
+    protected function calculateBackoff(int $attempt): int
+    {
+        // Base delay: 100ms, 200ms, 400ms (exponential)
+        return (int) (100 * pow(2, $attempt - 1));
+    }
+
+    /**
+     * Sleep for the given number of milliseconds.
+     * Extracted for testability.
+     */
+    protected function sleep(int $milliseconds): void
+    {
+        usleep($milliseconds * 1000);
     }
 
     /**
@@ -296,15 +358,22 @@ class SoraneApiClient
     protected function formatResponse($response): array
     {
         $data = $response->json();
+        $isValidData = is_array($data);
 
-        return [
+        $result = [
             'status' => $response->status(),
-            'success' => $response->successful(),
-            'data' => is_array($data) ? $data : [],
+            'success' => $response->successful() && $isValidData,
+            'data' => $isValidData ? $data : [],
             'headers' => [
                 'retry-after' => $response->header('Retry-After'),
             ],
         ];
+
+        if (! $isValidData && $response->successful()) {
+            $result['error'] = 'Invalid response format';
+        }
+
+        return $result;
     }
 
     /**

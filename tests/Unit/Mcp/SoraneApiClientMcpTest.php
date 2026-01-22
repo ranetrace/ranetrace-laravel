@@ -197,3 +197,169 @@ test('MCP methods handle network exceptions', function (string $method, array $a
     'getError' => ['getError', ['err-123']],
     'getErrorStats' => ['getErrorStats', []],
 ]);
+
+test('MCP methods retry on 5xx server errors and succeed', function (string $method, array $args): void {
+    $attempts = 0;
+    Http::fake(function () use (&$attempts) {
+        $attempts++;
+        if ($attempts < 2) {
+            return Http::response(['error' => 'Server error'], 500);
+        }
+
+        return Http::response(['data' => 'success'], 200);
+    });
+
+    $client = new class('test-key') extends SoraneApiClient {
+        protected function sleep(int $milliseconds): void
+        {
+            // Skip sleep in tests
+        }
+    };
+
+    $result = $client->{$method}(...$args);
+
+    expect($result['success'])->toBeTrue()
+        ->and($result['status'])->toBe(200)
+        ->and($attempts)->toBe(2);
+})->with([
+    'getLatestErrors' => ['getLatestErrors', []],
+    'getError' => ['getError', ['err-123']],
+    'getErrorStats' => ['getErrorStats', []],
+]);
+
+test('MCP methods return server error after max retries', function (string $method, array $args): void {
+    $attempts = 0;
+    Http::fake(function () use (&$attempts) {
+        $attempts++;
+
+        return Http::response(['error' => 'Server error'], 500);
+    });
+
+    $client = new class('test-key') extends SoraneApiClient {
+        protected function sleep(int $milliseconds): void
+        {
+            // Skip sleep in tests
+        }
+    };
+
+    $result = $client->{$method}(...$args);
+
+    expect($result['success'])->toBeFalse()
+        ->and($result['status'])->toBe(500)
+        ->and($attempts)->toBe(3);
+})->with([
+    'getLatestErrors' => ['getLatestErrors', []],
+    'getError' => ['getError', ['err-123']],
+    'getErrorStats' => ['getErrorStats', []],
+]);
+
+test('MCP methods retry on connection exception and succeed', function (string $method, array $args): void {
+    $attempts = 0;
+    Http::fake(function () use (&$attempts) {
+        $attempts++;
+        if ($attempts < 2) {
+            throw new \Illuminate\Http\Client\ConnectionException('Connection timed out');
+        }
+
+        return Http::response(['data' => 'success'], 200);
+    });
+
+    $client = new class('test-key') extends SoraneApiClient {
+        protected function sleep(int $milliseconds): void
+        {
+            // Skip sleep in tests
+        }
+    };
+
+    $result = $client->{$method}(...$args);
+
+    expect($result['success'])->toBeTrue()
+        ->and($result['status'])->toBe(200)
+        ->and($attempts)->toBe(2);
+})->with([
+    'getLatestErrors' => ['getLatestErrors', []],
+    'getError' => ['getError', ['err-123']],
+    'getErrorStats' => ['getErrorStats', []],
+]);
+
+test('MCP methods return error after max connection retries', function (string $method, array $args): void {
+    $attempts = 0;
+    Http::fake(function () use (&$attempts): void {
+        $attempts++;
+        throw new \Illuminate\Http\Client\ConnectionException('Connection timed out');
+    });
+
+    $client = new class('test-key') extends SoraneApiClient {
+        protected function sleep(int $milliseconds): void
+        {
+            // Skip sleep in tests
+        }
+    };
+
+    $result = $client->{$method}(...$args);
+
+    expect($result['success'])->toBeFalse()
+        ->and($result['error'])->toContain('Connection timed out')
+        ->and($attempts)->toBe(3);
+})->with([
+    'getLatestErrors' => ['getLatestErrors', []],
+    'getError' => ['getError', ['err-123']],
+    'getErrorStats' => ['getErrorStats', []],
+]);
+
+test('MCP methods do not retry on 4xx client errors', function (string $method, array $args): void {
+    $attempts = 0;
+    Http::fake(function () use (&$attempts) {
+        $attempts++;
+
+        return Http::response(['error' => 'Bad request'], 400);
+    });
+
+    $client = new class('test-key') extends SoraneApiClient {
+        protected function sleep(int $milliseconds): void
+        {
+            // Skip sleep in tests
+        }
+    };
+
+    $result = $client->{$method}(...$args);
+
+    expect($result['success'])->toBeFalse()
+        ->and($result['status'])->toBe(400)
+        ->and($attempts)->toBe(1);
+})->with([
+    'getLatestErrors' => ['getLatestErrors', []],
+    'getError' => ['getError', ['err-123']],
+    'getErrorStats' => ['getErrorStats', []],
+]);
+
+test('MCP methods handle malformed JSON response', function (string $method, array $args): void {
+    Http::fake([
+        '*' => Http::response('not valid json', 200, ['Content-Type' => 'text/plain']),
+    ]);
+
+    $client = new SoraneApiClient('test-key');
+    $result = $client->{$method}(...$args);
+
+    expect($result['success'])->toBeFalse()
+        ->and($result['status'])->toBe(200)
+        ->and($result['data'])->toBe([])
+        ->and($result['error'])->toBe('Invalid response format');
+})->with([
+    'getLatestErrors' => ['getLatestErrors', []],
+    'getError' => ['getError', ['err-123']],
+    'getErrorStats' => ['getErrorStats', []],
+]);
+
+test('calculateBackoff returns exponential delays', function (): void {
+    $client = new class('test-key') extends SoraneApiClient {
+        public function testBackoff(int $attempt): int
+        {
+            return $this->calculateBackoff($attempt);
+        }
+    };
+
+    expect($client->testBackoff(1))->toBe(100)
+        ->and($client->testBackoff(2))->toBe(200)
+        ->and($client->testBackoff(3))->toBe(400);
+});
