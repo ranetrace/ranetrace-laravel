@@ -14,6 +14,14 @@ class HandleEventJob extends BaseSoraneJob
         $this->assignQueue();
     }
 
+    /**
+     * @return array<string, mixed>
+     */
+    public function getEventData(): array
+    {
+        return $this->eventData;
+    }
+
     public function handle(SoraneBatchBuffer $buffer): void
     {
         $payload = $this->filterPayload($this->eventData);

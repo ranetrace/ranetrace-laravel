@@ -8,7 +8,9 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Sorane\Laravel\Jobs\HandleEventJob;
 use Sorane\Laravel\Jobs\SendBatchToSoraneJob;
+use Sorane\Laravel\Services\SoraneApiClient;
 use Sorane\Laravel\Services\SoraneBatchBuffer;
+use Sorane\Laravel\Services\SoranePauseManager;
 
 beforeEach(function (): void {
     Config::set('sorane.key', 'test-api-key');
@@ -73,8 +75,9 @@ test('batch job sends multiple items in one request', function (): void {
     // Process batch
     $batchJob = new SendBatchToSoraneJob('events', 10);
     $batchJob->handle(
-        app(Sorane\Laravel\Services\SoraneApiClient::class),
-        $buffer
+        app(SoraneApiClient::class),
+        $buffer,
+        app(SoranePauseManager::class)
     );
 
     // Verify single API call was made with all items
@@ -126,8 +129,9 @@ test('batch job respects max items limit', function (): void {
     // Process batch with limit of 5 (atomically removes 5 items)
     $batchJob = new SendBatchToSoraneJob('events', 5);
     $batchJob->handle(
-        app(Sorane\Laravel\Services\SoraneApiClient::class),
-        $buffer
+        app(SoraneApiClient::class),
+        $buffer,
+        app(SoranePauseManager::class)
     );
 
     // Only 5 should be sent
@@ -148,8 +152,9 @@ test('empty buffer does not make api calls', function (): void {
 
     $batchJob = new SendBatchToSoraneJob('events', 10);
     $batchJob->handle(
-        app(Sorane\Laravel\Services\SoraneApiClient::class),
-        $buffer
+        app(SoraneApiClient::class),
+        $buffer,
+        app(SoranePauseManager::class)
     );
 
     Http::assertNothingSent();
@@ -161,8 +166,8 @@ test('failed batch items are re-added to buffer for retry', function (): void {
     Http::fake([
         '*' => Http::response([
             'success' => false,
-            'message' => 'Rate limit exceeded',
-        ], 429),
+            'message' => 'Server error',
+        ], 500),
     ]);
 
     $buffer = app(SoraneBatchBuffer::class);
@@ -180,8 +185,9 @@ test('failed batch items are re-added to buffer for retry', function (): void {
     $exceptionThrown = false;
     try {
         $batchJob->handle(
-            app(Sorane\Laravel\Services\SoraneApiClient::class),
-            $buffer
+            app(SoraneApiClient::class),
+            $buffer,
+            app(SoranePauseManager::class)
         );
     } catch (Throwable $e) {
         $exceptionThrown = true;

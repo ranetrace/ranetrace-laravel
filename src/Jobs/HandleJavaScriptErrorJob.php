@@ -24,6 +24,14 @@ class HandleJavaScriptErrorJob implements ShouldQueue
         $this->onQueue(config('sorane.javascript_errors.queue_name', 'default'));
     }
 
+    /**
+     * @return array<string, mixed>
+     */
+    public function getErrorData(): array
+    {
+        return $this->errorData;
+    }
+
     public function handle(SoraneBatchBuffer $buffer): void
     {
         $payload = $this->filterPayload($this->errorData);

@@ -24,6 +24,14 @@ class HandlePageVisitJob implements ShouldQueue
         $this->onQueue(config('sorane.website_analytics.queue_name', 'default'));
     }
 
+    /**
+     * @return array<string, mixed>
+     */
+    public function getVisitData(): array
+    {
+        return $this->visitData;
+    }
+
     public function handle(SoraneBatchBuffer $buffer): void
     {
         $payload = $this->filterPayload($this->visitData);

@@ -31,6 +31,9 @@ class TestCase extends Orchestra
         // Set test API key
         $app['config']->set('sorane.key', 'test-api-key-12345');
 
+        // Enable Sorane globally
+        $app['config']->set('sorane.enabled', true);
+
         // Enable features for testing
         $app['config']->set('sorane.events.enabled', true);
         $app['config']->set('sorane.events.queue', true); // Enable queue for testing Queue::fake()

@@ -25,7 +25,7 @@ test('it sends javascript error batch to correct endpoint', function (): void {
 
     Http::assertSent(function ($request): bool {
         return $request->url() === 'https://api.sorane.io/v1/javascript-errors/store'
-            && isset($request->data()['errors']);
+            && isset($request->data()['javascript_errors']);
     });
 });
 
@@ -47,7 +47,7 @@ test('it sends correct user agent header for errors', function (): void {
     $client->sendErrorBatch([['message' => 'Test']]);
 
     Http::assertSent(function ($request): bool {
-        return $request->hasHeader('User-Agent', 'Sorane-Laravel/errors/1.0');
+        return $request->hasHeader('User-Agent', 'Sorane-Laravel/Errors/1.0');
     });
 });
 
@@ -58,7 +58,7 @@ test('it sends correct user agent header for javascript errors', function (): vo
     $client->sendJavaScriptErrorBatch([['message' => 'Test']]);
 
     Http::assertSent(function ($request): bool {
-        return $request->hasHeader('User-Agent', 'Sorane-Laravel/javascript-errors/1.0');
+        return $request->hasHeader('User-Agent', 'Sorane-Laravel/JavaScriptErrors/1.0');
     });
 });
 
@@ -69,7 +69,7 @@ test('it sends correct user agent header for logs', function (): void {
     $client->sendLogBatch([['message' => 'Test']]);
 
     Http::assertSent(function ($request): bool {
-        return $request->hasHeader('User-Agent', 'Sorane-Laravel/logs/1.0');
+        return $request->hasHeader('User-Agent', 'Sorane-Laravel/Logs/1.0');
     });
 });
 
@@ -93,7 +93,7 @@ test('it sends page visit batch to analytics endpoint', function (): void {
 
     Http::assertSent(function ($request): bool {
         return $request->url() === 'https://api.sorane.io/v1/page-visits/store'
-            && isset($request->data()['visits']);
+            && isset($request->data()['page_visits']);
     });
 });
 
@@ -106,8 +106,8 @@ test('it returns success on successful response', function (): void {
     $result = $client->sendErrorBatch([['message' => 'Test']]);
 
     expect($result['success'])->toBeTrue();
-    expect($result['received'])->toBe(1);
-    expect($result['processed'])->toBe(1);
+    expect($result['data']['received'])->toBe(1);
+    expect($result['data']['processed'])->toBe(1);
 });
 
 test('it returns error when api key is missing', function (): void {
@@ -118,7 +118,7 @@ test('it returns error when api key is missing', function (): void {
     $result = $client->sendErrorBatch([['message' => 'Test']]);
 
     expect($result['success'])->toBeFalse();
-    expect($result['message'])->toBe('API key not configured');
+    expect($result['error'])->toBe('API key not configured');
     Http::assertNothingSent();
 });
 
@@ -142,18 +142,17 @@ test('it handles network exceptions gracefully', function (): void {
     $result = $client->sendErrorBatch([['message' => 'Test']]);
 
     expect($result['success'])->toBeFalse();
-    expect($result['message'])->toContain('Network error');
+    expect($result['error'])->toContain('Network error');
 });
 
-test('it returns success for empty batch', function (): void {
+test('it returns error for empty batch', function (): void {
     Http::fake();
     $client = new SoraneApiClient('test-key');
 
     $result = $client->sendErrorBatch([]);
 
-    expect($result['success'])->toBeTrue();
-    expect($result['received'])->toBe(0);
-    expect($result['processed'])->toBe(0);
+    expect($result['success'])->toBeFalse();
+    expect($result['error'])->toBe('Empty batch provided');
     Http::assertNothingSent();
 });
 

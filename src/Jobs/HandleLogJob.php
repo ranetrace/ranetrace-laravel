@@ -24,6 +24,14 @@ class HandleLogJob implements ShouldQueue
         $this->onQueue(config('sorane.logging.queue_name', 'default'));
     }
 
+    /**
+     * @return array<string, mixed>
+     */
+    public function getLogData(): array
+    {
+        return $this->logData;
+    }
+
     public function handle(SoraneBatchBuffer $buffer): void
     {
         $payload = $this->filterPayload($this->logData);
