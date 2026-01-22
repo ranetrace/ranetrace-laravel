@@ -205,6 +205,89 @@ class SoraneApiClient
     }
 
     /**
+     * Get the latest errors from Sorane.
+     *
+     * @param  array{limit?: int, environment?: string, type?: string}  $params
+     * @return array<string, mixed>
+     */
+    public function getLatestErrors(array $params = []): array
+    {
+        if (empty($this->apiKey)) {
+            return $this->formatErrorResponse('API key not configured');
+        }
+
+        try {
+            $response = Http::withToken($this->apiKey)
+                ->withHeaders([
+                    'User-Agent' => 'Sorane-Laravel/MCP/1.0',
+                    'Accept' => 'application/json',
+                    'Sorane-API-Version' => '1.0',
+                ])
+                ->timeout($this->timeout)
+                ->get($this->apiUrl.'/errors', $params);
+
+            return $this->formatResponse($response);
+        } catch (Throwable $e) {
+            return $this->formatErrorResponse($e->getMessage());
+        }
+    }
+
+    /**
+     * Get a specific error by ID from Sorane.
+     *
+     * @return array<string, mixed>
+     */
+    public function getError(string $errorId): array
+    {
+        if (empty($this->apiKey)) {
+            return $this->formatErrorResponse('API key not configured');
+        }
+
+        try {
+            $response = Http::withToken($this->apiKey)
+                ->withHeaders([
+                    'User-Agent' => 'Sorane-Laravel/MCP/1.0',
+                    'Accept' => 'application/json',
+                    'Sorane-API-Version' => '1.0',
+                ])
+                ->timeout($this->timeout)
+                ->get($this->apiUrl.'/errors/'.$errorId);
+
+            return $this->formatResponse($response);
+        } catch (Throwable $e) {
+            return $this->formatErrorResponse($e->getMessage());
+        }
+    }
+
+    /**
+     * Get error statistics from Sorane.
+     *
+     * @param  array{period?: string}  $params
+     * @return array<string, mixed>
+     */
+    public function getErrorStats(array $params = []): array
+    {
+        if (empty($this->apiKey)) {
+            return $this->formatErrorResponse('API key not configured');
+        }
+
+        try {
+            $response = Http::withToken($this->apiKey)
+                ->withHeaders([
+                    'User-Agent' => 'Sorane-Laravel/MCP/1.0',
+                    'Accept' => 'application/json',
+                    'Sorane-API-Version' => '1.0',
+                ])
+                ->timeout($this->timeout)
+                ->get($this->apiUrl.'/errors/stats', $params);
+
+            return $this->formatResponse($response);
+        } catch (Throwable $e) {
+            return $this->formatErrorResponse($e->getMessage());
+        }
+    }
+
+    /**
      * Format API response for consistent handling.
      *
      * @param  \Illuminate\Http\Client\Response  $response

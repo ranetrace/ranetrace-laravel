@@ -1,0 +1,233 @@
+<?php
+
+declare(strict_types=1);
+
+use Laravel\Mcp\Request;
+use Laravel\Mcp\Response;
+use Sorane\Laravel\Mcp\Tools\LatestErrorsTool;
+use Sorane\Laravel\Services\SoraneApiClient;
+
+beforeEach(function (): void {
+    if (! class_exists(\Laravel\Mcp\Server\Tool::class)) {
+        $this->markTestSkipped('Laravel MCP package not installed');
+    }
+});
+
+/**
+ * Creates a mock SoraneApiClient configured to return errors.
+ *
+ * @param  array<int, array<string, mixed>>  $errors
+ */
+function createClientWithErrors(array $errors): SoraneApiClient
+{
+    $mockClient = Mockery::mock(SoraneApiClient::class);
+    $mockClient->shouldReceive('getLatestErrors')
+        ->once()
+        ->andReturn([
+            'success' => true,
+            'data' => ['errors' => $errors],
+        ]);
+
+    return $mockClient;
+}
+
+/**
+ * Creates a mock SoraneApiClient configured to expect specific parameters.
+ *
+ * @param  array<string, mixed>  $expectedParams
+ */
+function createClientExpectingParams(array $expectedParams): SoraneApiClient
+{
+    $mockClient = Mockery::mock(SoraneApiClient::class);
+    $mockClient->shouldReceive('getLatestErrors')
+        ->once()
+        ->with($expectedParams)
+        ->andReturn([
+            'success' => true,
+            'data' => ['errors' => []],
+        ]);
+
+    return $mockClient;
+}
+
+/**
+ * Creates a mock SoraneApiClient configured to return an error response.
+ *
+ * @param  array<string, mixed>  $response
+ */
+function createClientWithFailure(array $response): SoraneApiClient
+{
+    $mockClient = Mockery::mock(SoraneApiClient::class);
+    $mockClient->shouldReceive('getLatestErrors')
+        ->once()
+        ->andReturn(array_merge(['success' => false], $response));
+
+    return $mockClient;
+}
+
+/**
+ * Executes the tool and returns the response text.
+ *
+ * @param  array<string, mixed>  $requestParams
+ */
+function executeToolAndGetText(SoraneApiClient $client, array $requestParams = []): string
+{
+    $tool = new LatestErrorsTool($client);
+    $response = $tool->handle(new Request($requestParams));
+
+    return (string) $response->content();
+}
+
+test('returns formatted error list on success', function (): void {
+    $client = createClientWithErrors([
+        [
+            'id' => 'err-123',
+            'message' => 'Test error',
+            'type' => 'exception',
+            'environment' => 'production',
+            'occurred_at' => '2025-01-01T00:00:00Z',
+            'occurrences' => 5,
+        ],
+    ]);
+
+    $tool = new LatestErrorsTool($client);
+    $response = $tool->handle(new Request([]));
+
+    expect($response)->toBeInstanceOf(Response::class);
+
+    $text = (string) $response->content();
+    expect($text)
+        ->toContain('Found 1 error(s)')
+        ->toContain('err-123')
+        ->toContain('Test error');
+});
+
+test('returns error response when api fails', function (): void {
+    $client = createClientWithFailure(['error' => 'API connection failed']);
+    $text = executeToolAndGetText($client);
+
+    expect($text)
+        ->toContain('Failed to fetch errors')
+        ->toContain('API connection failed');
+});
+
+test('returns no errors message when empty', function (): void {
+    $client = createClientWithErrors([]);
+    $text = executeToolAndGetText($client);
+
+    expect($text)->toContain('No errors found');
+});
+
+test('filters null parameters from request', function (): void {
+    $client = createClientExpectingParams([]);
+
+    $tool = new LatestErrorsTool($client);
+    $tool->handle(new Request([
+        'limit' => null,
+        'environment' => null,
+        'type' => null,
+    ]));
+});
+
+test('passes limit parameter to client', function (): void {
+    $client = createClientExpectingParams(['limit' => 25]);
+
+    $tool = new LatestErrorsTool($client);
+    $tool->handle(new Request(['limit' => 25]));
+});
+
+test('passes environment parameter to client', function (): void {
+    $client = createClientExpectingParams(['environment' => 'production']);
+
+    $tool = new LatestErrorsTool($client);
+    $tool->handle(new Request(['environment' => 'production']));
+});
+
+test('passes type parameter to client', function (): void {
+    $client = createClientExpectingParams(['type' => 'javascript']);
+
+    $tool = new LatestErrorsTool($client);
+    $tool->handle(new Request(['type' => 'javascript']));
+});
+
+test('passes all parameters together', function (): void {
+    $client = createClientExpectingParams([
+        'limit' => 50,
+        'environment' => 'staging',
+        'type' => 'exception',
+    ]);
+
+    $tool = new LatestErrorsTool($client);
+    $tool->handle(new Request([
+        'limit' => 50,
+        'environment' => 'staging',
+        'type' => 'exception',
+    ]));
+});
+
+test('formats error with all fields', function (): void {
+    $client = createClientWithErrors([
+        [
+            'id' => 'err-456',
+            'message' => 'Database connection failed',
+            'type' => 'exception',
+            'environment' => 'production',
+            'occurred_at' => '2025-01-15T10:30:00Z',
+            'occurrences' => 42,
+        ],
+    ]);
+    $text = executeToolAndGetText($client);
+
+    expect($text)
+        ->toContain('Error ID: err-456')
+        ->toContain('Type: exception')
+        ->toContain('Environment: production')
+        ->toContain('Message: Database connection failed')
+        ->toContain('Occurred at: 2025-01-15T10:30:00Z')
+        ->toContain('Occurrences: 42');
+});
+
+test('handles missing fields with defaults', function (): void {
+    $client = createClientWithErrors([[]]);
+    $text = executeToolAndGetText($client);
+
+    expect($text)
+        ->toContain('Error ID: unknown')
+        ->toContain('Type: unknown')
+        ->toContain('Environment: unknown')
+        ->toContain('Message: No message')
+        ->toContain('Occurred at: unknown')
+        ->toContain('Occurrences: 1');
+});
+
+test('has correct description property', function (): void {
+    $mockClient = Mockery::mock(SoraneApiClient::class);
+    $tool = new LatestErrorsTool($mockClient);
+
+    $reflection = new ReflectionProperty($tool, 'description');
+    $description = $reflection->getValue($tool);
+
+    expect($description)->toContain('Fetch the latest errors');
+});
+
+test('formats multiple errors with index numbers', function (): void {
+    $client = createClientWithErrors([
+        ['id' => 'err-1', 'message' => 'First error'],
+        ['id' => 'err-2', 'message' => 'Second error'],
+        ['id' => 'err-3', 'message' => 'Third error'],
+    ]);
+    $text = executeToolAndGetText($client);
+
+    expect($text)
+        ->toContain('Found 3 error(s)')
+        ->toContain('#1 Error ID: err-1')
+        ->toContain('#2 Error ID: err-2')
+        ->toContain('#3 Error ID: err-3');
+});
+
+test('returns error with unknown message when error field is missing', function (): void {
+    $client = createClientWithFailure([]);
+    $text = executeToolAndGetText($client);
+
+    expect($text)->toContain('Unknown error occurred');
+});

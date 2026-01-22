@@ -17,6 +17,7 @@ use Sorane\Laravel\Commands\SoraneTestCommand;
 use Sorane\Laravel\Commands\SoraneWorkCommand;
 use Sorane\Laravel\Events\EventTracker;
 use Sorane\Laravel\Logging\SoraneLogDriver;
+use Sorane\Laravel\Mcp\SoraneServer;
 
 class SoraneServiceProvider extends ServiceProvider
 {
@@ -90,6 +91,9 @@ class SoraneServiceProvider extends ServiceProvider
 
         // Register Blade directive for error tracking script
         $this->registerBladeDirectives();
+
+        // Register MCP server
+        $this->registerMcpServer();
     }
 
     protected function registerJavaScriptErrorRoute(): void
@@ -105,5 +109,22 @@ class SoraneServiceProvider extends ServiceProvider
         \Illuminate\Support\Facades\Blade::directive('soraneErrorTracking', function () {
             return "<?php echo view('sorane::error-tracker')->render(); ?>";
         });
+    }
+
+    protected function registerMcpServer(): void
+    {
+        if (! class_exists(\Laravel\Mcp\Facades\Mcp::class)) {
+            return;
+        }
+
+        if (! config('sorane.mcp.enabled', true)) {
+            return;
+        }
+
+        if (empty(config('sorane.key'))) {
+            return;
+        }
+
+        \Laravel\Mcp\Facades\Mcp::local('sorane', SoraneServer::class);
     }
 }

@@ -111,4 +111,8 @@ return [
         'days' => env('SORANE_INTERNAL_LOG_DAYS', 14),
         'stderr_fallback' => env('SORANE_INTERNAL_STDERR_FALLBACK', true),
     ],
+
+    'mcp' => [
+        'enabled' => env('SORANE_MCP_ENABLED', true),
+    ],
 ];
