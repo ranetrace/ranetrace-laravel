@@ -181,7 +181,7 @@ class SendBatchToSoraneJob implements ShouldBeUnique, ShouldQueue
     {
         $this->logError('API authentication failed - invalid or revoked API key', [
             'type' => $this->type,
-            'message' => $data['error']['message'] ?? 'Unauthorized',
+            'message' => ($data['error'] ?? [])['message'] ?? 'Unauthorized',
         ]);
 
         // Set global pause for 15 minutes
@@ -198,7 +198,7 @@ class SendBatchToSoraneJob implements ShouldBeUnique, ShouldQueue
     {
         $this->logError('API request forbidden', [
             'type' => $this->type,
-            'message' => $data['error']['message'] ?? 'Forbidden',
+            'message' => ($data['error'] ?? [])['message'] ?? 'Forbidden',
         ]);
 
         // Set feature pause for 15 minutes
@@ -216,7 +216,7 @@ class SendBatchToSoraneJob implements ShouldBeUnique, ShouldQueue
         $this->logCritical('Payload too large - indicates client bug', [
             'type' => $this->type,
             'items_count' => count($this->items),
-            'message' => $data['error']['message'] ?? 'Payload Too Large',
+            'message' => ($data['error'] ?? [])['message'] ?? 'Payload Too Large',
         ]);
 
         // Set feature pause for 15 minutes
@@ -233,7 +233,7 @@ class SendBatchToSoraneJob implements ShouldBeUnique, ShouldQueue
         $this->logError('Validation failed - indicates schema drift or malformed items', [
             'type' => $this->type,
             'items_count' => count($this->items),
-            'message' => $data['error']['message'] ?? 'Unprocessable Entity',
+            'message' => ($data['error'] ?? [])['message'] ?? 'Unprocessable Entity',
         ]);
 
         // Set feature pause for 15 minutes
