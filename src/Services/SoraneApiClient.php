@@ -469,6 +469,320 @@ class SoraneApiClient
     }
 
     /**
+     * Resolve an error.
+     *
+     * @return array<string, mixed>
+     */
+    public function resolveError(string $errorId, string $type = 'php'): array
+    {
+        return $this->performErrorAction($errorId, 'resolve', $type);
+    }
+
+    /**
+     * Reopen a resolved error.
+     *
+     * @return array<string, mixed>
+     */
+    public function reopenError(string $errorId, string $type = 'php'): array
+    {
+        return $this->performErrorAction($errorId, 'reopen', $type);
+    }
+
+    /**
+     * Ignore an error.
+     *
+     * @return array<string, mixed>
+     */
+    public function ignoreError(string $errorId, string $type = 'php'): array
+    {
+        return $this->performErrorAction($errorId, 'ignore', $type);
+    }
+
+    /**
+     * Unignore an error.
+     *
+     * @return array<string, mixed>
+     */
+    public function unignoreError(string $errorId, string $type = 'php'): array
+    {
+        return $this->performErrorAction($errorId, 'unignore', $type);
+    }
+
+    /**
+     * Snooze an error.
+     *
+     * @param  array{duration?: string, until?: string}  $data
+     * @return array<string, mixed>
+     */
+    public function snoozeError(string $errorId, array $data, string $type = 'php'): array
+    {
+        if (empty($this->apiKey)) {
+            return $this->formatErrorResponse('API key not configured');
+        }
+
+        try {
+            $response = $this->executeWithRetry(fn () => Http::withToken($this->apiKey)
+                ->withHeaders([
+                    'User-Agent' => 'Sorane-Laravel/MCP/1.0',
+                    'Content-Type' => 'application/json',
+                    'Accept' => 'application/json',
+                    'Sorane-API-Version' => '1.0',
+                ])
+                ->timeout($this->timeout)
+                ->post($this->apiUrl.'/errors/'.$errorId.'/snooze', array_merge($data, ['type' => $type]))
+            );
+
+            return $this->formatResponse($response);
+        } catch (Throwable $e) {
+            return $this->formatErrorResponse($e->getMessage());
+        }
+    }
+
+    /**
+     * Unsnooze an error.
+     *
+     * @return array<string, mixed>
+     */
+    public function unsnoozeError(string $errorId, string $type = 'php'): array
+    {
+        return $this->performErrorAction($errorId, 'unsnooze', $type);
+    }
+
+    /**
+     * Delete (archive) an error.
+     *
+     * @return array<string, mixed>
+     */
+    public function deleteError(string $errorId, string $type = 'php'): array
+    {
+        if (empty($this->apiKey)) {
+            return $this->formatErrorResponse('API key not configured');
+        }
+
+        try {
+            $response = $this->executeWithRetry(fn () => Http::withToken($this->apiKey)
+                ->withHeaders([
+                    'User-Agent' => 'Sorane-Laravel/MCP/1.0',
+                    'Accept' => 'application/json',
+                    'Sorane-API-Version' => '1.0',
+                ])
+                ->timeout($this->timeout)
+                ->delete($this->apiUrl.'/errors/'.$errorId, ['type' => $type])
+            );
+
+            return $this->formatResponse($response);
+        } catch (Throwable $e) {
+            return $this->formatErrorResponse($e->getMessage());
+        }
+    }
+
+    /**
+     * Get activity log for an error.
+     *
+     * @param  array{limit?: int, offset?: int}  $params
+     * @return array<string, mixed>
+     */
+    public function getErrorActivity(string $errorId, array $params = [], string $type = 'php'): array
+    {
+        if (empty($this->apiKey)) {
+            return $this->formatErrorResponse('API key not configured');
+        }
+
+        try {
+            $queryParams = array_merge($params, ['type' => $type]);
+
+            $response = $this->executeWithRetry(fn () => Http::withToken($this->apiKey)
+                ->withHeaders([
+                    'User-Agent' => 'Sorane-Laravel/MCP/1.0',
+                    'Accept' => 'application/json',
+                    'Sorane-API-Version' => '1.0',
+                ])
+                ->timeout($this->timeout)
+                ->get($this->apiUrl.'/errors/'.$errorId.'/activity', $queryParams)
+            );
+
+            return $this->formatResponse($response);
+        } catch (Throwable $e) {
+            return $this->formatErrorResponse($e->getMessage());
+        }
+    }
+
+    /**
+     * Bulk resolve errors.
+     *
+     * @param  array<int, string>  $errorIds
+     * @return array<string, mixed>
+     */
+    public function bulkResolveErrors(array $errorIds, string $type = 'php'): array
+    {
+        return $this->performBulkErrorAction($errorIds, 'resolve', $type);
+    }
+
+    /**
+     * Bulk reopen errors.
+     *
+     * @param  array<int, string>  $errorIds
+     * @return array<string, mixed>
+     */
+    public function bulkReopenErrors(array $errorIds, string $type = 'php'): array
+    {
+        return $this->performBulkErrorAction($errorIds, 'reopen', $type);
+    }
+
+    /**
+     * Bulk ignore errors.
+     *
+     * @param  array<int, string>  $errorIds
+     * @return array<string, mixed>
+     */
+    public function bulkIgnoreErrors(array $errorIds, string $type = 'php'): array
+    {
+        return $this->performBulkErrorAction($errorIds, 'ignore', $type);
+    }
+
+    /**
+     * Bulk delete (archive) errors.
+     *
+     * @param  array<int, string>  $errorIds
+     * @return array<string, mixed>
+     */
+    public function bulkDeleteErrors(array $errorIds, string $type = 'php'): array
+    {
+        return $this->performBulkErrorAction($errorIds, 'delete', $type);
+    }
+
+    /**
+     * Search errors with advanced filtering.
+     *
+     * @param  array{
+     *     type?: string,
+     *     status?: string|array,
+     *     environments?: array,
+     *     exclude_environments?: array,
+     *     first_occurred_period?: string,
+     *     first_occurred_from?: string,
+     *     first_occurred_to?: string,
+     *     last_occurred_period?: string,
+     *     last_occurred_from?: string,
+     *     last_occurred_to?: string,
+     *     occurrence_level?: string,
+     *     min_occurrences?: int,
+     *     max_occurrences?: int,
+     *     sort?: string,
+     *     direction?: string,
+     *     limit?: int,
+     *     cursor?: string,
+     *     include_archived?: bool
+     * }  $params
+     * @return array<string, mixed>
+     */
+    public function searchErrors(array $params = []): array
+    {
+        if (empty($this->apiKey)) {
+            return $this->formatErrorResponse('API key not configured');
+        }
+
+        try {
+            $response = $this->executeWithRetry(fn () => Http::withToken($this->apiKey)
+                ->withHeaders([
+                    'User-Agent' => 'Sorane-Laravel/MCP/1.0',
+                    'Accept' => 'application/json',
+                    'Sorane-API-Version' => '1.0',
+                ])
+                ->timeout($this->timeout)
+                ->get($this->apiUrl.'/errors', $params)
+            );
+
+            return $this->formatResponse($response);
+        } catch (Throwable $e) {
+            return $this->formatErrorResponse($e->getMessage());
+        }
+    }
+
+    /**
+     * Restore a soft-deleted error.
+     *
+     * @return array<string, mixed>
+     */
+    public function restoreError(string $errorId, string $type = 'php'): array
+    {
+        return $this->performErrorAction($errorId, 'restore', $type);
+    }
+
+    /**
+     * Bulk restore soft-deleted errors.
+     *
+     * @param  array<int, string>  $errorIds
+     * @return array<string, mixed>
+     */
+    public function bulkRestoreErrors(array $errorIds, string $type = 'php'): array
+    {
+        return $this->performBulkErrorAction($errorIds, 'restore', $type);
+    }
+
+    /**
+     * Perform a single error action (resolve, reopen, ignore, unignore, unsnooze).
+     *
+     * @return array<string, mixed>
+     */
+    protected function performErrorAction(string $errorId, string $action, string $type): array
+    {
+        if (empty($this->apiKey)) {
+            return $this->formatErrorResponse('API key not configured');
+        }
+
+        try {
+            $response = $this->executeWithRetry(fn () => Http::withToken($this->apiKey)
+                ->withHeaders([
+                    'User-Agent' => 'Sorane-Laravel/MCP/1.0',
+                    'Content-Type' => 'application/json',
+                    'Accept' => 'application/json',
+                    'Sorane-API-Version' => '1.0',
+                ])
+                ->timeout($this->timeout)
+                ->post($this->apiUrl.'/errors/'.$errorId.'/'.$action, ['type' => $type])
+            );
+
+            return $this->formatResponse($response);
+        } catch (Throwable $e) {
+            return $this->formatErrorResponse($e->getMessage());
+        }
+    }
+
+    /**
+     * Perform a bulk error action (resolve, reopen, ignore, delete).
+     *
+     * @param  array<int, string>  $errorIds
+     * @return array<string, mixed>
+     */
+    protected function performBulkErrorAction(array $errorIds, string $action, string $type): array
+    {
+        if (empty($this->apiKey)) {
+            return $this->formatErrorResponse('API key not configured');
+        }
+
+        try {
+            $response = $this->executeWithRetry(fn () => Http::withToken($this->apiKey)
+                ->withHeaders([
+                    'User-Agent' => 'Sorane-Laravel/MCP/1.0',
+                    'Content-Type' => 'application/json',
+                    'Accept' => 'application/json',
+                    'Sorane-API-Version' => '1.0',
+                ])
+                ->timeout($this->timeout)
+                ->post($this->apiUrl.'/errors/bulk/'.$action, [
+                    'error_ids' => $errorIds,
+                    'type' => $type,
+                ])
+            );
+
+            return $this->formatResponse($response);
+        } catch (Throwable $e) {
+            return $this->formatErrorResponse($e->getMessage());
+        }
+    }
+
+    /**
      * Execute a request with retry logic for transient failures.
      *
      * @param  callable(): Response  $request
