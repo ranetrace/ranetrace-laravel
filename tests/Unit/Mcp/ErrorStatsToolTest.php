@@ -8,7 +8,7 @@ use Sorane\Laravel\Mcp\Tools\ErrorStatsTool;
 use Sorane\Laravel\Services\SoraneApiClient;
 
 beforeEach(function (): void {
-    if (! class_exists(\Laravel\Mcp\Server\Tool::class)) {
+    if (! class_exists(Laravel\Mcp\Server\Tool::class)) {
         $this->markTestSkipped('Laravel MCP package not installed');
     }
 });
@@ -16,8 +16,8 @@ beforeEach(function (): void {
 /**
  * Creates a mock API client that returns a successful response with given stats.
  *
- * @param array<string, mixed> $stats
- * @param array<string, mixed>|null $expectedParams
+ * @param  array<string, mixed>  $stats
+ * @param  array<string, mixed>|null  $expectedParams
  */
 function mockClientWithStats(array $stats, ?array $expectedParams = null): SoraneApiClient
 {
@@ -39,7 +39,7 @@ function mockClientWithStats(array $stats, ?array $expectedParams = null): Soran
 /**
  * Executes a tool request and returns the response text content.
  *
- * @param array<string, mixed> $requestParams
+ * @param  array<string, mixed>  $requestParams
  */
 function executeToolRequest(SoraneApiClient $client, array $requestParams = []): string
 {

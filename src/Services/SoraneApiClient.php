@@ -294,6 +294,181 @@ class SoraneApiClient
     }
 
     /**
+     * Create a note on an error.
+     *
+     * @param  array{body: string}  $data
+     * @return array<string, mixed>
+     */
+    public function createNote(string $errorId, array $data): array
+    {
+        if (empty($this->apiKey)) {
+            return $this->formatErrorResponse('API key not configured');
+        }
+
+        try {
+            $response = $this->executeWithRetry(fn () => Http::withToken($this->apiKey)
+                ->withHeaders([
+                    'User-Agent' => 'Sorane-Laravel/MCP/1.0',
+                    'Content-Type' => 'application/json',
+                    'Accept' => 'application/json',
+                    'Sorane-API-Version' => '1.0',
+                ])
+                ->timeout($this->timeout)
+                ->post($this->apiUrl.'/errors/'.$errorId.'/notes', $data)
+            );
+
+            return $this->formatResponse($response);
+        } catch (Throwable $e) {
+            return $this->formatErrorResponse($e->getMessage());
+        }
+    }
+
+    /**
+     * List notes on an error.
+     *
+     * @param  array{limit?: int, offset?: int, author?: string, from?: string, to?: string, include_archived?: bool}  $params
+     * @return array<string, mixed>
+     */
+    public function listNotes(string $errorId, array $params = []): array
+    {
+        if (empty($this->apiKey)) {
+            return $this->formatErrorResponse('API key not configured');
+        }
+
+        try {
+            $response = $this->executeWithRetry(fn () => Http::withToken($this->apiKey)
+                ->withHeaders([
+                    'User-Agent' => 'Sorane-Laravel/MCP/1.0',
+                    'Accept' => 'application/json',
+                    'Sorane-API-Version' => '1.0',
+                ])
+                ->timeout($this->timeout)
+                ->get($this->apiUrl.'/errors/'.$errorId.'/notes', $params)
+            );
+
+            return $this->formatResponse($response);
+        } catch (Throwable $e) {
+            return $this->formatErrorResponse($e->getMessage());
+        }
+    }
+
+    /**
+     * Get a specific note on an error.
+     *
+     * @return array<string, mixed>
+     */
+    public function getNote(string $errorId, string $noteId): array
+    {
+        if (empty($this->apiKey)) {
+            return $this->formatErrorResponse('API key not configured');
+        }
+
+        try {
+            $response = $this->executeWithRetry(fn () => Http::withToken($this->apiKey)
+                ->withHeaders([
+                    'User-Agent' => 'Sorane-Laravel/MCP/1.0',
+                    'Accept' => 'application/json',
+                    'Sorane-API-Version' => '1.0',
+                ])
+                ->timeout($this->timeout)
+                ->get($this->apiUrl.'/errors/'.$errorId.'/notes/'.$noteId)
+            );
+
+            return $this->formatResponse($response);
+        } catch (Throwable $e) {
+            return $this->formatErrorResponse($e->getMessage());
+        }
+    }
+
+    /**
+     * Update a note on an error.
+     *
+     * @param  array{body: string}  $data
+     * @return array<string, mixed>
+     */
+    public function updateNote(string $errorId, string $noteId, array $data): array
+    {
+        if (empty($this->apiKey)) {
+            return $this->formatErrorResponse('API key not configured');
+        }
+
+        try {
+            $response = $this->executeWithRetry(fn () => Http::withToken($this->apiKey)
+                ->withHeaders([
+                    'User-Agent' => 'Sorane-Laravel/MCP/1.0',
+                    'Content-Type' => 'application/json',
+                    'Accept' => 'application/json',
+                    'Sorane-API-Version' => '1.0',
+                ])
+                ->timeout($this->timeout)
+                ->put($this->apiUrl.'/errors/'.$errorId.'/notes/'.$noteId, $data)
+            );
+
+            return $this->formatResponse($response);
+        } catch (Throwable $e) {
+            return $this->formatErrorResponse($e->getMessage());
+        }
+    }
+
+    /**
+     * Delete (archive) a note on an error.
+     *
+     * @return array<string, mixed>
+     */
+    public function deleteNote(string $errorId, string $noteId): array
+    {
+        if (empty($this->apiKey)) {
+            return $this->formatErrorResponse('API key not configured');
+        }
+
+        try {
+            $response = $this->executeWithRetry(fn () => Http::withToken($this->apiKey)
+                ->withHeaders([
+                    'User-Agent' => 'Sorane-Laravel/MCP/1.0',
+                    'Accept' => 'application/json',
+                    'Sorane-API-Version' => '1.0',
+                ])
+                ->timeout($this->timeout)
+                ->delete($this->apiUrl.'/errors/'.$errorId.'/notes/'.$noteId)
+            );
+
+            return $this->formatResponse($response);
+        } catch (Throwable $e) {
+            return $this->formatErrorResponse($e->getMessage());
+        }
+    }
+
+    /**
+     * Bulk create notes on an error.
+     *
+     * @param  array{notes: array<int, array{body: string}>}  $data
+     * @return array<string, mixed>
+     */
+    public function createNotesBulk(string $errorId, array $data): array
+    {
+        if (empty($this->apiKey)) {
+            return $this->formatErrorResponse('API key not configured');
+        }
+
+        try {
+            $response = $this->executeWithRetry(fn () => Http::withToken($this->apiKey)
+                ->withHeaders([
+                    'User-Agent' => 'Sorane-Laravel/MCP/1.0',
+                    'Content-Type' => 'application/json',
+                    'Accept' => 'application/json',
+                    'Sorane-API-Version' => '1.0',
+                ])
+                ->timeout($this->timeout)
+                ->post($this->apiUrl.'/errors/'.$errorId.'/notes/bulk', $data)
+            );
+
+            return $this->formatResponse($response);
+        } catch (Throwable $e) {
+            return $this->formatErrorResponse($e->getMessage());
+        }
+    }
+
+    /**
      * Execute a request with retry logic for transient failures.
      *
      * @param  callable(): Response  $request
@@ -352,7 +527,7 @@ class SoraneApiClient
     /**
      * Format API response for consistent handling.
      *
-     * @param  \Illuminate\Http\Client\Response  $response
+     * @param  Response  $response
      * @return array<string, mixed>
      */
     protected function formatResponse($response): array

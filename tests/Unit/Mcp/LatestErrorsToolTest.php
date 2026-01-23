@@ -8,7 +8,7 @@ use Sorane\Laravel\Mcp\Tools\LatestErrorsTool;
 use Sorane\Laravel\Services\SoraneApiClient;
 
 beforeEach(function (): void {
-    if (! class_exists(\Laravel\Mcp\Server\Tool::class)) {
+    if (! class_exists(Laravel\Mcp\Server\Tool::class)) {
         $this->markTestSkipped('Laravel MCP package not installed');
     }
 });

@@ -209,7 +209,8 @@ test('MCP methods retry on 5xx server errors and succeed', function (string $met
         return Http::response(['data' => 'success'], 200);
     });
 
-    $client = new class('test-key') extends SoraneApiClient {
+    $client = new class('test-key') extends SoraneApiClient
+    {
         protected function sleep(int $milliseconds): void
         {
             // Skip sleep in tests
@@ -235,7 +236,8 @@ test('MCP methods return server error after max retries', function (string $meth
         return Http::response(['error' => 'Server error'], 500);
     });
 
-    $client = new class('test-key') extends SoraneApiClient {
+    $client = new class('test-key') extends SoraneApiClient
+    {
         protected function sleep(int $milliseconds): void
         {
             // Skip sleep in tests
@@ -258,13 +260,14 @@ test('MCP methods retry on connection exception and succeed', function (string $
     Http::fake(function () use (&$attempts) {
         $attempts++;
         if ($attempts < 2) {
-            throw new \Illuminate\Http\Client\ConnectionException('Connection timed out');
+            throw new Illuminate\Http\Client\ConnectionException('Connection timed out');
         }
 
         return Http::response(['data' => 'success'], 200);
     });
 
-    $client = new class('test-key') extends SoraneApiClient {
+    $client = new class('test-key') extends SoraneApiClient
+    {
         protected function sleep(int $milliseconds): void
         {
             // Skip sleep in tests
@@ -286,10 +289,11 @@ test('MCP methods return error after max connection retries', function (string $
     $attempts = 0;
     Http::fake(function () use (&$attempts): void {
         $attempts++;
-        throw new \Illuminate\Http\Client\ConnectionException('Connection timed out');
+        throw new Illuminate\Http\Client\ConnectionException('Connection timed out');
     });
 
-    $client = new class('test-key') extends SoraneApiClient {
+    $client = new class('test-key') extends SoraneApiClient
+    {
         protected function sleep(int $milliseconds): void
         {
             // Skip sleep in tests
@@ -315,7 +319,8 @@ test('MCP methods do not retry on 4xx client errors', function (string $method, 
         return Http::response(['error' => 'Bad request'], 400);
     });
 
-    $client = new class('test-key') extends SoraneApiClient {
+    $client = new class('test-key') extends SoraneApiClient
+    {
         protected function sleep(int $milliseconds): void
         {
             // Skip sleep in tests
@@ -352,7 +357,8 @@ test('MCP methods handle malformed JSON response', function (string $method, arr
 ]);
 
 test('calculateBackoff returns exponential delays', function (): void {
-    $client = new class('test-key') extends SoraneApiClient {
+    $client = new class('test-key') extends SoraneApiClient
+    {
         public function testBackoff(int $attempt): int
         {
             return $this->calculateBackoff($attempt);
