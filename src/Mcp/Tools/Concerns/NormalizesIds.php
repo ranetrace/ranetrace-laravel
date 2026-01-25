@@ -8,6 +8,7 @@ trait NormalizesIds
 {
     /**
      * Normalize the error ID by stripping the prefix if present.
+     * Supports both "err_" (PHP errors) and "jserr_" (JavaScript errors) prefixes.
      */
     protected function normalizeErrorId(?string $errorId): ?string
     {
@@ -15,9 +16,15 @@ trait NormalizesIds
             return null;
         }
 
-        return str_starts_with($errorId, 'err_')
-            ? mb_substr($errorId, 4)
-            : $errorId;
+        if (str_starts_with($errorId, 'jserr_')) {
+            return mb_substr($errorId, 6);
+        }
+
+        if (str_starts_with($errorId, 'err_')) {
+            return mb_substr($errorId, 4);
+        }
+
+        return $errorId;
     }
 
     /**

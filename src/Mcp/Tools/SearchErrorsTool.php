@@ -24,7 +24,7 @@ class SearchErrorsTool extends Tool
 
     protected const MAX_LIMIT = 100;
 
-    protected const DEFAULT_LIMIT = 25;
+    protected const DEFAULT_LIMIT = 50;
 
     /**
      * The tool's description.
@@ -101,7 +101,7 @@ class SearchErrorsTool extends Tool
                 ->description('Sort direction: "asc" or "desc".')
                 ->enum(['asc', 'desc']),
             'limit' => $schema->integer()
-                ->description('Results per page (default 25, max 100).')
+                ->description('Results per page (default 50, max 100).')
                 ->default(self::DEFAULT_LIMIT),
             'cursor' => $schema->string()
                 ->description('Pagination cursor for next/previous page.'),

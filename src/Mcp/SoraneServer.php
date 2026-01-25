@@ -7,6 +7,7 @@ namespace Sorane\Laravel\Mcp;
 use Laravel\Mcp\Server;
 use Sorane\Laravel\Mcp\Tools\BulkDeleteErrorsTool;
 use Sorane\Laravel\Mcp\Tools\BulkIgnoreErrorsTool;
+use Sorane\Laravel\Mcp\Tools\BulkReopenErrorsTool;
 use Sorane\Laravel\Mcp\Tools\BulkResolveErrorsTool;
 use Sorane\Laravel\Mcp\Tools\BulkRestoreErrorsTool;
 use Sorane\Laravel\Mcp\Tools\CreateNotesTool;
@@ -72,6 +73,7 @@ class SoraneServer extends Server
         RestoreErrorTool::class,
         GetErrorActivityTool::class,
         BulkResolveErrorsTool::class,
+        BulkReopenErrorsTool::class,
         BulkIgnoreErrorsTool::class,
         BulkDeleteErrorsTool::class,
         BulkRestoreErrorsTool::class,

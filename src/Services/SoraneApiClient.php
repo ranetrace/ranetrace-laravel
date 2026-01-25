@@ -521,6 +521,8 @@ class SoraneApiClient
         }
 
         try {
+            $url = $this->apiUrl.'/errors/'.$errorId.'/snooze?'.http_build_query(['type' => $type]);
+
             $response = $this->executeWithRetry(fn () => Http::withToken($this->apiKey)
                 ->withHeaders([
                     'User-Agent' => 'Sorane-Laravel/MCP/1.0',
@@ -529,7 +531,7 @@ class SoraneApiClient
                     'Sorane-API-Version' => '1.0',
                 ])
                 ->timeout($this->timeout)
-                ->post($this->apiUrl.'/errors/'.$errorId.'/snooze', array_merge($data, ['type' => $type]))
+                ->post($url, $data)
             );
 
             return $this->formatResponse($response);
@@ -560,6 +562,8 @@ class SoraneApiClient
         }
 
         try {
+            $url = $this->apiUrl.'/errors/'.$errorId.'?'.http_build_query(['type' => $type]);
+
             $response = $this->executeWithRetry(fn () => Http::withToken($this->apiKey)
                 ->withHeaders([
                     'User-Agent' => 'Sorane-Laravel/MCP/1.0',
@@ -567,7 +571,7 @@ class SoraneApiClient
                     'Sorane-API-Version' => '1.0',
                 ])
                 ->timeout($this->timeout)
-                ->delete($this->apiUrl.'/errors/'.$errorId, ['type' => $type])
+                ->delete($url)
             );
 
             return $this->formatResponse($response);
@@ -690,7 +694,7 @@ class SoraneApiClient
                     'Sorane-API-Version' => '1.0',
                 ])
                 ->timeout($this->timeout)
-                ->get($this->apiUrl.'/errors', $params)
+                ->get($this->apiUrl.'/errors/search', $params)
             );
 
             return $this->formatResponse($response);
@@ -732,15 +736,16 @@ class SoraneApiClient
         }
 
         try {
+            $url = $this->apiUrl.'/errors/'.$errorId.'/'.$action.'?'.http_build_query(['type' => $type]);
+
             $response = $this->executeWithRetry(fn () => Http::withToken($this->apiKey)
                 ->withHeaders([
                     'User-Agent' => 'Sorane-Laravel/MCP/1.0',
-                    'Content-Type' => 'application/json',
                     'Accept' => 'application/json',
                     'Sorane-API-Version' => '1.0',
                 ])
                 ->timeout($this->timeout)
-                ->post($this->apiUrl.'/errors/'.$errorId.'/'.$action, ['type' => $type])
+                ->post($url)
             );
 
             return $this->formatResponse($response);
