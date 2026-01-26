@@ -14,10 +14,12 @@ use Sorane\Laravel\Services\SoraneApiClient;
 #[IsReadOnly]
 class LatestErrorsTool extends Tool
 {
+    protected const VALID_STATUSES = ['open', 'resolved', 'ignored', 'snoozed', 'active', 'closed', 'all'];
+
     /**
      * The tool's description.
      */
-    protected string $description = 'Fetch the latest errors from Sorane. Returns a list of recent errors with their basic information including message, type, and when they occurred.';
+    protected string $description = 'Fetch the latest errors from Sorane. By default, only returns open errors (not resolved/ignored). Use status parameter to filter by different states or "all" to include all errors.';
 
     public function __construct(
         protected SoraneApiClient $client
@@ -33,6 +35,12 @@ class LatestErrorsTool extends Tool
             'environment' => $request->get('environment'),
             'type' => $request->get('type'),
         ], fn ($value) => $value !== null);
+
+        // Default to 'open' status if not specified, skip if 'all'
+        $status = $request->get('status') ?? 'open';
+        if ($status !== 'all') {
+            $params['status'] = $status;
+        }
 
         $result = $this->client->getLatestErrors($params);
 
@@ -74,6 +82,11 @@ class LatestErrorsTool extends Tool
 
             'type' => $schema->string()
                 ->description('Filter by error type (e.g., "exception", "javascript").'),
+
+            'status' => $schema->string()
+                ->description('Status filter: "open" (default), "resolved", "ignored", "snoozed", "active", "closed", or "all" to include all statuses.')
+                ->enum(self::VALID_STATUSES)
+                ->default('open'),
         ];
     }
 
@@ -90,12 +103,14 @@ class LatestErrorsTool extends Tool
         $environment = $error['environment'] ?? 'unknown';
         $occurredAt = $error['occurred_at'] ?? 'unknown';
         $occurrences = $error['occurrences'] ?? 1;
+        $status = $error['status'] ?? 'unknown';
 
         return <<<ERROR
         ---
         #{$index} Error ID: {$id}
         Type: {$type}
         Environment: {$environment}
+        Status: {$status}
         Message: {$message}
         Occurred at: {$occurredAt}
         Occurrences: {$occurrences}

@@ -18,7 +18,7 @@ class SearchErrorsTool extends Tool
 
     protected const VALID_OCCURRENCE_LEVELS = ['critical', 'frequent', 'moderate', 'rare'];
 
-    protected const VALID_STATUSES = ['open', 'resolved', 'ignored', 'snoozed', 'active', 'closed'];
+    protected const VALID_STATUSES = ['open', 'resolved', 'ignored', 'snoozed', 'active', 'closed', 'all'];
 
     protected const VALID_SORTS = ['last_occurred', 'first_occurred', 'occurrence_count'];
 
@@ -29,7 +29,7 @@ class SearchErrorsTool extends Tool
     /**
      * The tool's description.
      */
-    protected string $description = 'Search for errors matching specific criteria with advanced filtering. Supports filtering by type, status, environment, date ranges, occurrence counts, and pagination.';
+    protected string $description = 'Search for errors matching specific criteria with advanced filtering. By default, returns only open errors. Use status="all" to include all statuses. Supports filtering by type, environment, date ranges, occurrence counts, and pagination.';
 
     public function __construct(
         protected SoraneApiClient $client
@@ -68,7 +68,8 @@ class SearchErrorsTool extends Tool
                 ->description('Filter by error type: "php", "javascript", or "all" (default: "all").')
                 ->enum(['php', 'javascript', 'js', 'all']),
             'status' => $schema->string()
-                ->description('Status filter: "open", "resolved", "ignored", "snoozed", "active", "closed". Can be comma-separated for multiple.'),
+                ->description('Status filter: "open" (default), "resolved", "ignored", "snoozed", "active", "closed", or "all". Can be comma-separated for multiple.')
+                ->default('open'),
             'environments' => $schema->array()
                 ->description('Array of environments to include (case-insensitive).'),
             'exclude_environments' => $schema->array()
@@ -125,9 +126,9 @@ class SearchErrorsTool extends Tool
             $params['type'] = $type === 'js' ? 'javascript' : $type;
         }
 
-        // Status can be string or array
-        $status = $request->get('status');
-        if ($status !== null) {
+        // Status can be string or array - default to 'open' if not provided, skip if 'all'
+        $status = $request->get('status') ?? 'open';
+        if ($status !== 'all') {
             $params['status'] = $status;
         }
 

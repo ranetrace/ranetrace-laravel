@@ -118,8 +118,8 @@ test('returns no errors message when empty', function (): void {
     expect($text)->toContain('No errors found');
 });
 
-test('filters null parameters from request', function (): void {
-    $client = createClientExpectingParams([]);
+test('filters null parameters from request but applies default status', function (): void {
+    $client = createClientExpectingParams(['status' => 'open']);
 
     $tool = new LatestErrorsTool($client);
     $tool->handle(new Request([
@@ -129,22 +129,22 @@ test('filters null parameters from request', function (): void {
     ]));
 });
 
-test('passes limit parameter to client', function (): void {
-    $client = createClientExpectingParams(['limit' => 25]);
+test('passes limit parameter to client with default status', function (): void {
+    $client = createClientExpectingParams(['limit' => 25, 'status' => 'open']);
 
     $tool = new LatestErrorsTool($client);
     $tool->handle(new Request(['limit' => 25]));
 });
 
-test('passes environment parameter to client', function (): void {
-    $client = createClientExpectingParams(['environment' => 'production']);
+test('passes environment parameter to client with default status', function (): void {
+    $client = createClientExpectingParams(['environment' => 'production', 'status' => 'open']);
 
     $tool = new LatestErrorsTool($client);
     $tool->handle(new Request(['environment' => 'production']));
 });
 
-test('passes type parameter to client', function (): void {
-    $client = createClientExpectingParams(['type' => 'javascript']);
+test('passes type parameter to client with default status', function (): void {
+    $client = createClientExpectingParams(['type' => 'javascript', 'status' => 'open']);
 
     $tool = new LatestErrorsTool($client);
     $tool->handle(new Request(['type' => 'javascript']));
@@ -155,6 +155,7 @@ test('passes all parameters together', function (): void {
         'limit' => 50,
         'environment' => 'staging',
         'type' => 'exception',
+        'status' => 'open',
     ]);
 
     $tool = new LatestErrorsTool($client);
@@ -230,4 +231,54 @@ test('returns error with unknown message when error field is missing', function 
     $text = executeToolAndGetText($client);
 
     expect($text)->toContain('Unknown error occurred');
+});
+
+test('defaults to open status when no status provided', function (): void {
+    $client = createClientExpectingParams(['status' => 'open']);
+
+    $tool = new LatestErrorsTool($client);
+    $tool->handle(new Request([]));
+});
+
+test('passes explicit status to client', function (): void {
+    $client = createClientExpectingParams(['status' => 'resolved']);
+
+    $tool = new LatestErrorsTool($client);
+    $tool->handle(new Request(['status' => 'resolved']));
+});
+
+test('does not send status param when status is all', function (): void {
+    $client = createClientExpectingParams([]);
+
+    $tool = new LatestErrorsTool($client);
+    $tool->handle(new Request(['status' => 'all']));
+});
+
+test('includes status in formatted output', function (): void {
+    $client = createClientWithErrors([
+        [
+            'id' => 'err-789',
+            'message' => 'Test error',
+            'type' => 'exception',
+            'environment' => 'production',
+            'occurred_at' => '2025-01-01T00:00:00Z',
+            'occurrences' => 1,
+            'status' => 'open',
+        ],
+    ]);
+    $text = executeToolAndGetText($client);
+
+    expect($text)->toContain('Status: open');
+});
+
+test('shows unknown status when status field is missing', function (): void {
+    $client = createClientWithErrors([
+        [
+            'id' => 'err-000',
+            'message' => 'Test error',
+        ],
+    ]);
+    $text = executeToolAndGetText($client);
+
+    expect($text)->toContain('Status: unknown');
 });

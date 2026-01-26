@@ -411,11 +411,11 @@ test('has correct description property', function (): void {
     expect($description)->toContain('advanced filtering');
 });
 
-test('filters out null and empty values from params', function (): void {
+test('filters out null and empty values but applies default status', function (): void {
     $this->mockClient->shouldReceive('searchErrors')
         ->once()
         ->with(Mockery::on(fn ($params) => ! isset($params['type'])
-                && ! isset($params['status'])
+                && $params['status'] === 'open'
                 && ! isset($params['environments'])))
         ->andReturn(['success' => true, 'status' => 200, 'data' => ['errors' => []]]);
 
@@ -449,4 +449,31 @@ test('passes multiple filters together', function (): void {
         'direction' => 'desc',
         'limit' => 50,
     ]));
+});
+
+test('defaults to open status when no status provided', function (): void {
+    $this->mockClient->shouldReceive('searchErrors')
+        ->once()
+        ->with(Mockery::on(fn ($params) => $params['status'] === 'open'))
+        ->andReturn(['success' => true, 'status' => 200, 'data' => ['errors' => []]]);
+
+    $this->tool->handle(new Request([]));
+});
+
+test('does not send status param when status is all', function (): void {
+    $this->mockClient->shouldReceive('searchErrors')
+        ->once()
+        ->with(Mockery::on(fn ($params) => ! isset($params['status'])))
+        ->andReturn(['success' => true, 'status' => 200, 'data' => ['errors' => []]]);
+
+    $this->tool->handle(new Request(['status' => 'all']));
+});
+
+test('passes resolved status when explicitly provided', function (): void {
+    $this->mockClient->shouldReceive('searchErrors')
+        ->once()
+        ->with(Mockery::on(fn ($params) => $params['status'] === 'resolved'))
+        ->andReturn(['success' => true, 'status' => 200, 'data' => ['errors' => []]]);
+
+    $this->tool->handle(new Request(['status' => 'resolved']));
 });
