@@ -67,8 +67,8 @@ class ListNotesTool extends Tool
                 ->required(),
             'limit' => $schema->integer()
                 ->description('Maximum number of notes to return (default: 50, max: 100).')
-                ->minimum(1)
-                ->maximum(100),
+                ->min(1)
+                ->max(100),
             'author' => $schema->string()
                 ->description('Filter by author ("ai" for AI Agent notes, or user ID).'),
         ];

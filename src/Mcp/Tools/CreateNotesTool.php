@@ -81,12 +81,10 @@ class CreateNotesTool extends Tool
                 ->required(),
             'notes' => $schema->array()
                 ->description('Array of note objects with body field (max 10 notes).')
-                ->items($schema->object()
-                    ->properties([
-                        'body' => $schema->string()
-                            ->description('The markdown content of the note (max 5000 characters).'),
-                    ])
-                )
+                ->items($schema->object([
+                    'body' => $schema->string()
+                        ->description('The markdown content of the note (max 5000 characters).'),
+                ]))
                 ->required(),
         ];
     }

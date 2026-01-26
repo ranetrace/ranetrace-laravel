@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Sorane\Laravel\Mcp\Tools;
 
 use Illuminate\Contracts\JsonSchema\JsonSchema;
-use Laravel\Mcp\Attributes\IsReadOnly;
+use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
 use Laravel\Mcp\Server\Tool;
@@ -62,11 +62,11 @@ class GetErrorActivityTool extends Tool
                 ->required(),
             'limit' => $schema->integer()
                 ->description('Maximum number of activities to return (default: 50).')
-                ->minimum(1)
-                ->maximum(100),
+                ->min(1)
+                ->max(100),
             'offset' => $schema->integer()
                 ->description('Number of activities to skip for pagination.')
-                ->minimum(0),
+                ->min(0),
             'type' => $schema->string()
                 ->description('The error type: "php" (default), "javascript", or "js".')
                 ->enum(['php', 'javascript', 'js']),
