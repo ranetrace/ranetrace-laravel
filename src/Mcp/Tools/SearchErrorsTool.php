@@ -134,12 +134,12 @@ class SearchErrorsTool extends Tool
 
         // Environment filters
         $environments = $request->get('environments');
-        if ($environments !== null && is_array($environments) && ! empty($environments)) {
+        if (! empty($environments) && is_array($environments)) {
             $params['environments'] = $environments;
         }
 
         $excludeEnvironments = $request->get('exclude_environments');
-        if ($excludeEnvironments !== null && is_array($excludeEnvironments) && ! empty($excludeEnvironments)) {
+        if (! empty($excludeEnvironments) && is_array($excludeEnvironments)) {
             $params['exclude_environments'] = $excludeEnvironments;
         }
 
