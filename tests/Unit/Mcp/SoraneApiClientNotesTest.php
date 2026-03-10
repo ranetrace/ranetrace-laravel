@@ -17,7 +17,7 @@ beforeEach(function (): void {
 
 test('createNote sends correct request to API', function (): void {
     Http::fake([
-        'api.sorane.io/v1/errors/123/notes' => Http::response([
+        'api.ranetrace.com/v1/errors/123/notes' => Http::response([
             'note' => [
                 'id' => 'note_456',
                 'error_id' => 'err_123',
@@ -35,7 +35,7 @@ test('createNote sends correct request to API', function (): void {
     expect($result['data']['note']['id'])->toBe('note_456');
 
     Http::assertSent(function (Request $request) {
-        return $request->url() === 'https://api.sorane.io/v1/errors/123/notes'
+        return $request->url() === 'https://api.ranetrace.com/v1/errors/123/notes'
             && $request->method() === 'POST'
             && $request['body'] === 'Test note content'
             && $request->hasHeader('Authorization', 'Bearer test-api-key');
@@ -53,7 +53,7 @@ test('createNote returns error when API key is not configured', function (): voi
 
 test('createNote handles 404 error when error not found', function (): void {
     Http::fake([
-        'api.sorane.io/v1/errors/999/notes' => Http::response([
+        'api.ranetrace.com/v1/errors/999/notes' => Http::response([
             'error' => ['code' => 'not_found', 'message' => 'Error not found'],
         ], 404),
     ]);
@@ -66,7 +66,7 @@ test('createNote handles 404 error when error not found', function (): void {
 
 test('createNote handles 403 forbidden error', function (): void {
     Http::fake([
-        'api.sorane.io/v1/errors/123/notes' => Http::response([
+        'api.ranetrace.com/v1/errors/123/notes' => Http::response([
             'error' => ['code' => 'forbidden', 'message' => 'Access denied'],
         ], 403),
     ]);
@@ -79,7 +79,7 @@ test('createNote handles 403 forbidden error', function (): void {
 
 test('createNote handles 422 validation error', function (): void {
     Http::fake([
-        'api.sorane.io/v1/errors/123/notes' => Http::response([
+        'api.ranetrace.com/v1/errors/123/notes' => Http::response([
             'message' => 'The body field is required',
             'errors' => ['body' => ['The body field is required']],
         ], 422),
@@ -108,7 +108,7 @@ test('createNote handles connection exception', function (): void {
 
 test('listNotes retrieves notes for an error', function (): void {
     Http::fake([
-        'api.sorane.io/v1/errors/123/notes*' => Http::response([
+        'api.ranetrace.com/v1/errors/123/notes*' => Http::response([
             'notes' => [
                 [
                     'id' => 'note_456',
@@ -136,7 +136,7 @@ test('listNotes retrieves notes for an error', function (): void {
 
 test('listNotes sends query parameters correctly', function (): void {
     Http::fake([
-        'api.sorane.io/v1/errors/123/notes*' => Http::response([
+        'api.ranetrace.com/v1/errors/123/notes*' => Http::response([
             'notes' => [],
             'meta' => ['total' => 0],
         ], 200),
@@ -152,7 +152,7 @@ test('listNotes sends query parameters correctly', function (): void {
         $query = [];
         parse_str(parse_url($request->url(), PHP_URL_QUERY) ?? '', $query);
 
-        return str_contains($request->url(), 'api.sorane.io/v1/errors/123/notes')
+        return str_contains($request->url(), 'api.ranetrace.com/v1/errors/123/notes')
             && $query['limit'] === '10'
             && $query['offset'] === '5'
             && $query['author'] === 'ai';
@@ -170,7 +170,7 @@ test('listNotes returns error when API key is not configured', function (): void
 
 test('listNotes handles 404 when error not found', function (): void {
     Http::fake([
-        'api.sorane.io/v1/errors/999/notes*' => Http::response([
+        'api.ranetrace.com/v1/errors/999/notes*' => Http::response([
             'error' => ['code' => 'not_found', 'message' => 'Error not found'],
         ], 404),
     ]);
@@ -187,7 +187,7 @@ test('listNotes handles 404 when error not found', function (): void {
 
 test('getNote retrieves a specific note', function (): void {
     Http::fake([
-        'api.sorane.io/v1/errors/123/notes/456' => Http::response([
+        'api.ranetrace.com/v1/errors/123/notes/456' => Http::response([
             'note' => [
                 'id' => 'note_456',
                 'error_id' => 'err_123',
@@ -218,7 +218,7 @@ test('getNote returns error when API key is not configured', function (): void {
 
 test('getNote handles 404 when note not found', function (): void {
     Http::fake([
-        'api.sorane.io/v1/errors/123/notes/999' => Http::response([
+        'api.ranetrace.com/v1/errors/123/notes/999' => Http::response([
             'error' => ['code' => 'not_found', 'message' => 'Note not found'],
         ], 404),
     ]);
@@ -235,7 +235,7 @@ test('getNote handles 404 when note not found', function (): void {
 
 test('updateNote sends correct request to API', function (): void {
     Http::fake([
-        'api.sorane.io/v1/errors/123/notes/456' => Http::response([
+        'api.ranetrace.com/v1/errors/123/notes/456' => Http::response([
             'note' => [
                 'id' => 'note_456',
                 'error_id' => 'err_123',
@@ -253,7 +253,7 @@ test('updateNote sends correct request to API', function (): void {
     expect($result['data']['note']['body'])->toBe('Updated note content');
 
     Http::assertSent(function (Request $request) {
-        return $request->url() === 'https://api.sorane.io/v1/errors/123/notes/456'
+        return $request->url() === 'https://api.ranetrace.com/v1/errors/123/notes/456'
             && $request->method() === 'PUT'
             && $request['body'] === 'Updated note content';
     });
@@ -270,7 +270,7 @@ test('updateNote returns error when API key is not configured', function (): voi
 
 test('updateNote handles 403 when trying to update others note', function (): void {
     Http::fake([
-        'api.sorane.io/v1/errors/123/notes/456' => Http::response([
+        'api.ranetrace.com/v1/errors/123/notes/456' => Http::response([
             'error' => ['code' => 'forbidden', 'message' => 'Cannot modify notes created by other users'],
         ], 403),
     ]);
@@ -283,7 +283,7 @@ test('updateNote handles 403 when trying to update others note', function (): vo
 
 test('updateNote handles 404 when note not found', function (): void {
     Http::fake([
-        'api.sorane.io/v1/errors/123/notes/999' => Http::response([
+        'api.ranetrace.com/v1/errors/123/notes/999' => Http::response([
             'error' => ['code' => 'not_found', 'message' => 'Note not found'],
         ], 404),
     ]);
@@ -300,7 +300,7 @@ test('updateNote handles 404 when note not found', function (): void {
 
 test('deleteNote sends correct request to API', function (): void {
     Http::fake([
-        'api.sorane.io/v1/errors/123/notes/456' => Http::response([
+        'api.ranetrace.com/v1/errors/123/notes/456' => Http::response([
             'message' => 'Note archived successfully',
         ], 200),
     ]);
@@ -310,7 +310,7 @@ test('deleteNote sends correct request to API', function (): void {
     expect($result['success'])->toBeTrue();
 
     Http::assertSent(function (Request $request) {
-        return $request->url() === 'https://api.sorane.io/v1/errors/123/notes/456'
+        return $request->url() === 'https://api.ranetrace.com/v1/errors/123/notes/456'
             && $request->method() === 'DELETE';
     });
 });
@@ -326,7 +326,7 @@ test('deleteNote returns error when API key is not configured', function (): voi
 
 test('deleteNote handles 403 when trying to delete others note', function (): void {
     Http::fake([
-        'api.sorane.io/v1/errors/123/notes/456' => Http::response([
+        'api.ranetrace.com/v1/errors/123/notes/456' => Http::response([
             'error' => ['code' => 'forbidden', 'message' => 'Cannot delete notes created by other users'],
         ], 403),
     ]);
@@ -339,7 +339,7 @@ test('deleteNote handles 403 when trying to delete others note', function (): vo
 
 test('deleteNote handles 404 when note not found', function (): void {
     Http::fake([
-        'api.sorane.io/v1/errors/123/notes/999' => Http::response([
+        'api.ranetrace.com/v1/errors/123/notes/999' => Http::response([
             'error' => ['code' => 'not_found', 'message' => 'Note not found'],
         ], 404),
     ]);
@@ -356,7 +356,7 @@ test('deleteNote handles 404 when note not found', function (): void {
 
 test('createNotesBulk sends correct request to API', function (): void {
     Http::fake([
-        'api.sorane.io/v1/errors/123/notes/bulk' => Http::response([
+        'api.ranetrace.com/v1/errors/123/notes/bulk' => Http::response([
             'notes' => [
                 [
                     'id' => 'note_456',
@@ -386,7 +386,7 @@ test('createNotesBulk sends correct request to API', function (): void {
     expect($result['data']['notes'])->toHaveCount(2);
 
     Http::assertSent(function (Request $request) {
-        return $request->url() === 'https://api.sorane.io/v1/errors/123/notes/bulk'
+        return $request->url() === 'https://api.ranetrace.com/v1/errors/123/notes/bulk'
             && $request->method() === 'POST'
             && count($request['notes']) === 2;
     });
@@ -403,7 +403,7 @@ test('createNotesBulk returns error when API key is not configured', function ()
 
 test('createNotesBulk handles 422 validation error', function (): void {
     Http::fake([
-        'api.sorane.io/v1/errors/123/notes/bulk' => Http::response([
+        'api.ranetrace.com/v1/errors/123/notes/bulk' => Http::response([
             'message' => 'Validation failed',
             'errors' => ['notes.0.body' => ['The body field is required']],
         ], 422),
@@ -417,7 +417,7 @@ test('createNotesBulk handles 422 validation error', function (): void {
 
 test('createNotesBulk handles 404 when error not found', function (): void {
     Http::fake([
-        'api.sorane.io/v1/errors/999/notes/bulk' => Http::response([
+        'api.ranetrace.com/v1/errors/999/notes/bulk' => Http::response([
             'error' => ['code' => 'not_found', 'message' => 'Error not found'],
         ], 404),
     ]);
@@ -452,7 +452,7 @@ test('note methods retry on 5xx errors', function (): void {
 
 test('note methods include correct headers', function (): void {
     Http::fake([
-        'api.sorane.io/v1/errors/123/notes' => Http::response(['note' => []], 201),
+        'api.ranetrace.com/v1/errors/123/notes' => Http::response(['note' => []], 201),
     ]);
 
     $this->client->createNote('123', ['body' => 'Test']);

@@ -12,7 +12,7 @@ use Throwable;
 
 class SoraneApiClient
 {
-    protected string $apiUrl = 'https://api.sorane.io/v1';
+    protected string $apiUrl = 'https://api.ranetrace.com/v1';
 
     protected int $timeout = 10;
 

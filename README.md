@@ -15,7 +15,7 @@ It only collects essential visit data without cookies, invasive fingerprinting, 
 
 It also keeps an eye on your website’s health. Sorane monitors uptime, performance, SSL certificates, domain and DNS status, Lighthouse scores, and broken links. So when something goes wrong, you’ll know.
 
-Check out the [Sorane website](https://sorane.io) for more information.
+Check out the [Sorane website](https://ranetrace.com) for more information.
 
 ## Installation
 
@@ -457,7 +457,7 @@ This will send various test logs to your Sorane dashboard and display your curre
 
 ### Error Tracking & Website Analytics
 
-Please refer to the [Sorane website](https://sorane.io) for more information on how to use Sorane.
+Please refer to the [Sorane website](https://ranetrace.com) for more information on how to use Sorane.
 
 ## Testing
 

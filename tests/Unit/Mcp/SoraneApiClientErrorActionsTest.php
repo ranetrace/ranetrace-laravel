@@ -17,7 +17,7 @@ beforeEach(function (): void {
 
 test('resolveError sends correct request to API', function (): void {
     Http::fake([
-        'api.sorane.io/v1/errors/123/resolve' => Http::response([
+        'api.ranetrace.com/v1/errors/123/resolve' => Http::response([
             'error' => [
                 'id' => 'err_123',
                 'state' => 'resolved',
@@ -40,7 +40,7 @@ test('resolveError sends correct request to API', function (): void {
     expect($result['data']['error']['state'])->toBe('resolved');
 
     Http::assertSent(function (Request $request) {
-        return $request->url() === 'https://api.sorane.io/v1/errors/123/resolve'
+        return $request->url() === 'https://api.ranetrace.com/v1/errors/123/resolve'
             && $request->method() === 'POST'
             && $request['type'] === 'php'
             && $request->hasHeader('Authorization', 'Bearer test-api-key');
@@ -49,7 +49,7 @@ test('resolveError sends correct request to API', function (): void {
 
 test('resolveError sends javascript type correctly', function (): void {
     Http::fake([
-        'api.sorane.io/v1/errors/123/resolve' => Http::response([
+        'api.ranetrace.com/v1/errors/123/resolve' => Http::response([
             'error' => ['id' => 'err_123', 'state' => 'resolved'],
         ], 200),
     ]);
@@ -72,7 +72,7 @@ test('resolveError returns error when API key is not configured', function (): v
 
 test('resolveError handles 404 error', function (): void {
     Http::fake([
-        'api.sorane.io/v1/errors/999/resolve' => Http::response([
+        'api.ranetrace.com/v1/errors/999/resolve' => Http::response([
             'error' => ['code' => 'not_found', 'message' => 'Error not found'],
         ], 404),
     ]);
@@ -85,7 +85,7 @@ test('resolveError handles 404 error', function (): void {
 
 test('resolveError handles 403 forbidden error', function (): void {
     Http::fake([
-        'api.sorane.io/v1/errors/123/resolve' => Http::response([
+        'api.ranetrace.com/v1/errors/123/resolve' => Http::response([
             'error' => ['code' => 'forbidden', 'message' => 'Access denied'],
         ], 403),
     ]);
@@ -102,7 +102,7 @@ test('resolveError handles 403 forbidden error', function (): void {
 
 test('reopenError sends correct request to API', function (): void {
     Http::fake([
-        'api.sorane.io/v1/errors/123/reopen' => Http::response([
+        'api.ranetrace.com/v1/errors/123/reopen' => Http::response([
             'error' => [
                 'id' => 'err_123',
                 'state' => 'open',
@@ -118,7 +118,7 @@ test('reopenError sends correct request to API', function (): void {
     expect($result['data']['error']['state'])->toBe('open');
 
     Http::assertSent(function (Request $request) {
-        return $request->url() === 'https://api.sorane.io/v1/errors/123/reopen'
+        return $request->url() === 'https://api.ranetrace.com/v1/errors/123/reopen'
             && $request->method() === 'POST';
     });
 });
@@ -138,7 +138,7 @@ test('reopenError returns error when API key is not configured', function (): vo
 
 test('ignoreError sends correct request to API', function (): void {
     Http::fake([
-        'api.sorane.io/v1/errors/123/ignore' => Http::response([
+        'api.ranetrace.com/v1/errors/123/ignore' => Http::response([
             'error' => [
                 'id' => 'err_123',
                 'state' => 'ignored',
@@ -154,7 +154,7 @@ test('ignoreError sends correct request to API', function (): void {
     expect($result['data']['error']['is_ignored'])->toBeTrue();
 
     Http::assertSent(function (Request $request) {
-        return $request->url() === 'https://api.sorane.io/v1/errors/123/ignore'
+        return $request->url() === 'https://api.ranetrace.com/v1/errors/123/ignore'
             && $request->method() === 'POST';
     });
 });
@@ -174,7 +174,7 @@ test('ignoreError returns error when API key is not configured', function (): vo
 
 test('unignoreError sends correct request to API', function (): void {
     Http::fake([
-        'api.sorane.io/v1/errors/123/unignore' => Http::response([
+        'api.ranetrace.com/v1/errors/123/unignore' => Http::response([
             'error' => [
                 'id' => 'err_123',
                 'state' => 'open',
@@ -190,7 +190,7 @@ test('unignoreError sends correct request to API', function (): void {
     expect($result['data']['error']['is_ignored'])->toBeFalse();
 
     Http::assertSent(function (Request $request) {
-        return $request->url() === 'https://api.sorane.io/v1/errors/123/unignore'
+        return $request->url() === 'https://api.ranetrace.com/v1/errors/123/unignore'
             && $request->method() === 'POST';
     });
 });
@@ -210,7 +210,7 @@ test('unignoreError returns error when API key is not configured', function (): 
 
 test('snoozeError sends correct request with duration', function (): void {
     Http::fake([
-        'api.sorane.io/v1/errors/123/snooze' => Http::response([
+        'api.ranetrace.com/v1/errors/123/snooze' => Http::response([
             'error' => [
                 'id' => 'err_123',
                 'state' => 'snoozed',
@@ -226,7 +226,7 @@ test('snoozeError sends correct request with duration', function (): void {
     expect($result['data']['error']['state'])->toBe('snoozed');
 
     Http::assertSent(function (Request $request) {
-        return $request->url() === 'https://api.sorane.io/v1/errors/123/snooze'
+        return $request->url() === 'https://api.ranetrace.com/v1/errors/123/snooze'
             && $request->method() === 'POST'
             && $request['duration'] === '24h'
             && $request['type'] === 'php';
@@ -235,7 +235,7 @@ test('snoozeError sends correct request with duration', function (): void {
 
 test('snoozeError sends correct request with until datetime', function (): void {
     Http::fake([
-        'api.sorane.io/v1/errors/123/snooze' => Http::response([
+        'api.ranetrace.com/v1/errors/123/snooze' => Http::response([
             'error' => ['id' => 'err_123', 'state' => 'snoozed'],
         ], 200),
     ]);
@@ -249,7 +249,7 @@ test('snoozeError sends correct request with until datetime', function (): void 
 
 test('snoozeError handles javascript type', function (): void {
     Http::fake([
-        'api.sorane.io/v1/errors/123/snooze' => Http::response([
+        'api.ranetrace.com/v1/errors/123/snooze' => Http::response([
             'error' => ['id' => 'err_123', 'state' => 'snoozed'],
         ], 200),
     ]);
@@ -272,7 +272,7 @@ test('snoozeError returns error when API key is not configured', function (): vo
 
 test('snoozeError handles 422 validation error', function (): void {
     Http::fake([
-        'api.sorane.io/v1/errors/123/snooze' => Http::response([
+        'api.ranetrace.com/v1/errors/123/snooze' => Http::response([
             'message' => 'The until field must be a future date',
         ], 422),
     ]);
@@ -289,7 +289,7 @@ test('snoozeError handles 422 validation error', function (): void {
 
 test('unsnoozeError sends correct request to API', function (): void {
     Http::fake([
-        'api.sorane.io/v1/errors/123/unsnooze' => Http::response([
+        'api.ranetrace.com/v1/errors/123/unsnooze' => Http::response([
             'error' => [
                 'id' => 'err_123',
                 'state' => 'open',
@@ -305,7 +305,7 @@ test('unsnoozeError sends correct request to API', function (): void {
     expect($result['data']['error']['snooze_until'])->toBeNull();
 
     Http::assertSent(function (Request $request) {
-        return $request->url() === 'https://api.sorane.io/v1/errors/123/unsnooze'
+        return $request->url() === 'https://api.ranetrace.com/v1/errors/123/unsnooze'
             && $request->method() === 'POST';
     });
 });
@@ -325,7 +325,7 @@ test('unsnoozeError returns error when API key is not configured', function (): 
 
 test('deleteError sends correct request to API', function (): void {
     Http::fake([
-        'api.sorane.io/v1/errors/123' => Http::response([
+        'api.ranetrace.com/v1/errors/123' => Http::response([
             'message' => 'Error archived successfully',
             'activity' => ['id' => 462, 'action' => 'archived'],
         ], 200),
@@ -337,14 +337,14 @@ test('deleteError sends correct request to API', function (): void {
     expect($result['data']['message'])->toBe('Error archived successfully');
 
     Http::assertSent(function (Request $request) {
-        return $request->url() === 'https://api.sorane.io/v1/errors/123'
+        return $request->url() === 'https://api.ranetrace.com/v1/errors/123'
             && $request->method() === 'DELETE';
     });
 });
 
 test('deleteError sends javascript type correctly', function (): void {
     Http::fake([
-        'api.sorane.io/v1/errors/123' => Http::response([
+        'api.ranetrace.com/v1/errors/123' => Http::response([
             'message' => 'Error archived successfully',
         ], 200),
     ]);
@@ -367,7 +367,7 @@ test('deleteError returns error when API key is not configured', function (): vo
 
 test('deleteError handles 404 error', function (): void {
     Http::fake([
-        'api.sorane.io/v1/errors/999' => Http::response([
+        'api.ranetrace.com/v1/errors/999' => Http::response([
             'error' => ['code' => 'not_found', 'message' => 'Error not found'],
         ], 404),
     ]);
@@ -384,7 +384,7 @@ test('deleteError handles 404 error', function (): void {
 
 test('getErrorActivity sends correct request to API', function (): void {
     Http::fake([
-        'api.sorane.io/v1/errors/123/activity*' => Http::response([
+        'api.ranetrace.com/v1/errors/123/activity*' => Http::response([
             'activities' => [
                 [
                     'id' => 456,
@@ -404,14 +404,14 @@ test('getErrorActivity sends correct request to API', function (): void {
     expect($result['data']['meta']['total'])->toBe(1);
 
     Http::assertSent(function (Request $request) {
-        return str_contains($request->url(), 'api.sorane.io/v1/errors/123/activity')
+        return str_contains($request->url(), 'api.ranetrace.com/v1/errors/123/activity')
             && $request->method() === 'GET';
     });
 });
 
 test('getErrorActivity sends query parameters correctly', function (): void {
     Http::fake([
-        'api.sorane.io/v1/errors/123/activity*' => Http::response([
+        'api.ranetrace.com/v1/errors/123/activity*' => Http::response([
             'activities' => [],
             'meta' => ['total' => 0],
         ], 200),
@@ -429,7 +429,7 @@ test('getErrorActivity sends query parameters correctly', function (): void {
 
 test('getErrorActivity sends type parameter', function (): void {
     Http::fake([
-        'api.sorane.io/v1/errors/123/activity*' => Http::response([
+        'api.ranetrace.com/v1/errors/123/activity*' => Http::response([
             'activities' => [],
             'meta' => [],
         ], 200),
@@ -456,7 +456,7 @@ test('getErrorActivity returns error when API key is not configured', function (
 
 test('getErrorActivity handles 404 error', function (): void {
     Http::fake([
-        'api.sorane.io/v1/errors/999/activity*' => Http::response([
+        'api.ranetrace.com/v1/errors/999/activity*' => Http::response([
             'error' => ['code' => 'not_found', 'message' => 'Error not found'],
         ], 404),
     ]);
@@ -473,7 +473,7 @@ test('getErrorActivity handles 404 error', function (): void {
 
 test('bulkResolveErrors sends correct request to API', function (): void {
     Http::fake([
-        'api.sorane.io/v1/errors/bulk/resolve' => Http::response([
+        'api.ranetrace.com/v1/errors/bulk/resolve' => Http::response([
             'resolved_count' => 3,
             'errors' => [
                 ['id' => 'err_123', 'state' => 'resolved'],
@@ -490,7 +490,7 @@ test('bulkResolveErrors sends correct request to API', function (): void {
     expect($result['data']['errors'])->toHaveCount(3);
 
     Http::assertSent(function (Request $request) {
-        return $request->url() === 'https://api.sorane.io/v1/errors/bulk/resolve'
+        return $request->url() === 'https://api.ranetrace.com/v1/errors/bulk/resolve'
             && $request->method() === 'POST'
             && $request['error_ids'] === ['123', '124', '125']
             && $request['type'] === 'php';
@@ -499,7 +499,7 @@ test('bulkResolveErrors sends correct request to API', function (): void {
 
 test('bulkResolveErrors sends javascript type', function (): void {
     Http::fake([
-        'api.sorane.io/v1/errors/bulk/resolve' => Http::response([
+        'api.ranetrace.com/v1/errors/bulk/resolve' => Http::response([
             'resolved_count' => 1,
             'errors' => [],
         ], 200),
@@ -523,7 +523,7 @@ test('bulkResolveErrors returns error when API key is not configured', function 
 
 test('bulkResolveErrors handles 422 validation error', function (): void {
     Http::fake([
-        'api.sorane.io/v1/errors/bulk/resolve' => Http::response([
+        'api.ranetrace.com/v1/errors/bulk/resolve' => Http::response([
             'message' => 'Too many error IDs provided',
         ], 422),
     ]);
@@ -540,7 +540,7 @@ test('bulkResolveErrors handles 422 validation error', function (): void {
 
 test('bulkReopenErrors sends correct request to API', function (): void {
     Http::fake([
-        'api.sorane.io/v1/errors/bulk/reopen' => Http::response([
+        'api.ranetrace.com/v1/errors/bulk/reopen' => Http::response([
             'reopened_count' => 2,
             'errors' => [
                 ['id' => 'err_123', 'state' => 'open'],
@@ -555,7 +555,7 @@ test('bulkReopenErrors sends correct request to API', function (): void {
     expect($result['data']['reopened_count'])->toBe(2);
 
     Http::assertSent(function (Request $request) {
-        return $request->url() === 'https://api.sorane.io/v1/errors/bulk/reopen'
+        return $request->url() === 'https://api.ranetrace.com/v1/errors/bulk/reopen'
             && $request->method() === 'POST';
     });
 });
@@ -575,7 +575,7 @@ test('bulkReopenErrors returns error when API key is not configured', function (
 
 test('bulkIgnoreErrors sends correct request to API', function (): void {
     Http::fake([
-        'api.sorane.io/v1/errors/bulk/ignore' => Http::response([
+        'api.ranetrace.com/v1/errors/bulk/ignore' => Http::response([
             'ignored_count' => 2,
             'errors' => [
                 ['id' => 'err_123', 'state' => 'ignored'],
@@ -590,7 +590,7 @@ test('bulkIgnoreErrors sends correct request to API', function (): void {
     expect($result['data']['ignored_count'])->toBe(2);
 
     Http::assertSent(function (Request $request) {
-        return $request->url() === 'https://api.sorane.io/v1/errors/bulk/ignore'
+        return $request->url() === 'https://api.ranetrace.com/v1/errors/bulk/ignore'
             && $request->method() === 'POST'
             && $request['error_ids'] === ['123', '124'];
     });
@@ -611,7 +611,7 @@ test('bulkIgnoreErrors returns error when API key is not configured', function (
 
 test('bulkDeleteErrors sends correct request to API', function (): void {
     Http::fake([
-        'api.sorane.io/v1/errors/bulk/delete' => Http::response([
+        'api.ranetrace.com/v1/errors/bulk/delete' => Http::response([
             'deleted_count' => 2,
             'errors' => [
                 ['id' => 'err_123', 'state' => 'archived'],
@@ -626,7 +626,7 @@ test('bulkDeleteErrors sends correct request to API', function (): void {
     expect($result['data']['deleted_count'])->toBe(2);
 
     Http::assertSent(function (Request $request) {
-        return $request->url() === 'https://api.sorane.io/v1/errors/bulk/delete'
+        return $request->url() === 'https://api.ranetrace.com/v1/errors/bulk/delete'
             && $request->method() === 'POST';
     });
 });
@@ -664,7 +664,7 @@ test('error action methods retry on 5xx errors', function (): void {
 
 test('error action methods include correct headers', function (): void {
     Http::fake([
-        'api.sorane.io/v1/errors/123/resolve' => Http::response([
+        'api.ranetrace.com/v1/errors/123/resolve' => Http::response([
             'error' => [],
         ], 200),
     ]);

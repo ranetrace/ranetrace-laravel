@@ -16,7 +16,7 @@ beforeEach(function (): void {
 
 test('searchErrors sends GET request with no params', function (): void {
     Http::fake([
-        'api.sorane.io/v1/errors*' => Http::response([
+        'api.ranetrace.com/v1/errors*' => Http::response([
             'errors' => [],
             'meta' => ['total_count' => 0],
         ], 200),
@@ -28,13 +28,13 @@ test('searchErrors sends GET request with no params', function (): void {
 
     Http::assertSent(function (Request $request) {
         return $request->method() === 'GET'
-            && str_contains($request->url(), 'api.sorane.io/v1/errors');
+            && str_contains($request->url(), 'api.ranetrace.com/v1/errors');
     });
 });
 
 test('searchErrors sends type parameter', function (): void {
     Http::fake([
-        'api.sorane.io/v1/errors*' => Http::response(['errors' => [], 'meta' => []], 200),
+        'api.ranetrace.com/v1/errors*' => Http::response(['errors' => [], 'meta' => []], 200),
     ]);
 
     $this->client->searchErrors(['type' => 'php']);
@@ -46,7 +46,7 @@ test('searchErrors sends type parameter', function (): void {
 
 test('searchErrors sends status parameter', function (): void {
     Http::fake([
-        'api.sorane.io/v1/errors*' => Http::response(['errors' => [], 'meta' => []], 200),
+        'api.ranetrace.com/v1/errors*' => Http::response(['errors' => [], 'meta' => []], 200),
     ]);
 
     $this->client->searchErrors(['status' => 'open']);
@@ -58,7 +58,7 @@ test('searchErrors sends status parameter', function (): void {
 
 test('searchErrors sends environments array', function (): void {
     Http::fake([
-        'api.sorane.io/v1/errors*' => Http::response(['errors' => [], 'meta' => []], 200),
+        'api.ranetrace.com/v1/errors*' => Http::response(['errors' => [], 'meta' => []], 200),
     ]);
 
     $this->client->searchErrors(['environments' => ['production', 'staging']]);
@@ -70,7 +70,7 @@ test('searchErrors sends environments array', function (): void {
 
 test('searchErrors sends date filter parameters', function (): void {
     Http::fake([
-        'api.sorane.io/v1/errors*' => Http::response(['errors' => [], 'meta' => []], 200),
+        'api.ranetrace.com/v1/errors*' => Http::response(['errors' => [], 'meta' => []], 200),
     ]);
 
     $this->client->searchErrors([
@@ -86,7 +86,7 @@ test('searchErrors sends date filter parameters', function (): void {
 
 test('searchErrors sends pagination parameters', function (): void {
     Http::fake([
-        'api.sorane.io/v1/errors*' => Http::response(['errors' => [], 'meta' => []], 200),
+        'api.ranetrace.com/v1/errors*' => Http::response(['errors' => [], 'meta' => []], 200),
     ]);
 
     $this->client->searchErrors(['limit' => 50, 'cursor' => 'abc123']);
@@ -99,7 +99,7 @@ test('searchErrors sends pagination parameters', function (): void {
 
 test('searchErrors sends include_archived parameter', function (): void {
     Http::fake([
-        'api.sorane.io/v1/errors*' => Http::response(['errors' => [], 'meta' => []], 200),
+        'api.ranetrace.com/v1/errors*' => Http::response(['errors' => [], 'meta' => []], 200),
     ]);
 
     $this->client->searchErrors(['include_archived' => true]);
@@ -120,7 +120,7 @@ test('searchErrors returns error when API key not configured', function (): void
 
 test('searchErrors handles API error response', function (): void {
     Http::fake([
-        'api.sorane.io/v1/errors*' => Http::response(['error' => 'Validation failed'], 422),
+        'api.ranetrace.com/v1/errors*' => Http::response(['error' => 'Validation failed'], 422),
     ]);
 
     $result = $this->client->searchErrors(['min_occurrences' => -1]);
@@ -131,7 +131,7 @@ test('searchErrors handles API error response', function (): void {
 
 test('searchErrors includes correct headers', function (): void {
     Http::fake([
-        'api.sorane.io/v1/errors*' => Http::response(['errors' => [], 'meta' => []], 200),
+        'api.ranetrace.com/v1/errors*' => Http::response(['errors' => [], 'meta' => []], 200),
     ]);
 
     $this->client->searchErrors();
@@ -150,7 +150,7 @@ test('searchErrors includes correct headers', function (): void {
 
 test('restoreError sends POST request to correct endpoint', function (): void {
     Http::fake([
-        'api.sorane.io/v1/errors/123/restore' => Http::response([
+        'api.ranetrace.com/v1/errors/123/restore' => Http::response([
             'error' => ['id' => 'err_123', 'state' => 'open'],
             'activity' => ['id' => 1, 'action' => 'restored'],
         ], 200),
@@ -162,13 +162,13 @@ test('restoreError sends POST request to correct endpoint', function (): void {
 
     Http::assertSent(function (Request $request) {
         return $request->method() === 'POST'
-            && $request->url() === 'https://api.sorane.io/v1/errors/123/restore';
+            && $request->url() === 'https://api.ranetrace.com/v1/errors/123/restore';
     });
 });
 
 test('restoreError sends type parameter', function (): void {
     Http::fake([
-        'api.sorane.io/v1/errors/123/restore' => Http::response(['error' => [], 'activity' => []], 200),
+        'api.ranetrace.com/v1/errors/123/restore' => Http::response(['error' => [], 'activity' => []], 200),
     ]);
 
     $this->client->restoreError('123', 'javascript');
@@ -180,7 +180,7 @@ test('restoreError sends type parameter', function (): void {
 
 test('restoreError defaults to php type', function (): void {
     Http::fake([
-        'api.sorane.io/v1/errors/123/restore' => Http::response(['error' => [], 'activity' => []], 200),
+        'api.ranetrace.com/v1/errors/123/restore' => Http::response(['error' => [], 'activity' => []], 200),
     ]);
 
     $this->client->restoreError('123');
@@ -201,7 +201,7 @@ test('restoreError returns error when API key not configured', function (): void
 
 test('restoreError handles 404 response', function (): void {
     Http::fake([
-        'api.sorane.io/v1/errors/999/restore' => Http::response(['error' => 'Error not found'], 404),
+        'api.ranetrace.com/v1/errors/999/restore' => Http::response(['error' => 'Error not found'], 404),
     ]);
 
     $result = $this->client->restoreError('999');
@@ -212,7 +212,7 @@ test('restoreError handles 404 response', function (): void {
 
 test('restoreError includes correct headers', function (): void {
     Http::fake([
-        'api.sorane.io/v1/errors/123/restore' => Http::response(['error' => [], 'activity' => []], 200),
+        'api.ranetrace.com/v1/errors/123/restore' => Http::response(['error' => [], 'activity' => []], 200),
     ]);
 
     $this->client->restoreError('123');
@@ -231,7 +231,7 @@ test('restoreError includes correct headers', function (): void {
 
 test('bulkRestoreErrors sends POST request to correct endpoint', function (): void {
     Http::fake([
-        'api.sorane.io/v1/errors/bulk/restore' => Http::response([
+        'api.ranetrace.com/v1/errors/bulk/restore' => Http::response([
             'restored_count' => 2,
             'errors' => [
                 ['id' => 'err_123', 'state' => 'open'],
@@ -247,7 +247,7 @@ test('bulkRestoreErrors sends POST request to correct endpoint', function (): vo
 
     Http::assertSent(function (Request $request) {
         return $request->method() === 'POST'
-            && $request->url() === 'https://api.sorane.io/v1/errors/bulk/restore'
+            && $request->url() === 'https://api.ranetrace.com/v1/errors/bulk/restore'
             && $request['error_ids'] === ['123', '124']
             && $request['type'] === 'php';
     });
@@ -255,7 +255,7 @@ test('bulkRestoreErrors sends POST request to correct endpoint', function (): vo
 
 test('bulkRestoreErrors sends type parameter', function (): void {
     Http::fake([
-        'api.sorane.io/v1/errors/bulk/restore' => Http::response(['restored_count' => 1, 'errors' => []], 200),
+        'api.ranetrace.com/v1/errors/bulk/restore' => Http::response(['restored_count' => 1, 'errors' => []], 200),
     ]);
 
     $this->client->bulkRestoreErrors(['123'], 'javascript');
@@ -267,7 +267,7 @@ test('bulkRestoreErrors sends type parameter', function (): void {
 
 test('bulkRestoreErrors defaults to php type', function (): void {
     Http::fake([
-        'api.sorane.io/v1/errors/bulk/restore' => Http::response(['restored_count' => 1, 'errors' => []], 200),
+        'api.ranetrace.com/v1/errors/bulk/restore' => Http::response(['restored_count' => 1, 'errors' => []], 200),
     ]);
 
     $this->client->bulkRestoreErrors(['123']);
@@ -288,7 +288,7 @@ test('bulkRestoreErrors returns error when API key not configured', function ():
 
 test('bulkRestoreErrors handles API error response', function (): void {
     Http::fake([
-        'api.sorane.io/v1/errors/bulk/restore' => Http::response(['error' => 'Some errors not found'], 404),
+        'api.ranetrace.com/v1/errors/bulk/restore' => Http::response(['error' => 'Some errors not found'], 404),
     ]);
 
     $result = $this->client->bulkRestoreErrors(['123', '999']);
@@ -299,7 +299,7 @@ test('bulkRestoreErrors handles API error response', function (): void {
 
 test('bulkRestoreErrors sends multiple error IDs correctly', function (): void {
     Http::fake([
-        'api.sorane.io/v1/errors/bulk/restore' => Http::response(['restored_count' => 3, 'errors' => []], 200),
+        'api.ranetrace.com/v1/errors/bulk/restore' => Http::response(['restored_count' => 3, 'errors' => []], 200),
     ]);
 
     $this->client->bulkRestoreErrors(['1', '2', '3']);

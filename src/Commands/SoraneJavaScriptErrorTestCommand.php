@@ -110,7 +110,7 @@ class SoraneJavaScriptErrorTestCommand extends Command
         $this->line('   ✅ User and session tracking');
         $this->newLine();
 
-        $this->info('📚 For more information, visit: https://sorane.io/docs');
+        $this->info('📚 For more information, visit: https://ranetrace.com/docs');
         $this->newLine();
 
         return self::SUCCESS;

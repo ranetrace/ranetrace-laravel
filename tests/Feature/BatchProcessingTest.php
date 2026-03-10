@@ -58,7 +58,7 @@ test('events are added to buffer without auto-dispatch', function (): void {
 
 test('batch job sends multiple items in one request', function (): void {
     Http::fake([
-        'api.sorane.io/*' => Http::response([
+        'api.ranetrace.com/*' => Http::response([
             'success' => true,
             'received' => 3,
             'processed' => 3,
@@ -110,7 +110,7 @@ test('different types maintain separate buffers', function (): void {
 
 test('batch job respects max items limit', function (): void {
     Http::fake([
-        'api.sorane.io/*' => Http::response([
+        'api.ranetrace.com/*' => Http::response([
             'success' => true,
             'received' => 5,
             'processed' => 5,
