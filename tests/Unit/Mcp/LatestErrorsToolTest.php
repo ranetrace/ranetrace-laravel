@@ -231,3 +231,53 @@ test('returns error with unknown message when error field is missing', function 
 
     expect($text)->toContain('Failed to');
 });
+
+test('defaults to open status when no status provided', function (): void {
+    $client = createClientExpectingParams(['status' => 'open']);
+
+    $tool = new LatestErrorsTool($client);
+    $tool->handle(new Request([]));
+});
+
+test('passes explicit status to client', function (): void {
+    $client = createClientExpectingParams(['status' => 'resolved']);
+
+    $tool = new LatestErrorsTool($client);
+    $tool->handle(new Request(['status' => 'resolved']));
+});
+
+test('does not send status param when status is all', function (): void {
+    $client = createClientExpectingParams([]);
+
+    $tool = new LatestErrorsTool($client);
+    $tool->handle(new Request(['status' => 'all']));
+});
+
+test('includes status in formatted output', function (): void {
+    $client = createClientWithErrors([
+        [
+            'id' => 'err-789',
+            'message' => 'Test error',
+            'type' => 'exception',
+            'environment' => 'production',
+            'occurred_at' => '2025-01-01T00:00:00Z',
+            'occurrences' => 1,
+            'status' => 'open',
+        ],
+    ]);
+    $text = executeToolAndGetText($client);
+
+    expect($text)->toContain('Status: open');
+});
+
+test('shows unknown status when status field is missing', function (): void {
+    $client = createClientWithErrors([
+        [
+            'id' => 'err-000',
+            'message' => 'Test error',
+        ],
+    ]);
+    $text = executeToolAndGetText($client);
+
+    expect($text)->toContain('Status: unknown');
+});
