@@ -12,7 +12,7 @@ test('it sends error batch to correct endpoint', function (): void {
     $client->sendErrorBatch([['message' => 'Test error']]);
 
     Http::assertSent(function ($request): bool {
-        return $request->url() === 'https://api.sorane.io/v1/errors/store'
+        return $request->url() === 'https://api.ranetrace.com/v1/errors/store'
             && isset($request->data()['errors']);
     });
 });
@@ -24,7 +24,7 @@ test('it sends javascript error batch to correct endpoint', function (): void {
     $client->sendJavaScriptErrorBatch([['message' => 'JS error']]);
 
     Http::assertSent(function ($request): bool {
-        return $request->url() === 'https://api.sorane.io/v1/javascript-errors/store'
+        return $request->url() === 'https://api.ranetrace.com/v1/javascript-errors/store'
             && isset($request->data()['javascript_errors']);
     });
 });
@@ -80,7 +80,7 @@ test('it sends event batch to events endpoint', function (): void {
     $client->sendEventBatch([['event_name' => 'test_event']]);
 
     Http::assertSent(function ($request): bool {
-        return $request->url() === 'https://api.sorane.io/v1/events/store'
+        return $request->url() === 'https://api.ranetrace.com/v1/events/store'
             && isset($request->data()['events']);
     });
 });
@@ -92,7 +92,7 @@ test('it sends page visit batch to analytics endpoint', function (): void {
     $client->sendPageVisitBatch([['url' => 'https://example.com']]);
 
     Http::assertSent(function ($request): bool {
-        return $request->url() === 'https://api.sorane.io/v1/page-visits/store'
+        return $request->url() === 'https://api.ranetrace.com/v1/page-visits/store'
             && isset($request->data()['page_visits']);
     });
 });

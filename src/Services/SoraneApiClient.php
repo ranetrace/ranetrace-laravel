@@ -12,7 +12,7 @@ use Throwable;
 
 class SoraneApiClient
 {
-    protected string $apiUrl = 'https://api.sorane.io/v1';
+    protected string $apiUrl = 'https://api.ranetrace.com/v1';
 
     protected int $timeout = 10;
 
@@ -371,6 +371,11 @@ class SoraneApiClient
 
         if (! $isValidData && $response->successful()) {
             $result['error'] = 'Invalid response format';
+        }
+
+        // Extract error_code from response data for specific error handling
+        if ($isValidData && isset($data['error_code'])) {
+            $result['error_code'] = $data['error_code'];
         }
 
         return $result;

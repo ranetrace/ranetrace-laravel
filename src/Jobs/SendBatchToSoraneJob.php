@@ -127,7 +127,7 @@ class SendBatchToSoraneJob implements ShouldBeUnique, ShouldQueue
         match ($status) {
             200 => $this->handle200Response($data, $buffer),
             401 => $this->handle401Response($buffer, $pauseManager, $data),
-            403 => $this->handle403Response($buffer, $pauseManager, $data),
+            403 => $this->handle403Response($buffer, $pauseManager, $result),
             413 => $this->handle413Response($pauseManager, $data),
             422 => $this->handle422Response($pauseManager, $data),
             429 => $this->handle429Response($buffer, $pauseManager, $result['headers'] ?? []),
@@ -194,11 +194,28 @@ class SendBatchToSoraneJob implements ShouldBeUnique, ShouldQueue
     /**
      * Handle 403 Forbidden response.
      */
-    protected function handle403Response(SoraneBatchBuffer $buffer, SoranePauseManager $pauseManager, array $data): void
+    protected function handle403Response(SoraneBatchBuffer $buffer, SoranePauseManager $pauseManager, array $result): void
     {
+        $errorCode = $result['error_code'] ?? null;
+        $message = $result['error'] ?? 'Forbidden';
+
+        // Handle SUBSCRIPTION_REQUIRED specifically - silently skip without re-adding items
+        if ($errorCode === 'SUBSCRIPTION_REQUIRED') {
+            $this->logWarning('Sorane: API access requires an active subscription or trial.', [
+                'type' => $this->type,
+            ]);
+
+            // Set feature pause for 1 hour - no need to retry frequently
+            $pauseManager->setFeaturePause($this->type, 3600, '403:SUBSCRIPTION_REQUIRED');
+
+            // Do NOT re-add items - graceful degradation
+            return;
+        }
+
         $this->logError('API request forbidden', [
             'type' => $this->type,
-            'message' => $data['error']['message'] ?? 'Forbidden',
+            'message' => $message,
+            'error_code' => $errorCode,
         ]);
 
         // Set feature pause for 15 minutes

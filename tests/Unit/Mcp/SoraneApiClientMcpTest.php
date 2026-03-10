@@ -12,7 +12,7 @@ test('getLatestErrors sends GET request to errors endpoint', function (): void {
     $client->getLatestErrors();
 
     Http::assertSent(function ($request): bool {
-        return $request->url() === 'https://api.sorane.io/v1/errors'
+        return $request->url() === 'https://api.ranetrace.com/v1/errors'
             && $request->method() === 'GET';
     });
 });
@@ -58,7 +58,7 @@ test('getError sends GET request with error id', function (): void {
     $client->getError('err-abc-123');
 
     Http::assertSent(function ($request): bool {
-        return $request->url() === 'https://api.sorane.io/v1/errors/err-abc-123'
+        return $request->url() === 'https://api.ranetrace.com/v1/errors/err-abc-123'
             && $request->method() === 'GET';
     });
 });
@@ -101,7 +101,7 @@ test('getErrorStats sends GET request to stats endpoint', function (): void {
     $client->getErrorStats();
 
     Http::assertSent(function ($request): bool {
-        return $request->url() === 'https://api.sorane.io/v1/errors/stats'
+        return $request->url() === 'https://api.ranetrace.com/v1/errors/stats'
             && $request->method() === 'GET';
     });
 });

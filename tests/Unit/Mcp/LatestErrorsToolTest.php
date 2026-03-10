@@ -229,5 +229,5 @@ test('returns error with unknown message when error field is missing', function 
     $client = createClientWithFailure([]);
     $text = executeToolAndGetText($client);
 
-    expect($text)->toContain('Unknown error occurred');
+    expect($text)->toContain('Failed to');
 });

@@ -11,13 +11,13 @@
     "authors": [
         {
             "name": "Sorane",
-            "email": "contact@sorane.io",
+            "email": "contact@ranetrace.com",
             "role": "Developer"
         }
     ],
     "require": {
         "php": "^8.4",
-        "illuminate/contracts": "^11.0||^12.0",
+        "illuminate/support": "^11.0||^12.0",
         "jaybizzle/crawler-detect": "^1.3"
     },
     "require-dev": {

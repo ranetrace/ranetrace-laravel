@@ -70,7 +70,7 @@ test('returns not found for 404 status', function (): void {
 
     $response = $this->tool->handle(new Request(['error_id' => 'nonexistent']));
 
-    expect((string) $response->content())->toContain("Error with ID 'nonexistent' not found");
+    expect((string) $response->content())->toContain("Not found");
 });
 
 test('returns generic error for other failures', function (): void {
@@ -310,7 +310,7 @@ test('returns error with unknown message when error field is missing', function 
 
     $response = $this->tool->handle(new Request(['error_id' => 'err-123']));
 
-    expect((string) $response->content())->toContain('Unknown error occurred');
+    expect((string) $response->content())->toContain('Failed to');
 });
 
 test('handles data directly without error wrapper', function (): void {

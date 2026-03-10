@@ -9,11 +9,13 @@ use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
 use Laravel\Mcp\Server\Tool;
 use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
+use Sorane\Laravel\Mcp\Tools\Concerns\HandlesApiErrors;
 use Sorane\Laravel\Services\SoraneApiClient;
 
 #[IsReadOnly]
 class GetErrorTool extends Tool
 {
+    use HandlesApiErrors;
     /**
      * The tool's description.
      */
@@ -37,13 +39,7 @@ class GetErrorTool extends Tool
         $result = $this->client->getError($errorId);
 
         if (! $result['success']) {
-            $errorMessage = $result['error'] ?? 'Unknown error occurred';
-
-            if ($result['status'] === 404) {
-                return Response::error("Error with ID '{$errorId}' not found.");
-            }
-
-            return Response::error("Failed to fetch error: {$errorMessage}");
+            return $this->handleApiError($result, 'Failed to fetch error');
         }
 
         $error = $result['data']['error'] ?? $result['data'] ?? [];

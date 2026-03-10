@@ -9,11 +9,16 @@ use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
 use Laravel\Mcp\Server\Tool;
 use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
+use Sorane\Laravel\Mcp\Tools\Concerns\HandlesApiErrors;
 use Sorane\Laravel\Services\SoraneApiClient;
 
 #[IsReadOnly]
 class LatestErrorsTool extends Tool
 {
+    use HandlesApiErrors;
+    protected const VALID_STATUSES = ['open', 'resolved', 'ignored', 'snoozed', 'active', 'closed', 'all'];
+
+
     /**
      * The tool's description.
      */
@@ -37,9 +42,7 @@ class LatestErrorsTool extends Tool
         $result = $this->client->getLatestErrors($params);
 
         if (! $result['success']) {
-            $errorMessage = $result['error'] ?? 'Unknown error occurred';
-
-            return Response::error("Failed to fetch errors: {$errorMessage}");
+            return $this->handleApiError($result, 'Failed to fetch errors');
         }
 
         $errors = $result['data']['errors'] ?? [];

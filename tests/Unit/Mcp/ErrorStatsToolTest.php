@@ -227,7 +227,7 @@ test('returns error with unknown message when error field is missing', function 
 
     $text = executeToolRequest($mockClient);
 
-    expect($text)->toContain('Unknown error occurred');
+    expect($text)->toContain('Failed to');
 });
 
 test('handles stats directly without wrapper', function (): void {

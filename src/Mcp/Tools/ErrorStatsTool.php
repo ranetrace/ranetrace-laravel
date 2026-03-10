@@ -9,11 +9,13 @@ use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
 use Laravel\Mcp\Server\Tool;
 use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
+use Sorane\Laravel\Mcp\Tools\Concerns\HandlesApiErrors;
 use Sorane\Laravel\Services\SoraneApiClient;
 
 #[IsReadOnly]
 class ErrorStatsTool extends Tool
 {
+    use HandlesApiErrors;
     /**
      * The tool's description.
      */
@@ -35,9 +37,7 @@ class ErrorStatsTool extends Tool
         $result = $this->client->getErrorStats($params);
 
         if (! $result['success']) {
-            $errorMessage = $result['error'] ?? 'Unknown error occurred';
-
-            return Response::error("Failed to fetch error statistics: {$errorMessage}");
+            return $this->handleApiError($result, 'Failed to fetch error statistics');
         }
 
         $stats = $result['data']['stats'] ?? $result['data'] ?? [];
