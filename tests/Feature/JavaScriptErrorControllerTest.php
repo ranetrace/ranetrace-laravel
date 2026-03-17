@@ -9,23 +9,23 @@ beforeEach(function (): void {
     Bus::fake();
     $this->withoutMiddleware(VerifyCsrfToken::class);
     config([
-        'sorane.javascript_errors.enabled' => true,
-        'sorane.javascript_errors.queue' => true,
-        'sorane.javascript_errors.sample_rate' => 1.0,
+        'ranetrace.javascript_errors.enabled' => true,
+        'ranetrace.javascript_errors.queue' => true,
+        'ranetrace.javascript_errors.sample_rate' => 1.0,
     ]);
 });
 
 test('javascript error endpoint is registered', function (): void {
-    $response = $this->post(route('sorane.javascript-errors.store'));
+    $response = $this->post(route('ranetrace.javascript-errors.store'));
 
     // Should not be 404
     expect($response->status())->not->toBe(404);
 });
 
 test('it rejects requests when feature is disabled', function (): void {
-    config(['sorane.javascript_errors.enabled' => false]);
+    config(['ranetrace.javascript_errors.enabled' => false]);
 
-    $response = $this->postJson(route('sorane.javascript-errors.store'), [
+    $response = $this->postJson(route('ranetrace.javascript-errors.store'), [
         'message' => 'Test error',
     ]);
 
@@ -37,14 +37,14 @@ test('it rejects requests when feature is disabled', function (): void {
 });
 
 test('it validates required fields', function (): void {
-    $response = $this->postJson(route('sorane.javascript-errors.store'), []);
+    $response = $this->postJson(route('ranetrace.javascript-errors.store'), []);
 
     $response->assertStatus(422);
     $response->assertJsonValidationErrors(['message']);
 });
 
 test('it accepts valid error data', function (): void {
-    $response = $this->postJson(route('sorane.javascript-errors.store'), [
+    $response = $this->postJson(route('ranetrace.javascript-errors.store'), [
         'message' => 'Test error message',
         'stack' => 'Error: Test\n  at test.js:10',
         'type' => 'Error',
@@ -60,9 +60,9 @@ test('it accepts valid error data', function (): void {
 });
 
 test('it ignores errors matching ignored patterns', function (): void {
-    config(['sorane.javascript_errors.ignored_errors' => ['ResizeObserver']]);
+    config(['ranetrace.javascript_errors.ignored_errors' => ['ResizeObserver']]);
 
-    $response = $this->postJson(route('sorane.javascript-errors.store'), [
+    $response = $this->postJson(route('ranetrace.javascript-errors.store'), [
         'message' => 'ResizeObserver loop limit exceeded',
     ]);
 
@@ -74,7 +74,7 @@ test('it ignores errors matching ignored patterns', function (): void {
 });
 
 test('it sanitizes breadcrumbs', function (): void {
-    $response = $this->postJson(route('sorane.javascript-errors.store'), [
+    $response = $this->postJson(route('ranetrace.javascript-errors.store'), [
         'message' => 'Test error',
         'breadcrumbs' => [
             [
@@ -90,7 +90,7 @@ test('it sanitizes breadcrumbs', function (): void {
 });
 
 test('it limits breadcrumb count', function (): void {
-    config(['sorane.javascript_errors.max_breadcrumbs' => 5]);
+    config(['ranetrace.javascript_errors.max_breadcrumbs' => 5]);
 
     $breadcrumbs = array_map(
         fn ($i) => [
@@ -102,7 +102,7 @@ test('it limits breadcrumb count', function (): void {
         range(1, 20)
     );
 
-    $response = $this->postJson(route('sorane.javascript-errors.store'), [
+    $response = $this->postJson(route('ranetrace.javascript-errors.store'), [
         'message' => 'Test error',
         'breadcrumbs' => $breadcrumbs,
     ]);
@@ -111,7 +111,7 @@ test('it limits breadcrumb count', function (): void {
 });
 
 test('it includes browser info', function (): void {
-    $response = $this->postJson(route('sorane.javascript-errors.store'), [
+    $response = $this->postJson(route('ranetrace.javascript-errors.store'), [
         'message' => 'Test error',
         'browser_info' => [
             'screen_width' => 1920,
@@ -125,7 +125,7 @@ test('it includes browser info', function (): void {
 });
 
 test('it validates breadcrumb structure', function (): void {
-    $response = $this->postJson(route('sorane.javascript-errors.store'), [
+    $response = $this->postJson(route('ranetrace.javascript-errors.store'), [
         'message' => 'Test error',
         'breadcrumbs' => [
             [
@@ -140,7 +140,7 @@ test('it validates breadcrumb structure', function (): void {
 });
 
 test('it limits message length', function (): void {
-    $response = $this->postJson(route('sorane.javascript-errors.store'), [
+    $response = $this->postJson(route('ranetrace.javascript-errors.store'), [
         'message' => str_repeat('a', 3000), // Exceeds max
     ]);
 
@@ -149,7 +149,7 @@ test('it limits message length', function (): void {
 });
 
 test('it limits stack trace length', function (): void {
-    $response = $this->postJson(route('sorane.javascript-errors.store'), [
+    $response = $this->postJson(route('ranetrace.javascript-errors.store'), [
         'message' => 'Test',
         'stack' => str_repeat('a', 15000), // Exceeds max
     ]);

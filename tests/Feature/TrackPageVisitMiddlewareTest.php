@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Cache;
-use Sorane\Laravel\Jobs\HandlePageVisitJob;
+use Ranetrace\Laravel\Jobs\HandlePageVisitJob;
 
 test('it tracks page visits for normal requests', function (): void {
     Bus::fake();
@@ -40,7 +40,7 @@ test('it does not track requests without user agent', function (): void {
 test('it respects excluded paths configuration', function (): void {
     Bus::fake();
 
-    config(['sorane.website_analytics.excluded_paths' => ['admin', 'api']]);
+    config(['ranetrace.website_analytics.excluded_paths' => ['admin', 'api']]);
 
     $this->withHeaders([
         'User-Agent' => 'Mozilla/5.0',
@@ -59,7 +59,7 @@ test('it tracks allowed paths', function (): void {
     Bus::fake();
     Cache::flush();
 
-    config(['sorane.website_analytics.excluded_paths' => ['admin']]);
+    config(['ranetrace.website_analytics.excluded_paths' => ['admin']]);
 
     $this->withHeaders([
         'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/91.0',
@@ -126,13 +126,13 @@ test('it throttles duplicate visits', function (): void {
 });
 
 test('it does not track when analytics is disabled', function (): void {
-    config(['sorane.website_analytics.enabled' => false]);
+    config(['ranetrace.website_analytics.enabled' => false]);
 
     // Restart the application to re-register middleware
     $this->refreshApplication();
 
     Bus::fake();
-    config(['sorane.website_analytics.enabled' => false]);
+    config(['ranetrace.website_analytics.enabled' => false]);
 
     $this->withHeaders([
         'User-Agent' => 'Mozilla/5.0',
@@ -167,7 +167,7 @@ test('it filters requests without Accept-Language header', function (): void {
     // Verify no Accept-Language header
     expect($request->header('Accept-Language'))->toBeNull();
 
-    $middleware = new Sorane\Laravel\Analytics\Middleware\TrackPageVisit;
+    $middleware = new Ranetrace\Laravel\Analytics\Middleware\TrackPageVisit;
     $response = $middleware->handle($request, function ($req) {
         return response('OK');
     });

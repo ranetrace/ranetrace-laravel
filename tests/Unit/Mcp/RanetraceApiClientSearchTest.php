@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
-use Sorane\Laravel\Services\SoraneApiClient;
+use Ranetrace\Laravel\Services\RanetraceApiClient;
 
 beforeEach(function (): void {
-    $this->client = new SoraneApiClient('test-api-key');
+    $this->client = new RanetraceApiClient('test-api-key');
 });
 
 // ============================================
@@ -110,8 +110,8 @@ test('searchErrors sends include_archived parameter', function (): void {
 });
 
 test('searchErrors returns error when API key not configured', function (): void {
-    config(['sorane.key' => null]);
-    $client = new SoraneApiClient(null);
+    config(['ranetrace.key' => null]);
+    $client = new RanetraceApiClient(null);
     $result = $client->searchErrors();
 
     expect($result['success'])->toBeFalse();
@@ -137,9 +137,9 @@ test('searchErrors includes correct headers', function (): void {
     $this->client->searchErrors();
 
     Http::assertSent(function (Request $request) {
-        return $request->hasHeader('User-Agent', 'Sorane-Laravel/MCP/1.0')
+        return $request->hasHeader('User-Agent', 'Ranetrace-Laravel/MCP/1.0')
             && $request->hasHeader('Accept', 'application/json')
-            && $request->hasHeader('Sorane-API-Version', '1.0')
+            && $request->hasHeader('Ranetrace-API-Version', '1.0')
             && $request->hasHeader('Authorization', 'Bearer test-api-key');
     });
 });
@@ -191,8 +191,8 @@ test('restoreError defaults to php type', function (): void {
 });
 
 test('restoreError returns error when API key not configured', function (): void {
-    config(['sorane.key' => null]);
-    $client = new SoraneApiClient(null);
+    config(['ranetrace.key' => null]);
+    $client = new RanetraceApiClient(null);
     $result = $client->restoreError('123');
 
     expect($result['success'])->toBeFalse();
@@ -218,9 +218,9 @@ test('restoreError includes correct headers', function (): void {
     $this->client->restoreError('123');
 
     Http::assertSent(function (Request $request) {
-        return $request->hasHeader('User-Agent', 'Sorane-Laravel/MCP/1.0')
+        return $request->hasHeader('User-Agent', 'Ranetrace-Laravel/MCP/1.0')
             && $request->hasHeader('Accept', 'application/json')
-            && $request->hasHeader('Sorane-API-Version', '1.0')
+            && $request->hasHeader('Ranetrace-API-Version', '1.0')
             && $request->hasHeader('Content-Type', 'application/json');
     });
 });
@@ -278,8 +278,8 @@ test('bulkRestoreErrors defaults to php type', function (): void {
 });
 
 test('bulkRestoreErrors returns error when API key not configured', function (): void {
-    config(['sorane.key' => null]);
-    $client = new SoraneApiClient(null);
+    config(['ranetrace.key' => null]);
+    $client = new RanetraceApiClient(null);
     $result = $client->bulkRestoreErrors(['123']);
 
     expect($result['success'])->toBeFalse();

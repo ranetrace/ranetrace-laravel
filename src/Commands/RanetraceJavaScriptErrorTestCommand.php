@@ -2,19 +2,19 @@
 
 declare(strict_types=1);
 
-namespace Sorane\Laravel\Commands;
+namespace Ranetrace\Laravel\Commands;
 
 use Illuminate\Console\Command;
 
-class SoraneJavaScriptErrorTestCommand extends Command
+class RanetraceJavaScriptErrorTestCommand extends Command
 {
-    protected $signature = 'sorane:test-javascript-errors';
+    protected $signature = 'ranetrace:test-javascript-errors';
 
     protected $description = 'Display JavaScript error tracking configuration and usage instructions';
 
     public function handle(): int
     {
-        $this->info('🔍 Sorane JavaScript Error Tracking Test');
+        $this->info('🔍 Ranetrace JavaScript Error Tracking Test');
         $this->newLine();
 
         // Display current configuration
@@ -22,31 +22,31 @@ class SoraneJavaScriptErrorTestCommand extends Command
         $this->table(
             ['Setting', 'Value'],
             [
-                ['Enabled', config('sorane.javascript_errors.enabled') ? '✅ Yes' : '❌ No'],
-                ['Sample Rate', config('sorane.javascript_errors.sample_rate', 1.0) * 100 .'%'],
-                ['Queue Enabled', config('sorane.javascript_errors.queue') ? '✅ Yes' : '❌ No'],
-                ['Queue Name', config('sorane.javascript_errors.queue_name', 'default')],
-                ['Max Breadcrumbs', config('sorane.javascript_errors.max_breadcrumbs', 20)],
-                ['Capture Console Errors', config('sorane.javascript_errors.capture_console_errors') ? '✅ Yes' : '❌ No'],
-                ['Ignored Errors', count(config('sorane.javascript_errors.ignored_errors', [])).' pattern(s)'],
+                ['Enabled', config('ranetrace.javascript_errors.enabled') ? '✅ Yes' : '❌ No'],
+                ['Sample Rate', config('ranetrace.javascript_errors.sample_rate', 1.0) * 100 .'%'],
+                ['Queue Enabled', config('ranetrace.javascript_errors.queue') ? '✅ Yes' : '❌ No'],
+                ['Queue Name', config('ranetrace.javascript_errors.queue_name', 'default')],
+                ['Max Breadcrumbs', config('ranetrace.javascript_errors.max_breadcrumbs', 20)],
+                ['Capture Console Errors', config('ranetrace.javascript_errors.capture_console_errors') ? '✅ Yes' : '❌ No'],
+                ['Ignored Errors', count(config('ranetrace.javascript_errors.ignored_errors', [])).' pattern(s)'],
             ]
         );
 
         $this->newLine();
 
-        if (! config('sorane.javascript_errors.enabled')) {
+        if (! config('ranetrace.javascript_errors.enabled')) {
             $this->warn('⚠️  JavaScript error tracking is currently disabled.');
             $this->info('💡 To enable it, add to your .env file:');
-            $this->line('   SORANE_JAVASCRIPT_ERRORS_ENABLED=true');
+            $this->line('   RANETRACE_JAVASCRIPT_ERRORS_ENABLED=true');
             $this->newLine();
 
             return self::SUCCESS;
         }
 
-        if (empty(config('sorane.key'))) {
-            $this->error('❌ Sorane API key is not set!');
+        if (empty(config('ranetrace.key'))) {
+            $this->error('❌ Ranetrace API key is not set!');
             $this->info('💡 Add your API key to .env:');
-            $this->line('   SORANE_KEY=your-api-key-here');
+            $this->line('   RANETRACE_KEY=your-api-key-here');
             $this->newLine();
 
             return self::FAILURE;
@@ -71,7 +71,7 @@ class SoraneJavaScriptErrorTestCommand extends Command
         $this->line('  <body>');
         $this->line('    @yield(\'content\')');
         $this->line('    ');
-        $this->line('    <fg=cyan>@soraneErrorTracking</>');
+        $this->line('    <fg=cyan>@ranetraceErrorTracking</>');
         $this->line('  </body>');
         $this->line('</html></>');
         $this->newLine(2);
@@ -79,7 +79,7 @@ class SoraneJavaScriptErrorTestCommand extends Command
         $this->line('<fg=green>Step 2:</> Test error tracking in your browser');
         $this->line('Open your browser console and run:');
         $this->newLine();
-        $this->line('<fg=yellow>throw new Error("Test error from Sorane");</>');
+        $this->line('<fg=yellow>throw new Error("Test error from Ranetrace");</>');
         $this->newLine(2);
 
         $this->line('<fg=green>Step 3:</> Use the manual API (optional)');
@@ -89,13 +89,13 @@ class SoraneJavaScriptErrorTestCommand extends Command
         $this->line('try {');
         $this->line('  // Your code here');
         $this->line('} catch (error) {');
-        $this->line('  window.Sorane.captureError(error, {');
+        $this->line('  window.Ranetrace.captureError(error, {');
         $this->line('    custom_field: "value"');
         $this->line('  });');
         $this->line('}');
         $this->newLine();
         $this->line('// Add a breadcrumb for debugging context');
-        $this->line('window.Sorane.addBreadcrumb("user", "Button clicked", {');
+        $this->line('window.Ranetrace.addBreadcrumb("user", "Button clicked", {');
         $this->line('  button_id: "submit-form"');
         $this->line('});</>');
         $this->newLine(2);

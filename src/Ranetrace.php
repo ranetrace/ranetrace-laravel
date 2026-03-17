@@ -2,28 +2,28 @@
 
 declare(strict_types=1);
 
-namespace Sorane\Laravel;
+namespace Ranetrace\Laravel;
 
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Request;
-use Sorane\Laravel\Analytics\FingerprintGenerator;
-use Sorane\Laravel\Events\EventTracker;
-use Sorane\Laravel\Jobs\HandleErrorJob;
-use Sorane\Laravel\Jobs\HandleEventJob;
-use Sorane\Laravel\Utilities\DataSanitizer;
+use Ranetrace\Laravel\Analytics\FingerprintGenerator;
+use Ranetrace\Laravel\Events\EventTracker;
+use Ranetrace\Laravel\Jobs\HandleErrorJob;
+use Ranetrace\Laravel\Jobs\HandleEventJob;
+use Ranetrace\Laravel\Utilities\DataSanitizer;
 use Throwable;
 
-class Sorane
+class Ranetrace
 {
     public function report(Throwable $exception): void
     {
-        if (! config('sorane.enabled', false)) {
+        if (! config('ranetrace.enabled', false)) {
             return;
         }
 
-        if (! config('sorane.errors.enabled', true)) {
+        if (! config('ranetrace.errors.enabled', true)) {
             return;
         }
 
@@ -127,7 +127,7 @@ class Sorane
 
         // Data array to send
         $data = [
-            'for' => 'sorane',
+            'for' => 'ranetrace',
             'message' => $message,
             'file' => $file,
             'line' => $line,
@@ -151,24 +151,24 @@ class Sorane
 
         try {
             // Dispatch job to send error data
-            if (config('sorane.errors.queue', true)) {
+            if (config('ranetrace.errors.queue', true)) {
                 HandleErrorJob::dispatch($data);
             } else {
                 HandleErrorJob::dispatchSync($data);
             }
         } catch (Throwable $e) {
             // Log the failure but don't rethrow to avoid infinite loops
-            Log::warning('Failed to send error report to Sorane: '.$e->getMessage());
+            Log::warning('Failed to send error report to Ranetrace: '.$e->getMessage());
         }
     }
 
     public function trackEvent(string $eventName, array $properties = [], ?int $userId = null, bool $validate = true): void
     {
-        if (! config('sorane.enabled', false)) {
+        if (! config('ranetrace.enabled', false)) {
             return;
         }
 
-        if (! config('sorane.events.enabled', true)) {
+        if (! config('ranetrace.events.enabled', true)) {
             return;
         }
 
@@ -190,7 +190,7 @@ class Sorane
         ];
 
         // Dispatch job to send event data
-        if (config('sorane.events.queue', true)) {
+        if (config('ranetrace.events.queue', true)) {
             HandleEventJob::dispatch($eventData);
         } else {
             HandleEventJob::dispatchSync($eventData);

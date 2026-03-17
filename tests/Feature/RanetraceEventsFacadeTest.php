@@ -3,17 +3,17 @@
 declare(strict_types=1);
 
 use Illuminate\Support\Facades\Queue;
-use Sorane\Laravel\Facades\SoraneEvents;
-use Sorane\Laravel\Jobs\HandleEventJob;
+use Ranetrace\Laravel\Facades\RanetraceEvents;
+use Ranetrace\Laravel\Jobs\HandleEventJob;
 
-test('SoraneEvents facade is available', function (): void {
-    expect(class_exists(SoraneEvents::class))->toBeTrue();
+test('RanetraceEvents facade is available', function (): void {
+    expect(class_exists(RanetraceEvents::class))->toBeTrue();
 });
 
 test('product added to cart helper works', function (): void {
     Queue::fake();
 
-    SoraneEvents::productAddedToCart(
+    RanetraceEvents::productAddedToCart(
         productId: 'PROD-123',
         productName: 'Test Product',
         price: 29.99,
@@ -34,7 +34,7 @@ test('product added to cart helper works', function (): void {
 test('sale helper works', function (): void {
     Queue::fake();
 
-    SoraneEvents::sale(
+    RanetraceEvents::sale(
         orderId: 'ORDER-456',
         totalAmount: 89.97,
         products: [
@@ -57,7 +57,7 @@ test('sale helper works', function (): void {
 test('user registered helper works', function (): void {
     Queue::fake();
 
-    SoraneEvents::userRegistered(
+    RanetraceEvents::userRegistered(
         userId: 123,
         additionalProperties: ['source' => 'website']
     );
@@ -74,7 +74,7 @@ test('user registered helper works', function (): void {
 test('user logged in helper works', function (): void {
     Queue::fake();
 
-    SoraneEvents::userLoggedIn(userId: 456);
+    RanetraceEvents::userLoggedIn(userId: 456);
 
     Queue::assertPushed(HandleEventJob::class, function ($job): bool {
         $eventData = $job->getEventData();
@@ -87,7 +87,7 @@ test('user logged in helper works', function (): void {
 test('page view helper works', function (): void {
     Queue::fake();
 
-    SoraneEvents::pageView('Pricing Page', ['variant' => 'A']);
+    RanetraceEvents::pageView('Pricing Page', ['variant' => 'A']);
 
     Queue::assertPushed(HandleEventJob::class, function ($job): bool {
         $eventData = $job->getEventData();
@@ -99,14 +99,14 @@ test('page view helper works', function (): void {
 });
 
 test('custom event helper validates event name', function (): void {
-    expect(fn () => SoraneEvents::custom('Invalid Name!', []))
+    expect(fn () => RanetraceEvents::custom('Invalid Name!', []))
         ->toThrow(InvalidArgumentException::class);
 });
 
 test('custom event helper works with valid name', function (): void {
     Queue::fake();
 
-    SoraneEvents::custom('newsletter_signup', ['source' => 'footer']);
+    RanetraceEvents::custom('newsletter_signup', ['source' => 'footer']);
 
     Queue::assertPushed(HandleEventJob::class, function ($job): bool {
         $eventData = $job->getEventData();
@@ -120,7 +120,7 @@ test('custom unsafe helper bypasses validation', function (): void {
     Queue::fake();
 
     // Should not throw exception
-    SoraneEvents::customUnsafe('Invalid Event Name!', ['test' => true]);
+    RanetraceEvents::customUnsafe('Invalid Event Name!', ['test' => true]);
 
     Queue::assertPushed(HandleEventJob::class);
 });

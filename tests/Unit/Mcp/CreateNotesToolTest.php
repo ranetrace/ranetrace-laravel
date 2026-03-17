@@ -4,15 +4,15 @@ declare(strict_types=1);
 
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
-use Sorane\Laravel\Mcp\Tools\CreateNotesTool;
-use Sorane\Laravel\Services\SoraneApiClient;
+use Ranetrace\Laravel\Mcp\Tools\CreateNotesTool;
+use Ranetrace\Laravel\Services\RanetraceApiClient;
 
 beforeEach(function (): void {
     if (! class_exists(Laravel\Mcp\Server\Tool::class)) {
         $this->markTestSkipped('Laravel MCP package not installed');
     }
 
-    $this->mockClient = Mockery::mock(SoraneApiClient::class);
+    $this->mockClient = Mockery::mock(RanetraceApiClient::class);
     $this->tool = new CreateNotesTool($this->mockClient);
 });
 

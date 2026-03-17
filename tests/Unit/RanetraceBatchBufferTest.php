@@ -4,19 +4,19 @@ declare(strict_types=1);
 
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Config;
-use Sorane\Laravel\Services\SoraneBatchBuffer;
+use Ranetrace\Laravel\Services\RanetraceBatchBuffer;
 
 beforeEach(function (): void {
-    Config::set('sorane.batch.cache_driver', 'array');
-    Config::set('sorane.batch.buffer_ttl', 3600);
-    Config::set('sorane.batch.max_buffer_size', 1000);
+    Config::set('ranetrace.batch.cache_driver', 'array');
+    Config::set('ranetrace.batch.buffer_ttl', 3600);
+    Config::set('ranetrace.batch.max_buffer_size', 1000);
 
     // Clear cache before each test
     Cache::store('array')->flush();
 });
 
 test('it can add items to the buffer', function (): void {
-    $buffer = new SoraneBatchBuffer;
+    $buffer = new RanetraceBatchBuffer;
 
     $buffer->addItem('events', ['event_name' => 'test_event']);
 
@@ -24,7 +24,7 @@ test('it can add items to the buffer', function (): void {
 });
 
 test('it can retrieve items from the buffer and atomically removes them', function (): void {
-    $buffer = new SoraneBatchBuffer;
+    $buffer = new RanetraceBatchBuffer;
 
     $buffer->addItem('events', ['event_name' => 'event1']);
     $buffer->addItem('events', ['event_name' => 'event2']);
@@ -43,14 +43,14 @@ test('it can retrieve items from the buffer and atomically removes them', functi
 });
 
 test('it can clear specific items by id', function (): void {
-    $buffer = new SoraneBatchBuffer;
+    $buffer = new RanetraceBatchBuffer;
 
     $buffer->addItem('events', ['event_name' => 'event1']);
     $buffer->addItem('events', ['event_name' => 'event2']);
     $buffer->addItem('events', ['event_name' => 'event3']);
 
     // First, peek at the items without removing them by reading from cache directly
-    $cacheKey = 'sorane:buffer:events';
+    $cacheKey = 'ranetrace:buffer:events';
     $items = Cache::store('array')->get($cacheKey, []);
     $idsToRemove = [$items[0]['id'], $items[2]['id']];
 
@@ -63,7 +63,7 @@ test('it can clear specific items by id', function (): void {
 });
 
 test('it can count items in the buffer', function (): void {
-    $buffer = new SoraneBatchBuffer;
+    $buffer = new RanetraceBatchBuffer;
 
     expect($buffer->count('events'))->toBe(0);
 
@@ -74,7 +74,7 @@ test('it can count items in the buffer', function (): void {
 });
 
 test('it can clear all items for a type', function (): void {
-    $buffer = new SoraneBatchBuffer;
+    $buffer = new RanetraceBatchBuffer;
 
     $buffer->addItem('events', ['event_name' => 'event1']);
     $buffer->addItem('events', ['event_name' => 'event2']);
@@ -87,7 +87,7 @@ test('it can clear all items for a type', function (): void {
 });
 
 test('it maintains separate buffers for different types', function (): void {
-    $buffer = new SoraneBatchBuffer;
+    $buffer = new RanetraceBatchBuffer;
 
     $buffer->addItem('events', ['event_name' => 'event1']);
     $buffer->addItem('logs', ['message' => 'log1']);
@@ -99,7 +99,7 @@ test('it maintains separate buffers for different types', function (): void {
 });
 
 test('it assigns unique ids to each item', function (): void {
-    $buffer = new SoraneBatchBuffer;
+    $buffer = new RanetraceBatchBuffer;
 
     $buffer->addItem('events', ['event_name' => 'event1']);
     $buffer->addItem('events', ['event_name' => 'event2']);
@@ -118,7 +118,7 @@ test('it assigns unique ids to each item', function (): void {
 });
 
 test('it includes timestamp with each item', function (): void {
-    $buffer = new SoraneBatchBuffer;
+    $buffer = new RanetraceBatchBuffer;
 
     $buffer->addItem('events', ['event_name' => 'event1']);
 
@@ -136,8 +136,8 @@ test('it includes timestamp with each item', function (): void {
 });
 
 test('it enforces max buffer size', function (): void {
-    Config::set('sorane.batch.max_buffer_size', 3);
-    $buffer = new SoraneBatchBuffer;
+    Config::set('ranetrace.batch.max_buffer_size', 3);
+    $buffer = new RanetraceBatchBuffer;
 
     // Add 5 items, but only 3 should remain (most recent)
     $buffer->addItem('events', ['event_name' => 'event1']);
@@ -161,7 +161,7 @@ test('it enforces max buffer size', function (): void {
 });
 
 test('it returns available types that have items', function (): void {
-    $buffer = new SoraneBatchBuffer;
+    $buffer = new RanetraceBatchBuffer;
 
     $buffer->addItem('events', ['event_name' => 'event1']);
     $buffer->addItem('logs', ['message' => 'log1']);
@@ -175,7 +175,7 @@ test('it returns available types that have items', function (): void {
 });
 
 test('it returns empty array when no types have items', function (): void {
-    $buffer = new SoraneBatchBuffer;
+    $buffer = new RanetraceBatchBuffer;
 
     $availableTypes = $buffer->getAvailableTypes();
 

@@ -2,22 +2,22 @@
 
 declare(strict_types=1);
 
-namespace Sorane\Laravel\Services;
+namespace Ranetrace\Laravel\Services;
 
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Cache;
 
-class SoranePauseManager
+class RanetracePauseManager
 {
-    protected const string FEATURE_PAUSE_PREFIX = 'sorane.feature.';
+    protected const string FEATURE_PAUSE_PREFIX = 'ranetrace.feature.';
 
-    protected const string GLOBAL_PAUSE_KEY = 'sorane.global.pause';
+    protected const string GLOBAL_PAUSE_KEY = 'ranetrace.global.pause';
 
     protected string $cacheDriver;
 
     public function __construct()
     {
-        $this->cacheDriver = config('sorane.batch.cache_driver', 'redis');
+        $this->cacheDriver = config('ranetrace.batch.cache_driver', 'redis');
     }
 
     /**

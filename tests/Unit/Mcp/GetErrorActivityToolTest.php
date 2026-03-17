@@ -5,15 +5,15 @@ declare(strict_types=1);
 use Laravel\Mcp\Attributes\IsReadOnly;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
-use Sorane\Laravel\Mcp\Tools\GetErrorActivityTool;
-use Sorane\Laravel\Services\SoraneApiClient;
+use Ranetrace\Laravel\Mcp\Tools\GetErrorActivityTool;
+use Ranetrace\Laravel\Services\RanetraceApiClient;
 
 beforeEach(function (): void {
     if (! class_exists(Laravel\Mcp\Server\Tool::class)) {
         $this->markTestSkipped('Laravel MCP package not installed');
     }
 
-    $this->mockClient = Mockery::mock(SoraneApiClient::class);
+    $this->mockClient = Mockery::mock(RanetraceApiClient::class);
     $this->tool = new GetErrorActivityTool($this->mockClient);
 });
 

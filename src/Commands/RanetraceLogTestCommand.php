@@ -2,38 +2,38 @@
 
 declare(strict_types=1);
 
-namespace Sorane\Laravel\Commands;
+namespace Ranetrace\Laravel\Commands;
 
 use Exception;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 
-class SoraneLogTestCommand extends Command
+class RanetraceLogTestCommand extends Command
 {
-    protected $signature = 'sorane:test-logging';
+    protected $signature = 'ranetrace:test-logging';
 
-    protected $description = 'Test Sorane logging functionality';
+    protected $description = 'Test Ranetrace logging functionality';
 
     public function handle(): void
     {
-        $this->info('Testing Sorane Logging...');
+        $this->info('Testing Ranetrace Logging...');
 
         // Check if logging is enabled
-        if (! config('sorane.logging.enabled', false)) {
-            $this->warn('⚠ Sorane logging is disabled. Set SORANE_LOGGING_ENABLED=true in your .env file');
+        if (! config('ranetrace.logging.enabled', false)) {
+            $this->warn('⚠ Ranetrace logging is disabled. Set RANETRACE_LOGGING_ENABLED=true in your .env file');
             $this->info('Configuration check completed.');
 
             return;
         }
 
-        $this->info('✅ Sorane logging is enabled');
+        $this->info('✅ Ranetrace logging is enabled');
 
-        // Check if the sorane channel is defined
-        if (! config('logging.channels.sorane')) {
-            $this->warn('⚠ Sorane logging channel is not defined in config/logging.php');
-            $this->info('Add the sorane channel configuration to logging.php channels array:');
-            $this->line("'sorane' => [");
-            $this->line("    'driver' => 'sorane',");
+        // Check if the ranetrace channel is defined
+        if (! config('logging.channels.ranetrace')) {
+            $this->warn('⚠ Ranetrace logging channel is not defined in config/logging.php');
+            $this->info('Add the ranetrace channel configuration to logging.php channels array:');
+            $this->line("'ranetrace' => [");
+            $this->line("    'driver' => 'ranetrace',");
             $this->line("    'level' => env('LOG_LEVEL', 'notice'),");
             $this->line('],');
             $this->info('Configuration check completed.');
@@ -41,18 +41,18 @@ class SoraneLogTestCommand extends Command
             return;
         }
 
-        $this->info('✅ Sorane logging channel is defined');
+        $this->info('✅ Ranetrace logging channel is defined');
 
         // Test Laravel logging integration
         $this->info('1. Testing Laravel Log integration...');
 
-        Log::channel('sorane')->emergency('Test emergency via Laravel Log', [
+        Log::channel('ranetrace')->emergency('Test emergency via Laravel Log', [
             'test_context' => 'laravel_log_test',
             'timestamp' => now()->toISOString(),
         ]);
         $this->info('   ✓ Emergency log sent via Laravel Log');
 
-        Log::channel('sorane')->error('Test error via Laravel Log', [
+        Log::channel('ranetrace')->error('Test error via Laravel Log', [
             'test_context' => 'laravel_log_test',
             'error_code' => 'TEST_001',
         ]);
@@ -61,7 +61,7 @@ class SoraneLogTestCommand extends Command
         // Test stack logging if available
         if (config('logging.channels.production') || config('logging.channels.development')) {
             try {
-                Log::stack(['sorane'])->critical('Test stack logging', [
+                Log::stack(['ranetrace'])->critical('Test stack logging', [
                     'test_context' => 'stack_test',
                     'component' => 'testing',
                 ]);
@@ -74,13 +74,13 @@ class SoraneLogTestCommand extends Command
         // Test different log levels
         $this->info('2. Testing different log levels...');
 
-        Log::channel('sorane')->warning('Test warning via Laravel Log', [
+        Log::channel('ranetrace')->warning('Test warning via Laravel Log', [
             'test_context' => 'level_test',
             'level' => 'warning',
         ]);
         $this->info('   ✓ Warning log sent');
 
-        Log::channel('sorane')->notice('Test notice via Laravel Log', [
+        Log::channel('ranetrace')->notice('Test notice via Laravel Log', [
             'test_context' => 'level_test',
             'level' => 'notice',
         ]);
@@ -88,7 +88,7 @@ class SoraneLogTestCommand extends Command
 
         // Test with context
         $this->info('3. Testing with context data...');
-        Log::channel('sorane')->error('Error with rich context', [
+        Log::channel('ranetrace')->error('Error with rich context', [
             'user_id' => 123,
             'order_id' => 'ORD-456',
             'payment_method' => 'stripe',
@@ -105,7 +105,7 @@ class SoraneLogTestCommand extends Command
         $closure = function () {
             return 'test';
         };
-        Log::channel('sorane')->error('Error with closure in context', [
+        Log::channel('ranetrace')->error('Error with closure in context', [
             'closure_test' => $closure,
             'nested_data' => [
                 'another_closure' => $closure,
@@ -116,26 +116,26 @@ class SoraneLogTestCommand extends Command
 
         // Test multiple logs (simulating batch)
         $this->info('5. Testing multiple log entries...');
-        Log::channel('sorane')->error('First error', ['sequence' => 1]);
-        Log::channel('sorane')->warning('Second warning', ['sequence' => 2]);
-        Log::channel('sorane')->critical('Third critical', ['sequence' => 3]);
+        Log::channel('ranetrace')->error('First error', ['sequence' => 1]);
+        Log::channel('ranetrace')->warning('Second warning', ['sequence' => 2]);
+        Log::channel('ranetrace')->critical('Third critical', ['sequence' => 3]);
         $this->info('   ✓ Multiple logs sent');
 
-        $this->info('✅ All test logs have been sent to Sorane!');
-        $this->info('Check your Sorane dashboard to see the log entries.');
+        $this->info('✅ All test logs have been sent to Ranetrace!');
+        $this->info('Check your Ranetrace dashboard to see the log entries.');
 
         $this->newLine();
         $this->info('Recommended Laravel logging configuration:');
         $this->line('Add this to your config/logging.php channels array:');
         $this->line('');
-        $this->line("'sorane' => [");
-        $this->line("    'driver' => 'sorane',");
+        $this->line("'ranetrace' => [");
+        $this->line("    'driver' => 'ranetrace',");
         $this->line("    'level' => env('LOG_LEVEL', 'notice'),");
         $this->line('],');
         $this->line('');
         $this->line("'production' => [");
         $this->line("    'driver' => 'stack',");
-        $this->line("    'channels' => array_merge(explode(',', env('LOG_STACK', 'single')), ['sorane']),");
+        $this->line("    'channels' => array_merge(explode(',', env('LOG_STACK', 'single')), ['ranetrace']),");
         $this->line("    'ignore_exceptions' => false,");
         $this->line('],');
         $this->line('');
@@ -146,12 +146,12 @@ class SoraneLogTestCommand extends Command
         $this->table(
             ['Setting', 'Value'],
             [
-                ['Logging Enabled', config('sorane.logging.enabled') ? 'Yes' : 'No'],
-                ['Queue Enabled', config('sorane.logging.queue') ? 'Yes' : 'No'],
-                ['Queue Name', config('sorane.logging.queue_name')],
+                ['Logging Enabled', config('ranetrace.logging.enabled') ? 'Yes' : 'No'],
+                ['Queue Enabled', config('ranetrace.logging.queue') ? 'Yes' : 'No'],
+                ['Queue Name', config('ranetrace.logging.queue_name')],
                 ['Allowed Levels', $this->getFormattedLevels()],
-                ['Excluded Channels', implode(', ', config('sorane.logging.excluded_channels', []))],
-                ['API Key Set', config('sorane.key') ? 'Yes' : 'No'],
+                ['Excluded Channels', implode(', ', config('ranetrace.logging.excluded_channels', []))],
+                ['API Key Set', config('ranetrace.key') ? 'Yes' : 'No'],
             ]
         );
 
@@ -160,8 +160,8 @@ class SoraneLogTestCommand extends Command
         $this->table(
             ['Method', 'Usage', 'Recommended'],
             [
-                ['Log::channel(\'sorane\')', 'Direct Sorane channel', 'For Sorane-only logs'],
-                ['Log::stack([\'single\', \'sorane\'])', 'Multiple destinations', 'For important logs'],
+                ['Log::channel(\'ranetrace\')', 'Direct Ranetrace channel', 'For Ranetrace-only logs'],
+                ['Log::stack([\'single\', \'ranetrace\'])', 'Multiple destinations', 'For important logs'],
                 ['Log::error() with stack config', 'Automatic dual logging', '✅ Primary method'],
             ]
         );
@@ -169,7 +169,7 @@ class SoraneLogTestCommand extends Command
 
     private function getFormattedLevels(): string
     {
-        $levels = config('sorane.logging.levels');
+        $levels = config('ranetrace.logging.levels');
 
         if (is_string($levels)) {
             return $levels;

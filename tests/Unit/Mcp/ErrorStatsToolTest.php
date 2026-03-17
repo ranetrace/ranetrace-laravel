@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
-use Sorane\Laravel\Mcp\Tools\ErrorStatsTool;
-use Sorane\Laravel\Services\SoraneApiClient;
+use Ranetrace\Laravel\Mcp\Tools\ErrorStatsTool;
+use Ranetrace\Laravel\Services\RanetraceApiClient;
 
 beforeEach(function (): void {
     if (! class_exists(Laravel\Mcp\Server\Tool::class)) {
@@ -19,9 +19,9 @@ beforeEach(function (): void {
  * @param  array<string, mixed>  $stats
  * @param  array<string, mixed>|null  $expectedParams
  */
-function mockClientWithStats(array $stats, ?array $expectedParams = null): SoraneApiClient
+function mockClientWithStats(array $stats, ?array $expectedParams = null): RanetraceApiClient
 {
-    $mockClient = Mockery::mock(SoraneApiClient::class);
+    $mockClient = Mockery::mock(RanetraceApiClient::class);
     $expectation = $mockClient->shouldReceive('getErrorStats')->once();
 
     if ($expectedParams !== null) {
@@ -41,7 +41,7 @@ function mockClientWithStats(array $stats, ?array $expectedParams = null): Soran
  *
  * @param  array<string, mixed>  $requestParams
  */
-function executeToolRequest(SoraneApiClient $client, array $requestParams = []): string
+function executeToolRequest(RanetraceApiClient $client, array $requestParams = []): string
 {
     $tool = new ErrorStatsTool($client);
     $response = $tool->handle(new Request($requestParams));
@@ -68,7 +68,7 @@ test('returns formatted stats on success', function (): void {
 });
 
 test('returns error when api fails', function (): void {
-    $mockClient = Mockery::mock(SoraneApiClient::class);
+    $mockClient = Mockery::mock(RanetraceApiClient::class);
     $mockClient->shouldReceive('getErrorStats')
         ->once()
         ->andReturn([
@@ -210,7 +210,7 @@ test('includes top_errors list when present', function (): void {
 });
 
 test('has correct description property', function (): void {
-    $mockClient = Mockery::mock(SoraneApiClient::class);
+    $mockClient = Mockery::mock(RanetraceApiClient::class);
     $tool = new ErrorStatsTool($mockClient);
 
     $reflection = new ReflectionProperty($tool, 'description');
@@ -220,7 +220,7 @@ test('has correct description property', function (): void {
 });
 
 test('returns error with unknown message when error field is missing', function (): void {
-    $mockClient = Mockery::mock(SoraneApiClient::class);
+    $mockClient = Mockery::mock(RanetraceApiClient::class);
     $mockClient->shouldReceive('getErrorStats')
         ->once()
         ->andReturn(['success' => false]);
@@ -231,7 +231,7 @@ test('returns error with unknown message when error field is missing', function 
 });
 
 test('handles stats directly without wrapper', function (): void {
-    $mockClient = Mockery::mock(SoraneApiClient::class);
+    $mockClient = Mockery::mock(RanetraceApiClient::class);
     $mockClient->shouldReceive('getErrorStats')
         ->once()
         ->andReturn([

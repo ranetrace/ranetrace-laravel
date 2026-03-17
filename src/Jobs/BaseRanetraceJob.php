@@ -2,20 +2,20 @@
 
 declare(strict_types=1);
 
-namespace Sorane\Laravel\Jobs;
+namespace Ranetrace\Laravel\Jobs;
 
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Sorane\Laravel\Support\InternalLogger;
+use Ranetrace\Laravel\Support\InternalLogger;
 use Throwable;
 
 /**
- * Base class for all Sorane jobs providing common functionality.
+ * Base class for all Ranetrace jobs providing common functionality.
  */
-abstract class BaseSoraneJob implements ShouldQueue
+abstract class BaseRanetraceJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
@@ -33,11 +33,11 @@ abstract class BaseSoraneJob implements ShouldQueue
 
     /**
      * Handle job failure after all retries exhausted.
-     * Logs to 'sorane_internal' channel to prevent infinite error loops (never logs to Sorane).
+     * Logs to 'ranetrace_internal' channel to prevent infinite error loops (never logs to Ranetrace).
      */
     public function failed(Throwable $exception): void
     {
-        InternalLogger::critical('Sorane job failed after all retries', [
+        InternalLogger::critical('Ranetrace job failed after all retries', [
             'job_class' => static::class,
             'exception' => $exception->getMessage(),
         ]);

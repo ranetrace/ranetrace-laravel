@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Sorane\Laravel\Mcp\Tools\Concerns;
+namespace Ranetrace\Laravel\Mcp\Tools\Concerns;
 
 trait NormalizesIds
 {

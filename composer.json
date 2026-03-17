@@ -1,12 +1,12 @@
 {
-    "name": "usesorane/sorane-laravel",
+    "name": "ranetrace/ranetrace-laravel",
     "description": "This package provides the integration for Ranetrace, a tool for monitoring your Laravel applications.",
     "keywords": [
         "ranetrace",
         "laravel",
         "ranetrace-laravel"
     ],
-    "homepage": "https://github.com/usesorane/sorane-laravel",
+    "homepage": "https://github.com/ranetrace/ranetrace-laravel",
     "license": "MIT",
     "authors": [
         {
@@ -38,12 +38,12 @@
     },
     "autoload": {
         "psr-4": {
-            "Sorane\\Laravel\\": "src/"
+            "Ranetrace\\Laravel\\": "src/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "Sorane\\Laravel\\Tests\\": "tests/",
+            "Ranetrace\\Laravel\\Tests\\": "tests/",
             "Workbench\\App\\": "workbench/app/"
         }
     },
@@ -66,10 +66,10 @@
     "extra": {
         "laravel": {
             "providers": [
-                "Sorane\\Laravel\\SoraneServiceProvider"
+                "Ranetrace\\Laravel\\RanetraceServiceProvider"
             ],
             "aliases": {
-                "Sorane": "Sorane\\Laravel\\Facades\\Sorane"
+                "Ranetrace": "Ranetrace\\Laravel\\Facades\\Ranetrace"
             }
         }
     },

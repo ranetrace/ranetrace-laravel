@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Sorane\Laravel\Mcp\Tools;
+namespace Ranetrace\Laravel\Mcp\Tools;
 
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
 use Laravel\Mcp\Server\Tool;
 use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
-use Sorane\Laravel\Services\SoraneApiClient;
+use Ranetrace\Laravel\Services\RanetraceApiClient;
 
 #[IsReadOnly]
 class GetErrorTool extends Tool
@@ -20,7 +20,7 @@ class GetErrorTool extends Tool
     protected string $description = 'Get detailed information about a specific error by its ID. Returns the full error details including stack trace, context, and metadata.';
 
     public function __construct(
-        protected SoraneApiClient $client
+        protected RanetraceApiClient $client
     ) {}
 
     /**

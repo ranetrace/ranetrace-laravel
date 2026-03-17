@@ -2,23 +2,23 @@
 
 declare(strict_types=1);
 
-namespace Sorane\Laravel\Commands;
+namespace Ranetrace\Laravel\Commands;
 
 use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
-use Sorane\Laravel\Services\SoraneBatchBuffer;
-use Sorane\Laravel\Services\SoranePauseManager;
+use Ranetrace\Laravel\Services\RanetraceBatchBuffer;
+use Ranetrace\Laravel\Services\RanetracePauseManager;
 use Throwable;
 
-class SoraneStatusCommand extends Command
+class RanetraceStatusCommand extends Command
 {
-    protected $signature = 'sorane:status
+    protected $signature = 'ranetrace:status
                             {--json : Output as JSON instead of formatted text}';
 
-    protected $description = 'Display Sorane health status including pauses, buffers, and recent activity';
+    protected $description = 'Display Ranetrace health status including pauses, buffers, and recent activity';
 
-    public function handle(SoraneBatchBuffer $buffer, SoranePauseManager $pauseManager): int
+    public function handle(RanetraceBatchBuffer $buffer, RanetracePauseManager $pauseManager): int
     {
         $status = $this->collectStatus($buffer, $pauseManager);
 
@@ -38,7 +38,7 @@ class SoraneStatusCommand extends Command
      *
      * @return array<string, mixed>
      */
-    protected function collectStatus(SoraneBatchBuffer $buffer, SoranePauseManager $pauseManager): array
+    protected function collectStatus(RanetraceBatchBuffer $buffer, RanetracePauseManager $pauseManager): array
     {
         $features = ['errors', 'events', 'logs', 'page_visits', 'javascript_errors'];
 
@@ -72,7 +72,7 @@ class SoraneStatusCommand extends Command
 
         // Overall health determination
         $healthy = ! $isGloballyPaused
-            && $totalBuffered < config('sorane.batch.max_buffer_size', 5000) * 0.8 // Not approaching max
+            && $totalBuffered < config('ranetrace.batch.max_buffer_size', 5000) * 0.8 // Not approaching max
             && $failedJobsCount < 10; // Fewer than 10 failed jobs
 
         return [
@@ -89,15 +89,15 @@ class SoraneStatusCommand extends Command
             ],
             'buffers' => [
                 'total' => $totalBuffered,
-                'max_per_feature' => config('sorane.batch.max_buffer_size', 5000),
+                'max_per_feature' => config('ranetrace.batch.max_buffer_size', 5000),
                 'features' => $buffers,
             ],
             'failed_jobs_last_24h' => $failedJobsCount,
             'config' => [
-                'enabled' => config('sorane.enabled', false),
-                'api_key_configured' => ! empty(config('sorane.key')),
-                'cache_driver' => config('sorane.batch.cache_driver', 'redis'),
-                'queue_name' => config('sorane.batch.queue_name', 'default'),
+                'enabled' => config('ranetrace.enabled', false),
+                'api_key_configured' => ! empty(config('ranetrace.key')),
+                'cache_driver' => config('ranetrace.batch.cache_driver', 'redis'),
+                'queue_name' => config('ranetrace.batch.queue_name', 'default'),
             ],
         ];
     }
@@ -112,7 +112,7 @@ class SoraneStatusCommand extends Command
         // Header
         $this->newLine();
         $this->line('╔═══════════════════════════════════════════════════════════════╗');
-        $this->line('║              SORANE HEALTH STATUS                             ║');
+        $this->line('║              RANETRACE HEALTH STATUS                             ║');
         $this->line('╚═══════════════════════════════════════════════════════════════╝');
         $this->newLine();
 
@@ -236,16 +236,16 @@ class SoraneStatusCommand extends Command
             $this->line('─────────────────────────────────────────────────────────────');
 
             if (! $status['config']['enabled']) {
-                $this->line('• Enable Sorane in config/sorane.php');
+                $this->line('• Enable Ranetrace in config/ranetrace.php');
             }
 
             if (! $status['config']['api_key_configured']) {
-                $this->line('• Configure SORANE_KEY in .env');
+                $this->line('• Configure RANETRACE_KEY in .env');
             }
 
             if ($status['pauses']['global']) {
                 $this->line('• Check API credentials (401 indicates invalid/revoked key)');
-                $this->line('• Run: php artisan sorane:pause-clear --global');
+                $this->line('• Run: php artisan ranetrace:pause-clear --global');
             }
 
             foreach ($status['pauses']['features'] as $feature => $pause) {
@@ -269,11 +269,11 @@ class SoraneStatusCommand extends Command
 
             if ($status['buffers']['total'] > $status['buffers']['max_per_feature'] * 0.8) {
                 $this->line('• Buffers approaching capacity - data may be dropped');
-                $this->line('• Check if sorane:work command is running on schedule');
+                $this->line('• Check if ranetrace:work command is running on schedule');
             }
 
             if ($status['failed_jobs_last_24h'] >= 10) {
-                $this->line('• High failed job count - check sorane_internal logs');
+                $this->line('• High failed job count - check ranetrace_internal logs');
                 $this->line('• Review failed_jobs table for details');
             }
 
@@ -316,13 +316,13 @@ class SoraneStatusCommand extends Command
     }
 
     /**
-     * Get count of failed Sorane jobs in the last 24 hours.
+     * Get count of failed Ranetrace jobs in the last 24 hours.
      */
     protected function getFailedJobsCount(): int
     {
         try {
             return DB::table('failed_jobs')
-                ->where('payload', 'like', '%Sorane%')
+                ->where('payload', 'like', '%Ranetrace%')
                 ->where('failed_at', '>=', Carbon::now()->subDay())
                 ->count();
         } catch (Throwable) {

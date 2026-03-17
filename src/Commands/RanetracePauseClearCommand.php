@@ -2,22 +2,22 @@
 
 declare(strict_types=1);
 
-namespace Sorane\Laravel\Commands;
+namespace Ranetrace\Laravel\Commands;
 
 use Carbon\Carbon;
 use Illuminate\Console\Command;
-use Sorane\Laravel\Services\SoranePauseManager;
+use Ranetrace\Laravel\Services\RanetracePauseManager;
 
-class SoranePauseClearCommand extends Command
+class RanetracePauseClearCommand extends Command
 {
-    protected $signature = 'sorane:pause-clear
+    protected $signature = 'ranetrace:pause-clear
                             {--global : Clear global pause}
                             {--feature= : Clear pause for specific feature (errors, events, logs, page_visits, javascript_errors)}
                             {--all : Clear all pauses (global and all features)}';
 
-    protected $description = 'Clear Sorane pause states to resume processing';
+    protected $description = 'Clear Ranetrace pause states to resume processing';
 
-    public function handle(SoranePauseManager $pauseManager): int
+    public function handle(RanetracePauseManager $pauseManager): int
     {
         $global = $this->option('global');
         $feature = $this->option('feature');
@@ -28,9 +28,9 @@ class SoranePauseClearCommand extends Command
             $this->error('You must specify at least one option: --global, --feature, or --all');
             $this->newLine();
             $this->line('Examples:');
-            $this->line('  php artisan sorane:pause-clear --global');
-            $this->line('  php artisan sorane:pause-clear --feature=errors');
-            $this->line('  php artisan sorane:pause-clear --all');
+            $this->line('  php artisan ranetrace:pause-clear --global');
+            $this->line('  php artisan ranetrace:pause-clear --feature=errors');
+            $this->line('  php artisan ranetrace:pause-clear --all');
 
             return self::FAILURE;
         }
@@ -56,7 +56,7 @@ class SoranePauseClearCommand extends Command
     /**
      * Clear all pauses (global and all features).
      */
-    protected function clearAllPauses(SoranePauseManager $pauseManager): int
+    protected function clearAllPauses(RanetracePauseManager $pauseManager): int
     {
         $this->line('Clearing all pauses...');
         $this->newLine();
@@ -96,7 +96,7 @@ class SoranePauseClearCommand extends Command
     /**
      * Clear global pause.
      */
-    protected function clearGlobalPause(SoranePauseManager $pauseManager, bool $showMessages = true): int
+    protected function clearGlobalPause(RanetracePauseManager $pauseManager, bool $showMessages = true): int
     {
         $pauseData = $pauseManager->getGlobalPause();
 
@@ -126,7 +126,7 @@ class SoranePauseClearCommand extends Command
 
         if ($showMessages) {
             $this->info('✓ Global pause cleared successfully.');
-            $this->line('  All features will resume processing on next sorane:work execution.');
+            $this->line('  All features will resume processing on next ranetrace:work execution.');
         } else {
             $this->line('  Global pause: <fg=green>Cleared</>');
         }
@@ -137,7 +137,7 @@ class SoranePauseClearCommand extends Command
     /**
      * Clear feature-specific pause.
      */
-    protected function clearFeaturePause(SoranePauseManager $pauseManager, string $feature, bool $showMessages = true): int
+    protected function clearFeaturePause(RanetracePauseManager $pauseManager, string $feature, bool $showMessages = true): int
     {
         // Validate feature name
         $validFeatures = ['errors', 'events', 'logs', 'page_visits', 'javascript_errors'];
@@ -178,7 +178,7 @@ class SoranePauseClearCommand extends Command
 
         if ($showMessages) {
             $this->info("✓ Pause cleared for '{$feature}'.");
-            $this->line('  This feature will resume processing on next sorane:work execution.');
+            $this->line('  This feature will resume processing on next ranetrace:work execution.');
             $this->newLine();
             $this->warn('Note: If the underlying issue is not resolved, the pause may be set again.');
 
@@ -200,17 +200,17 @@ class SoranePauseClearCommand extends Command
         $this->line('Troubleshooting tips:');
 
         match ($reason) {
-            '401' => $this->line('  • Check that SORANE_KEY in .env is valid and not revoked'),
+            '401' => $this->line('  • Check that RANETRACE_KEY in .env is valid and not revoked'),
             '403' => $this->line('  • Verify subscription is active, email is verified, and feature access is enabled'),
             '413' => $this->line('  • Payload too large indicates a CLIENT BUG - investigate batch sizes immediately'),
             '422' => $this->line('  • Validation failure indicates schema drift or malformed data - check recent code changes'),
             '429' => $this->line('  • Rate limit - reduce batch frequency or increase rate limit with API provider'),
             '500' => $this->line('  • Server errors - check backend API health and logs'),
-            default => $this->line('  • Check sorane_internal logs for more details'),
+            default => $this->line('  • Check ranetrace_internal logs for more details'),
         };
 
-        $this->line('  • Run: php artisan sorane:status');
-        $this->line('  • Review: storage/logs/sorane-internal.log');
+        $this->line('  • Run: php artisan ranetrace:status');
+        $this->line('  • Review: storage/logs/ranetrace-internal.log');
     }
 
     /**

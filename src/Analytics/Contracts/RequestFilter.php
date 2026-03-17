@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Sorane\Laravel\Analytics\Contracts;
+namespace Ranetrace\Laravel\Analytics\Contracts;
 
 use Illuminate\Http\Request;
 

@@ -2,37 +2,37 @@
 
 declare(strict_types=1);
 
-namespace Sorane\Laravel\Commands;
+namespace Ranetrace\Laravel\Commands;
 
 use Exception;
 use Illuminate\Console\Command;
 use InvalidArgumentException;
-use Sorane\Laravel\Events\EventTracker;
-use Sorane\Laravel\Facades\Sorane;
-use Sorane\Laravel\Facades\SoraneEvents;
+use Ranetrace\Laravel\Events\EventTracker;
+use Ranetrace\Laravel\Facades\Ranetrace;
+use Ranetrace\Laravel\Facades\RanetraceEvents;
 
-class SoraneEventTestCommand extends Command
+class RanetraceEventTestCommand extends Command
 {
-    protected $signature = 'sorane:test-events';
+    protected $signature = 'ranetrace:test-events';
 
-    protected $description = 'Test Sorane event tracking functionality';
+    protected $description = 'Test Ranetrace event tracking functionality';
 
     public function handle(): void
     {
-        $this->info('Testing Sorane Event Tracking...');
+        $this->info('Testing Ranetrace Event Tracking...');
 
         // Test event name validation
         $this->info('1. Testing event name validation...');
         try {
             $this->info('   ✓ Valid event name: user_registered');
-            SoraneEvents::custom('user_registered', ['source' => 'test']);
+            RanetraceEvents::custom('user_registered', ['source' => 'test']);
 
             $this->info('   ✓ Using predefined constant: EventTracker::PRODUCT_ADDED_TO_CART');
-            Sorane::trackEvent(EventTracker::PRODUCT_ADDED_TO_CART, ['test' => true]);
+            Ranetrace::trackEvent(EventTracker::PRODUCT_ADDED_TO_CART, ['test' => true]);
 
             $this->info('   ⚠ Testing invalid event name (this will show validation error)...');
             try {
-                SoraneEvents::custom('Invalid Event Name!', []);
+                RanetraceEvents::custom('Invalid Event Name!', []);
             } catch (InvalidArgumentException $e) {
                 $this->warn('   Expected validation error: '.$e->getMessage());
             }
@@ -42,14 +42,14 @@ class SoraneEventTestCommand extends Command
 
         // Test basic event tracking
         $this->info('2. Sending basic custom event...');
-        Sorane::trackEvent('test_event', [
+        Ranetrace::trackEvent('test_event', [
             'test_property' => 'test_value',
             'timestamp' => now()->toISOString(),
         ]);
 
         // Test e-commerce events using the helper
         $this->info('3. Sending Product Added to Cart event...');
-        SoraneEvents::productAddedToCart(
+        RanetraceEvents::productAddedToCart(
             productId: 'PROD-123',
             productName: 'Awesome Widget',
             price: 29.99,
@@ -59,7 +59,7 @@ class SoraneEventTestCommand extends Command
         );
 
         $this->info('4. Sending Sale event...');
-        SoraneEvents::sale(
+        RanetraceEvents::sale(
             orderId: 'ORDER-456',
             totalAmount: 89.97,
             products: [
@@ -81,26 +81,26 @@ class SoraneEventTestCommand extends Command
         );
 
         $this->info('5. Sending User Registration event...');
-        SoraneEvents::userRegistered(
+        RanetraceEvents::userRegistered(
             userId: 123,
             additionalProperties: ['registration_source' => 'website']
         );
 
         $this->info('6. Sending Page View event...');
-        SoraneEvents::pageView(
+        RanetraceEvents::pageView(
             pageName: 'Product Details',
             additionalProperties: ['product_id' => 'PROD-123']
         );
 
         $this->info('7. Sending custom event using validated method...');
-        SoraneEvents::custom(
+        RanetraceEvents::custom(
             eventName: 'newsletter_signup',
             properties: ['source' => 'footer', 'email_provided' => true],
             userId: 123
         );
 
-        $this->info('✅ All test events have been sent to Sorane!');
-        $this->info('Check your Sorane dashboard to see the events.');
+        $this->info('✅ All test events have been sent to Ranetrace!');
+        $this->info('Check your Ranetrace dashboard to see the events.');
 
         $this->newLine();
         $this->info('Available Event Constants:');
@@ -137,7 +137,7 @@ class SoraneEventTestCommand extends Command
             [
                 ['User Agent', 'Hashed with SHA256'],
                 ['Session ID', 'Generated from IP + User Agent + Date (daily rotation)'],
-                ['IP Address', 'Not sent to Sorane (privacy-first)'],
+                ['IP Address', 'Not sent to Ranetrace (privacy-first)'],
                 ['User ID', 'Only if explicitly provided or user is authenticated'],
             ]
         );
@@ -147,10 +147,10 @@ class SoraneEventTestCommand extends Command
         $this->table(
             ['Setting', 'Value'],
             [
-                ['Events Enabled', config('sorane.events.enabled') ? 'Yes' : 'No'],
-                ['Queue Enabled', config('sorane.events.queue') ? 'Yes' : 'No'],
-                ['Queue Name', config('sorane.events.queue_name')],
-                ['API Key Set', config('sorane.key') ? 'Yes' : 'No'],
+                ['Events Enabled', config('ranetrace.events.enabled') ? 'Yes' : 'No'],
+                ['Queue Enabled', config('ranetrace.events.queue') ? 'Yes' : 'No'],
+                ['Queue Name', config('ranetrace.events.queue_name')],
+                ['API Key Set', config('ranetrace.key') ? 'Yes' : 'No'],
             ]
         );
     }

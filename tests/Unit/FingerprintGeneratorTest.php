@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use Sorane\Laravel\Analytics\FingerprintGenerator;
+use Ranetrace\Laravel\Analytics\FingerprintGenerator;
 
 test('it generates consistent session id hash for same inputs', function (): void {
     $request = Illuminate\Http\Request::create('/', 'GET');

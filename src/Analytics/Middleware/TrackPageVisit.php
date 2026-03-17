@@ -2,26 +2,26 @@
 
 declare(strict_types=1);
 
-namespace Sorane\Laravel\Analytics\Middleware;
+namespace Ranetrace\Laravel\Analytics\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Jaybizzle\CrawlerDetect\CrawlerDetect;
-use Sorane\Laravel\Analytics\Contracts\RequestFilter;
-use Sorane\Laravel\Analytics\HumanProbabilityScorer;
-use Sorane\Laravel\Analytics\VisitDataCollector;
-use Sorane\Laravel\Jobs\HandlePageVisitJob;
+use Ranetrace\Laravel\Analytics\Contracts\RequestFilter;
+use Ranetrace\Laravel\Analytics\HumanProbabilityScorer;
+use Ranetrace\Laravel\Analytics\VisitDataCollector;
+use Ranetrace\Laravel\Jobs\HandlePageVisitJob;
 
 class TrackPageVisit
 {
     public function handle(Request $request, Closure $next)
     {
-        if (! config('sorane.enabled', false)) {
+        if (! config('ranetrace.enabled', false)) {
             return $next($request);
         }
 
-        if (! config('sorane.website_analytics.enabled', false)) {
+        if (! config('ranetrace.website_analytics.enabled', false)) {
             return $next($request);
         }
 
@@ -36,7 +36,7 @@ class TrackPageVisit
         }
 
         // Excluded paths
-        $excludedPaths = config('sorane.website_analytics.excluded_paths', []);
+        $excludedPaths = config('ranetrace.website_analytics.excluded_paths', []);
         $firstSegment = explode('/', mb_ltrim($request->path(), '/'))[0];
 
         if (in_array($firstSegment, $excludedPaths, true)) {
@@ -44,7 +44,7 @@ class TrackPageVisit
         }
 
         // Request Filter
-        $filterClass = config('sorane.website_analytics.request_filter');
+        $filterClass = config('ranetrace.website_analytics.request_filter');
 
         if ($filterClass && class_exists($filterClass)) {
             /** @var RequestFilter $filter */
@@ -58,8 +58,8 @@ class TrackPageVisit
         // Filter out unrealistic user agents
         $userAgent = $request->userAgent();
 
-        $minLength = config('sorane.website_analytics.user_agent.min_length', 10);
-        $maxLength = config('sorane.website_analytics.user_agent.max_length', 1000);
+        $minLength = config('ranetrace.website_analytics.user_agent.min_length', 10);
+        $maxLength = config('ranetrace.website_analytics.user_agent.max_length', 1000);
 
         // Check for extremely short user agents
         if (mb_strlen($userAgent) < $minLength) {
@@ -185,20 +185,20 @@ class TrackPageVisit
         $visitData['human_probability_reasons'] = $humanScore['reasons'];
 
         // Build a throttle key, based on the IP and path
-        $cacheKey = 'sorane:visit:'.md5(
+        $cacheKey = 'ranetrace:visit:'.md5(
             $request->ip().'|'.
             $visitData['path'].'|'.
             now()->format('Y-m-d-H-i') // Bucket by minute
         );
 
         // Only dispatch the job if not sent recently
-        $throttleSeconds = config('sorane.website_analytics.throttle_seconds', 30);
+        $throttleSeconds = config('ranetrace.website_analytics.throttle_seconds', 30);
 
         if (! Cache::has($cacheKey)) {
             Cache::put($cacheKey, true, now()->addSeconds($throttleSeconds));
 
             // Dispatch job to send visit data
-            if (config('sorane.website_analytics.queue', true)) {
+            if (config('ranetrace.website_analytics.queue', true)) {
                 HandlePageVisitJob::dispatch($visitData);
             } else {
                 HandlePageVisitJob::dispatchSync($visitData);

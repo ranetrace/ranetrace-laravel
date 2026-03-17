@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Sorane\Laravel\Mcp\Tools;
+namespace Ranetrace\Laravel\Mcp\Tools;
 
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
 use Laravel\Mcp\Server\Tool;
 use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
-use Sorane\Laravel\Services\SoraneApiClient;
+use Ranetrace\Laravel\Services\RanetraceApiClient;
 
 #[IsReadOnly]
 class LatestErrorsTool extends Tool
@@ -19,10 +19,10 @@ class LatestErrorsTool extends Tool
     /**
      * The tool's description.
      */
-    protected string $description = 'Fetch the latest errors from Sorane. By default, only returns open errors (not resolved/ignored). Use status parameter to filter by different states or "all" to include all errors.';
+    protected string $description = 'Fetch the latest errors from Ranetrace. By default, only returns open errors (not resolved/ignored). Use status parameter to filter by different states or "all" to include all errors.';
 
     public function __construct(
-        protected SoraneApiClient $client
+        protected RanetraceApiClient $client
     ) {}
 
     /**

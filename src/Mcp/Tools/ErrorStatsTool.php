@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Sorane\Laravel\Mcp\Tools;
+namespace Ranetrace\Laravel\Mcp\Tools;
 
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
 use Laravel\Mcp\Server\Tool;
 use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
-use Sorane\Laravel\Services\SoraneApiClient;
+use Ranetrace\Laravel\Services\RanetraceApiClient;
 
 #[IsReadOnly]
 class ErrorStatsTool extends Tool
@@ -17,10 +17,10 @@ class ErrorStatsTool extends Tool
     /**
      * The tool's description.
      */
-    protected string $description = 'Get error statistics from Sorane for a specified time period. Returns counts, trends, and breakdowns by type and environment.';
+    protected string $description = 'Get error statistics from Ranetrace for a specified time period. Returns counts, trends, and breakdowns by type and environment.';
 
     public function __construct(
-        protected SoraneApiClient $client
+        protected RanetraceApiClient $client
     ) {}
 
     /**

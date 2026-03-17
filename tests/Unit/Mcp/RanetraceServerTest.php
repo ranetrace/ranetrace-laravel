@@ -3,30 +3,30 @@
 declare(strict_types=1);
 
 use Laravel\Mcp\Server;
-use Sorane\Laravel\Mcp\SoraneServer;
-use Sorane\Laravel\Mcp\Tools\BulkDeleteErrorsTool;
-use Sorane\Laravel\Mcp\Tools\BulkIgnoreErrorsTool;
-use Sorane\Laravel\Mcp\Tools\BulkResolveErrorsTool;
-use Sorane\Laravel\Mcp\Tools\BulkRestoreErrorsTool;
-use Sorane\Laravel\Mcp\Tools\CreateNotesTool;
-use Sorane\Laravel\Mcp\Tools\CreateNoteTool;
-use Sorane\Laravel\Mcp\Tools\DeleteErrorTool;
-use Sorane\Laravel\Mcp\Tools\DeleteNoteTool;
-use Sorane\Laravel\Mcp\Tools\ErrorStatsTool;
-use Sorane\Laravel\Mcp\Tools\GetErrorActivityTool;
-use Sorane\Laravel\Mcp\Tools\GetErrorTool;
-use Sorane\Laravel\Mcp\Tools\GetNoteTool;
-use Sorane\Laravel\Mcp\Tools\IgnoreErrorTool;
-use Sorane\Laravel\Mcp\Tools\LatestErrorsTool;
-use Sorane\Laravel\Mcp\Tools\ListNotesTool;
-use Sorane\Laravel\Mcp\Tools\ReopenErrorTool;
-use Sorane\Laravel\Mcp\Tools\ResolveErrorTool;
-use Sorane\Laravel\Mcp\Tools\RestoreErrorTool;
-use Sorane\Laravel\Mcp\Tools\SearchErrorsTool;
-use Sorane\Laravel\Mcp\Tools\SnoozeErrorTool;
-use Sorane\Laravel\Mcp\Tools\UnignoreErrorTool;
-use Sorane\Laravel\Mcp\Tools\UnsnoozeErrorTool;
-use Sorane\Laravel\Mcp\Tools\UpdateNoteTool;
+use Ranetrace\Laravel\Mcp\RanetraceServer;
+use Ranetrace\Laravel\Mcp\Tools\BulkDeleteErrorsTool;
+use Ranetrace\Laravel\Mcp\Tools\BulkIgnoreErrorsTool;
+use Ranetrace\Laravel\Mcp\Tools\BulkResolveErrorsTool;
+use Ranetrace\Laravel\Mcp\Tools\BulkRestoreErrorsTool;
+use Ranetrace\Laravel\Mcp\Tools\CreateNotesTool;
+use Ranetrace\Laravel\Mcp\Tools\CreateNoteTool;
+use Ranetrace\Laravel\Mcp\Tools\DeleteErrorTool;
+use Ranetrace\Laravel\Mcp\Tools\DeleteNoteTool;
+use Ranetrace\Laravel\Mcp\Tools\ErrorStatsTool;
+use Ranetrace\Laravel\Mcp\Tools\GetErrorActivityTool;
+use Ranetrace\Laravel\Mcp\Tools\GetErrorTool;
+use Ranetrace\Laravel\Mcp\Tools\GetNoteTool;
+use Ranetrace\Laravel\Mcp\Tools\IgnoreErrorTool;
+use Ranetrace\Laravel\Mcp\Tools\LatestErrorsTool;
+use Ranetrace\Laravel\Mcp\Tools\ListNotesTool;
+use Ranetrace\Laravel\Mcp\Tools\ReopenErrorTool;
+use Ranetrace\Laravel\Mcp\Tools\ResolveErrorTool;
+use Ranetrace\Laravel\Mcp\Tools\RestoreErrorTool;
+use Ranetrace\Laravel\Mcp\Tools\SearchErrorsTool;
+use Ranetrace\Laravel\Mcp\Tools\SnoozeErrorTool;
+use Ranetrace\Laravel\Mcp\Tools\UnignoreErrorTool;
+use Ranetrace\Laravel\Mcp\Tools\UnsnoozeErrorTool;
+use Ranetrace\Laravel\Mcp\Tools\UpdateNoteTool;
 
 beforeEach(function (): void {
     if (! class_exists(Server::class)) {
@@ -36,15 +36,15 @@ beforeEach(function (): void {
 
 function getServerProperty(string $property): mixed
 {
-    return (new ReflectionClass(SoraneServer::class))->getDefaultProperties()[$property];
+    return (new ReflectionClass(RanetraceServer::class))->getDefaultProperties()[$property];
 }
 
 test('extends Laravel MCP Server class', function (): void {
-    expect(SoraneServer::class)->toExtend(Server::class);
+    expect(RanetraceServer::class)->toExtend(Server::class);
 });
 
 test('has correct name property', function (): void {
-    expect(getServerProperty('name'))->toBe('Sorane');
+    expect(getServerProperty('name'))->toBe('Ranetrace');
 });
 
 test('has correct version property', function (): void {
@@ -56,7 +56,7 @@ test('has instructions property set', function (): void {
 
     expect($instructions)->toBeString()
         ->not->toBeEmpty()
-        ->toContain('Sorane');
+        ->toContain('Ranetrace');
 });
 
 test('instructions mention notes functionality', function (): void {

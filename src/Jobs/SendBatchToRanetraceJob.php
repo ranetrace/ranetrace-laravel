@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Sorane\Laravel\Jobs;
+namespace Ranetrace\Laravel\Jobs;
 
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
@@ -11,14 +11,14 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use InvalidArgumentException;
+use Ranetrace\Laravel\Services\RanetraceApiClient;
+use Ranetrace\Laravel\Services\RanetraceBatchBuffer;
+use Ranetrace\Laravel\Services\RanetracePauseManager;
+use Ranetrace\Laravel\Support\InternalLogger;
 use RuntimeException;
-use Sorane\Laravel\Services\SoraneApiClient;
-use Sorane\Laravel\Services\SoraneBatchBuffer;
-use Sorane\Laravel\Services\SoranePauseManager;
-use Sorane\Laravel\Support\InternalLogger;
 use Throwable;
 
-class SendBatchToSoraneJob implements ShouldBeUnique, ShouldQueue
+class SendBatchToRanetraceJob implements ShouldBeUnique, ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
@@ -31,7 +31,7 @@ class SendBatchToSoraneJob implements ShouldBeUnique, ShouldQueue
         public string $type,
         public ?int $maxItems = null
     ) {
-        $queueName = config('sorane.batch.queue_name', 'default');
+        $queueName = config('ranetrace.batch.queue_name', 'default');
         $this->onQueue($queueName);
     }
 
@@ -40,10 +40,10 @@ class SendBatchToSoraneJob implements ShouldBeUnique, ShouldQueue
      */
     public function uniqueId(): string
     {
-        return "sorane:batch:{$this->type}";
+        return "ranetrace:batch:{$this->type}";
     }
 
-    public function handle(SoraneApiClient $client, SoraneBatchBuffer $buffer, SoranePauseManager $pauseManager): void
+    public function handle(RanetraceApiClient $client, RanetraceBatchBuffer $buffer, RanetracePauseManager $pauseManager): void
     {
         $maxItems = $this->maxItems ?? $this->getMaxBatchSize();
 
@@ -58,7 +58,7 @@ class SendBatchToSoraneJob implements ShouldBeUnique, ShouldQueue
             // Extract just the data payloads for the API
             $payloads = array_map(fn ($item) => $item['data'], $this->items);
 
-            // Send batch to Sorane API
+            // Send batch to Ranetrace API
             $result = match ($this->type) {
                 'errors' => $client->sendErrorBatch($payloads),
                 'events' => $client->sendEventBatch($payloads),
@@ -87,7 +87,7 @@ class SendBatchToSoraneJob implements ShouldBeUnique, ShouldQueue
         ]);
 
         // Set feature pause for 15 minutes after final retry
-        $pauseManager = app(SoranePauseManager::class);
+        $pauseManager = app(RanetracePauseManager::class);
         $pauseManager->setFeaturePause($this->type, 900, '500');
     }
 
@@ -104,7 +104,7 @@ class SendBatchToSoraneJob implements ShouldBeUnique, ShouldQueue
     /**
      * Handle API response according to spec.
      */
-    protected function handleResponse(array $result, SoraneBatchBuffer $buffer, SoranePauseManager $pauseManager): void
+    protected function handleResponse(array $result, RanetraceBatchBuffer $buffer, RanetracePauseManager $pauseManager): void
     {
         $status = $result['status'] ?? 0;
         $data = $result['data'] ?? [];
@@ -139,7 +139,7 @@ class SendBatchToSoraneJob implements ShouldBeUnique, ShouldQueue
     /**
      * Handle 200 OK response.
      */
-    protected function handle200Response(array $data, SoraneBatchBuffer $buffer): void
+    protected function handle200Response(array $data, RanetraceBatchBuffer $buffer): void
     {
         $items = $data['items'] ?? [];
         $received = $items['received'] ?? 0;
@@ -177,7 +177,7 @@ class SendBatchToSoraneJob implements ShouldBeUnique, ShouldQueue
     /**
      * Handle 401 Unauthorized response.
      */
-    protected function handle401Response(SoraneBatchBuffer $buffer, SoranePauseManager $pauseManager, array $data): void
+    protected function handle401Response(RanetraceBatchBuffer $buffer, RanetracePauseManager $pauseManager, array $data): void
     {
         $this->logError('API authentication failed - invalid or revoked API key', [
             'type' => $this->type,
@@ -194,7 +194,7 @@ class SendBatchToSoraneJob implements ShouldBeUnique, ShouldQueue
     /**
      * Handle 403 Forbidden response.
      */
-    protected function handle403Response(SoraneBatchBuffer $buffer, SoranePauseManager $pauseManager, array $data): void
+    protected function handle403Response(RanetraceBatchBuffer $buffer, RanetracePauseManager $pauseManager, array $data): void
     {
         $this->logError('API request forbidden', [
             'type' => $this->type,
@@ -211,7 +211,7 @@ class SendBatchToSoraneJob implements ShouldBeUnique, ShouldQueue
     /**
      * Handle 413 Payload Too Large response.
      */
-    protected function handle413Response(SoranePauseManager $pauseManager, array $data): void
+    protected function handle413Response(RanetracePauseManager $pauseManager, array $data): void
     {
         $this->logCritical('Payload too large - indicates client bug', [
             'type' => $this->type,
@@ -228,7 +228,7 @@ class SendBatchToSoraneJob implements ShouldBeUnique, ShouldQueue
     /**
      * Handle 422 Unprocessable Entity response.
      */
-    protected function handle422Response(SoranePauseManager $pauseManager, array $data): void
+    protected function handle422Response(RanetracePauseManager $pauseManager, array $data): void
     {
         $this->logError('Validation failed - indicates schema drift or malformed items', [
             'type' => $this->type,
@@ -245,7 +245,7 @@ class SendBatchToSoraneJob implements ShouldBeUnique, ShouldQueue
     /**
      * Handle 429 Too Many Requests response.
      */
-    protected function handle429Response(SoraneBatchBuffer $buffer, SoranePauseManager $pauseManager, array $headers): void
+    protected function handle429Response(RanetraceBatchBuffer $buffer, RanetracePauseManager $pauseManager, array $headers): void
     {
         $retryAfter = (int) ($headers['retry-after'] ?? 60);
 
@@ -264,7 +264,7 @@ class SendBatchToSoraneJob implements ShouldBeUnique, ShouldQueue
     /**
      * Handle 500 Internal Server Error response.
      */
-    protected function handle500Response(SoraneBatchBuffer $buffer): void
+    protected function handle500Response(RanetraceBatchBuffer $buffer): void
     {
         $this->logError('Server error during batch processing', [
             'type' => $this->type,
@@ -281,7 +281,7 @@ class SendBatchToSoraneJob implements ShouldBeUnique, ShouldQueue
     /**
      * Handle unknown status code response.
      */
-    protected function handleUnknownResponse(int $status, SoraneBatchBuffer $buffer): void
+    protected function handleUnknownResponse(int $status, RanetraceBatchBuffer $buffer): void
     {
         $this->logError('Unexpected API response status', [
             'type' => $this->type,
@@ -298,7 +298,7 @@ class SendBatchToSoraneJob implements ShouldBeUnique, ShouldQueue
     /**
      * Re-add all items to the buffer.
      */
-    protected function reAddAllItemsToBuffer(SoraneBatchBuffer $buffer): void
+    protected function reAddAllItemsToBuffer(RanetraceBatchBuffer $buffer): void
     {
         foreach ($this->items as $item) {
             $buffer->addItem($this->type, $item['data']);
@@ -310,7 +310,7 @@ class SendBatchToSoraneJob implements ShouldBeUnique, ShouldQueue
      *
      * @param  array<int, int>  $indexes
      */
-    protected function reAddUnprocessedItemsToBuffer(SoraneBatchBuffer $buffer, array $indexes): void
+    protected function reAddUnprocessedItemsToBuffer(RanetraceBatchBuffer $buffer, array $indexes): void
     {
         foreach ($indexes as $index) {
             if (isset($this->items[$index])) {
@@ -328,7 +328,7 @@ class SendBatchToSoraneJob implements ShouldBeUnique, ShouldQueue
     }
 
     /**
-     * Log to sorane_internal channel at error level.
+     * Log to ranetrace_internal channel at error level.
      *
      * @param  array<string, mixed>  $context
      */
@@ -338,7 +338,7 @@ class SendBatchToSoraneJob implements ShouldBeUnique, ShouldQueue
     }
 
     /**
-     * Log to sorane_internal channel at warning level.
+     * Log to ranetrace_internal channel at warning level.
      *
      * @param  array<string, mixed>  $context
      */
@@ -348,7 +348,7 @@ class SendBatchToSoraneJob implements ShouldBeUnique, ShouldQueue
     }
 
     /**
-     * Log to sorane_internal channel at info level.
+     * Log to ranetrace_internal channel at info level.
      *
      * @param  array<string, mixed>  $context
      */
@@ -358,7 +358,7 @@ class SendBatchToSoraneJob implements ShouldBeUnique, ShouldQueue
     }
 
     /**
-     * Log to sorane_internal channel at critical level.
+     * Log to ranetrace_internal channel at critical level.
      *
      * @param  array<string, mixed>  $context
      */

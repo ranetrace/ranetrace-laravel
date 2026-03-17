@@ -3,9 +3,9 @@
 declare(strict_types=1);
 
 use Illuminate\Support\Facades\Queue;
-use Sorane\Laravel\Events\EventTracker;
-use Sorane\Laravel\Facades\Sorane;
-use Sorane\Laravel\Jobs\HandleEventJob;
+use Ranetrace\Laravel\Events\EventTracker;
+use Ranetrace\Laravel\Facades\Ranetrace;
+use Ranetrace\Laravel\Jobs\HandleEventJob;
 
 test('it validates event names correctly', function (): void {
     // Valid event names
@@ -31,7 +31,7 @@ test('it throws exception for invalid event names when validation is enabled', f
 test('it tracks events successfully with validation', function (): void {
     Queue::fake();
 
-    Sorane::trackEvent('user_registered', ['source' => 'test']);
+    Ranetrace::trackEvent('user_registered', ['source' => 'test']);
 
     Queue::assertPushed(HandleEventJob::class, function ($job): bool {
         $eventData = $job->getEventData();
@@ -44,7 +44,7 @@ test('it tracks events successfully with validation', function (): void {
 test('it tracks events without validation when disabled', function (): void {
     Queue::fake();
 
-    Sorane::trackEvent('Invalid Event Name!', ['test' => true], null, false);
+    Ranetrace::trackEvent('Invalid Event Name!', ['test' => true], null, false);
 
     Queue::assertPushed(HandleEventJob::class, function ($job): bool {
         $eventData = $job->getEventData();
@@ -58,7 +58,7 @@ test('it includes user agent hash in event data', function (): void {
 
     $this->withHeaders(['User-Agent' => 'Mozilla/5.0 Test Browser']);
 
-    Sorane::trackEvent('test_event', []);
+    Ranetrace::trackEvent('test_event', []);
 
     Queue::assertPushed(HandleEventJob::class, function ($job): bool {
         $eventData = $job->getEventData();
@@ -71,7 +71,7 @@ test('it includes user agent hash in event data', function (): void {
 test('it includes session id hash in event data', function (): void {
     Queue::fake();
 
-    Sorane::trackEvent('test_event', []);
+    Ranetrace::trackEvent('test_event', []);
 
     Queue::assertPushed(HandleEventJob::class, function ($job): bool {
         $eventData = $job->getEventData();
@@ -123,7 +123,7 @@ test('it includes authenticated user id when available', function (): void {
 
     $this->actingAs($user);
 
-    Sorane::trackEvent('test_event', []);
+    Ranetrace::trackEvent('test_event', []);
 
     Queue::assertPushed(HandleEventJob::class, function ($job): bool {
         $eventData = $job->getEventData();
@@ -136,7 +136,7 @@ test('it includes authenticated user id when available', function (): void {
 test('it allows explicit user id override', function (): void {
     Queue::fake();
 
-    Sorane::trackEvent('test_event', [], 456);
+    Ranetrace::trackEvent('test_event', [], 456);
 
     Queue::assertPushed(HandleEventJob::class, function ($job): bool {
         $eventData = $job->getEventData();
@@ -170,9 +170,9 @@ test('event constants have valid names', function (): void {
 test('it does not track events when disabled in config', function (): void {
     Queue::fake();
 
-    config(['sorane.events.enabled' => false]);
+    config(['ranetrace.events.enabled' => false]);
 
-    Sorane::trackEvent('test_event', []);
+    Ranetrace::trackEvent('test_event', []);
 
     Queue::assertNothingPushed();
 });

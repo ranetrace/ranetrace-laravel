@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-namespace Sorane\Laravel\Mcp\Tools;
+namespace Ranetrace\Laravel\Mcp\Tools;
 
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
 use Laravel\Mcp\Server\Tool;
-use Sorane\Laravel\Mcp\Tools\Concerns\NormalizesIds;
-use Sorane\Laravel\Services\SoraneApiClient;
+use Ranetrace\Laravel\Mcp\Tools\Concerns\NormalizesIds;
+use Ranetrace\Laravel\Services\RanetraceApiClient;
 
 #[IsReadOnly]
 class GetErrorActivityTool extends Tool
@@ -23,7 +23,7 @@ class GetErrorActivityTool extends Tool
     protected string $description = 'Get the activity log for an error, showing state change history including resolved, ignored, snoozed, and other actions.';
 
     public function __construct(
-        protected SoraneApiClient $client
+        protected RanetraceApiClient $client
     ) {}
 
     /**

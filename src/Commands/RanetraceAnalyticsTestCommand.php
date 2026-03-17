@@ -2,19 +2,19 @@
 
 declare(strict_types=1);
 
-namespace Sorane\Laravel\Commands;
+namespace Ranetrace\Laravel\Commands;
 
 use Illuminate\Console\Command;
 
-class SoraneAnalyticsTestCommand extends Command
+class RanetraceAnalyticsTestCommand extends Command
 {
-    protected $signature = 'sorane:test-analytics';
+    protected $signature = 'ranetrace:test-analytics';
 
     protected $description = 'Display website analytics configuration and usage instructions';
 
     public function handle(): int
     {
-        $this->info('🔍 Sorane Website Analytics Test');
+        $this->info('🔍 Ranetrace Website Analytics Test');
         $this->newLine();
 
         // Display current configuration
@@ -22,33 +22,33 @@ class SoraneAnalyticsTestCommand extends Command
         $this->table(
             ['Setting', 'Value'],
             [
-                ['Enabled', config('sorane.website_analytics.enabled') ? '✅ Yes' : '❌ No'],
-                ['Queue Enabled', config('sorane.website_analytics.queue') ? '✅ Yes' : '❌ No'],
-                ['Queue Name', config('sorane.website_analytics.queue_name', 'default')],
-                ['Timeout', config('sorane.website_analytics.timeout', 10).' seconds'],
-                ['Throttle', config('sorane.website_analytics.throttle_seconds', 30).' seconds'],
-                ['Batch Size', config('sorane.website_analytics.batch.size', 100)],
-                ['User Agent Min Length', config('sorane.website_analytics.user_agent.min_length', 10)],
-                ['User Agent Max Length', config('sorane.website_analytics.user_agent.max_length', 1000)],
-                ['Excluded Paths', count(config('sorane.website_analytics.excluded_paths', [])).' path(s)'],
+                ['Enabled', config('ranetrace.website_analytics.enabled') ? '✅ Yes' : '❌ No'],
+                ['Queue Enabled', config('ranetrace.website_analytics.queue') ? '✅ Yes' : '❌ No'],
+                ['Queue Name', config('ranetrace.website_analytics.queue_name', 'default')],
+                ['Timeout', config('ranetrace.website_analytics.timeout', 10).' seconds'],
+                ['Throttle', config('ranetrace.website_analytics.throttle_seconds', 30).' seconds'],
+                ['Batch Size', config('ranetrace.website_analytics.batch.size', 100)],
+                ['User Agent Min Length', config('ranetrace.website_analytics.user_agent.min_length', 10)],
+                ['User Agent Max Length', config('ranetrace.website_analytics.user_agent.max_length', 1000)],
+                ['Excluded Paths', count(config('ranetrace.website_analytics.excluded_paths', [])).' path(s)'],
             ]
         );
 
         $this->newLine();
 
-        if (! config('sorane.website_analytics.enabled')) {
+        if (! config('ranetrace.website_analytics.enabled')) {
             $this->warn('⚠️  Website analytics is currently disabled.');
             $this->info('💡 To enable it, add to your .env file:');
-            $this->line('   SORANE_WEBSITE_ANALYTICS_ENABLED=true');
+            $this->line('   RANETRACE_WEBSITE_ANALYTICS_ENABLED=true');
             $this->newLine();
 
             return self::SUCCESS;
         }
 
-        if (empty(config('sorane.key'))) {
-            $this->error('❌ Sorane API key is not set!');
+        if (empty(config('ranetrace.key'))) {
+            $this->error('❌ Ranetrace API key is not set!');
             $this->info('💡 Add your API key to .env:');
-            $this->line('   SORANE_KEY=your-api-key-here');
+            $this->line('   RANETRACE_KEY=your-api-key-here');
             $this->newLine();
 
             return self::FAILURE;
@@ -100,7 +100,7 @@ class SoraneAnalyticsTestCommand extends Command
         $this->newLine();
 
         // Excluded paths
-        $excludedPaths = config('sorane.website_analytics.excluded_paths', []);
+        $excludedPaths = config('ranetrace.website_analytics.excluded_paths', []);
         if (! empty($excludedPaths)) {
             $this->line('🚫 <fg=cyan>Excluded Paths (visits to these are NOT tracked):</>');
             foreach ($excludedPaths as $path) {
@@ -114,7 +114,7 @@ class SoraneAnalyticsTestCommand extends Command
         $this->newLine();
         $this->line('1. Visit your website with a regular browser');
         $this->line('2. Navigate through different pages');
-        $this->line('3. Check your Sorane dashboard to see the visits');
+        $this->line('3. Check your Ranetrace dashboard to see the visits');
         $this->newLine();
 
         $this->line('<fg=yellow>Note:</> Analytics are tracked automatically, no code changes needed!');
@@ -125,7 +125,7 @@ class SoraneAnalyticsTestCommand extends Command
         $this->table(
             ['Item', 'How It\'s Handled'],
             [
-                ['IP Address', 'NOT sent to Sorane (privacy-first)'],
+                ['IP Address', 'NOT sent to Ranetrace (privacy-first)'],
                 ['User Agent', 'Hashed with SHA-256 (not stored raw)'],
                 ['Session ID', 'Generated from IP + UA + Date (daily rotation, hashed)'],
                 ['Personal Data', 'No personal information is collected'],
@@ -140,20 +140,20 @@ class SoraneAnalyticsTestCommand extends Command
         $this->line('Add to <fg=yellow>.env</> file:');
         $this->line('');
         $this->line('<fg=yellow># Enable/disable analytics');
-        $this->line('SORANE_WEBSITE_ANALYTICS_ENABLED=true');
+        $this->line('RANETRACE_WEBSITE_ANALYTICS_ENABLED=true');
         $this->line('');
         $this->line('# Queue visits (recommended for performance)');
-        $this->line('SORANE_WEBSITE_ANALYTICS_QUEUE=true');
+        $this->line('RANETRACE_WEBSITE_ANALYTICS_QUEUE=true');
         $this->line('');
         $this->line('# Throttle duplicate visits (seconds)');
-        $this->line('SORANE_WEBSITE_ANALYTICS_THROTTLE_SECONDS=30');
+        $this->line('RANETRACE_WEBSITE_ANALYTICS_THROTTLE_SECONDS=30');
         $this->line('');
         $this->line('# User agent validation');
-        $this->line('SORANE_WEBSITE_ANALYTICS_UA_MIN_LENGTH=10');
-        $this->line('SORANE_WEBSITE_ANALYTICS_UA_MAX_LENGTH=1000</>');
+        $this->line('RANETRACE_WEBSITE_ANALYTICS_UA_MIN_LENGTH=10');
+        $this->line('RANETRACE_WEBSITE_ANALYTICS_UA_MAX_LENGTH=1000</>');
         $this->newLine();
 
-        $this->line('Add to <fg=yellow>config/sorane.php</>:');
+        $this->line('Add to <fg=yellow>config/ranetrace.php</>:');
         $this->line('');
         $this->line("<fg=yellow>'website_analytics' => [");
         $this->line("    'excluded_paths' => [");

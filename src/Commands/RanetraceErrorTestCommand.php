@@ -2,40 +2,40 @@
 
 declare(strict_types=1);
 
-namespace Sorane\Laravel\Commands;
+namespace Ranetrace\Laravel\Commands;
 
 use Exception;
 use Illuminate\Console\Command;
+use Ranetrace\Laravel\Facades\Ranetrace;
 use RuntimeException;
-use Sorane\Laravel\Facades\Sorane;
 
-class SoraneErrorTestCommand extends Command
+class RanetraceErrorTestCommand extends Command
 {
-    protected $signature = 'sorane:test-errors';
+    protected $signature = 'ranetrace:test-errors';
 
-    protected $description = 'Test Sorane error reporting functionality';
+    protected $description = 'Test Ranetrace error reporting functionality';
 
     public function handle(): void
     {
-        $this->info('Testing Sorane Error Reporting...');
+        $this->info('Testing Ranetrace Error Reporting...');
 
         // Check if error reporting is enabled
-        if (! config('sorane.errors.enabled', true)) {
-            $this->warn('⚠ Sorane error reporting is disabled. Set SORANE_ERRORS_ENABLED=true in your .env file');
+        if (! config('ranetrace.errors.enabled', true)) {
+            $this->warn('⚠ Ranetrace error reporting is disabled. Set RANETRACE_ERRORS_ENABLED=true in your .env file');
             $this->info('Configuration check completed.');
 
             return;
         }
 
-        $this->info('✅ Sorane error reporting is enabled');
+        $this->info('✅ Ranetrace error reporting is enabled');
         $this->newLine();
 
         // Test 1: Simple Exception
         $this->info('1. Testing simple exception...');
         try {
-            throw new Exception('Test exception from Sorane');
+            throw new Exception('Test exception from Ranetrace');
         } catch (Exception $e) {
-            Sorane::report($e);
+            Ranetrace::report($e);
             $this->info('   ✓ Simple exception reported');
         }
 
@@ -44,7 +44,7 @@ class SoraneErrorTestCommand extends Command
         try {
             throw new RuntimeException('Test runtime exception', 500);
         } catch (RuntimeException $e) {
-            Sorane::report($e);
+            Ranetrace::report($e);
             $this->info('   ✓ RuntimeException reported');
         }
 
@@ -53,7 +53,7 @@ class SoraneErrorTestCommand extends Command
         try {
             $this->simulateDeepError();
         } catch (Exception $e) {
-            Sorane::report($e);
+            Ranetrace::report($e);
             $this->info('   ✓ Exception with stack trace reported');
         }
 
@@ -62,13 +62,13 @@ class SoraneErrorTestCommand extends Command
         try {
             throw new Exception('Database connection failed: Connection refused on localhost:5432');
         } catch (Exception $e) {
-            Sorane::report($e);
+            Ranetrace::report($e);
             $this->info('   ✓ Custom exception reported');
         }
 
         $this->newLine();
-        $this->info('✅ All test errors have been sent to Sorane!');
-        $this->info('Check your Sorane dashboard to see the error reports.');
+        $this->info('✅ All test errors have been sent to Ranetrace!');
+        $this->info('Check your Ranetrace dashboard to see the error reports.');
 
         $this->newLine();
         $this->info('What gets reported:');
@@ -92,14 +92,14 @@ class SoraneErrorTestCommand extends Command
         $this->table(
             ['Setting', 'Value'],
             [
-                ['Errors Enabled', config('sorane.errors.enabled') ? 'Yes' : 'No'],
-                ['Queue Enabled', config('sorane.errors.queue') ? 'Yes' : 'No'],
-                ['Queue Name', config('sorane.errors.queue_name')],
-                ['Timeout', config('sorane.errors.timeout').' seconds'],
-                ['Max File Size', number_format(config('sorane.errors.max_file_size')).' bytes'],
-                ['Max Trace Length', number_format(config('sorane.errors.max_trace_length')).' chars'],
-                ['Batch Size', config('sorane.errors.batch.size')],
-                ['API Key Set', config('sorane.key') ? 'Yes' : 'No'],
+                ['Errors Enabled', config('ranetrace.errors.enabled') ? 'Yes' : 'No'],
+                ['Queue Enabled', config('ranetrace.errors.queue') ? 'Yes' : 'No'],
+                ['Queue Name', config('ranetrace.errors.queue_name')],
+                ['Timeout', config('ranetrace.errors.timeout').' seconds'],
+                ['Max File Size', number_format(config('ranetrace.errors.max_file_size')).' bytes'],
+                ['Max Trace Length', number_format(config('ranetrace.errors.max_trace_length')).' chars'],
+                ['Batch Size', config('ranetrace.errors.batch.size')],
+                ['API Key Set', config('ranetrace.key') ? 'Yes' : 'No'],
             ]
         );
 
@@ -120,7 +120,7 @@ class SoraneErrorTestCommand extends Command
         $this->line('<fg=yellow>try {');
         $this->line('    // Your code here');
         $this->line('} catch (Exception $e) {');
-        $this->line('    Sorane::report($e);');
+        $this->line('    Ranetrace::report($e);');
         $this->line('    throw $e; // Re-throw if needed');
         $this->line('}</>');
         $this->newLine();
@@ -130,8 +130,8 @@ class SoraneErrorTestCommand extends Command
         $this->line('<fg=yellow>public function register(): void');
         $this->line('{');
         $this->line('    $this->reportable(function (Throwable $e) {');
-        $this->line('        if (app()->bound(\'sorane\')) {');
-        $this->line('            app(\'sorane\')->report($e);');
+        $this->line('        if (app()->bound(\'ranetrace\')) {');
+        $this->line('            app(\'ranetrace\')->report($e);');
         $this->line('        }');
         $this->line('    });');
         $this->line('}</>');

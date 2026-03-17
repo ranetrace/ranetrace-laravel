@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Sorane\Laravel\Mcp\Tools;
+namespace Ranetrace\Laravel\Mcp\Tools;
 
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
 use Laravel\Mcp\Server\Tool;
-use Sorane\Laravel\Mcp\Tools\Concerns\NormalizesIds;
-use Sorane\Laravel\Services\SoraneApiClient;
+use Ranetrace\Laravel\Mcp\Tools\Concerns\NormalizesIds;
+use Ranetrace\Laravel\Services\RanetraceApiClient;
 
 class ReopenErrorTool extends Tool
 {
@@ -21,7 +21,7 @@ class ReopenErrorTool extends Tool
     protected string $description = 'Reopen a resolved error, moving it back to open state. This is an idempotent operation.';
 
     public function __construct(
-        protected SoraneApiClient $client
+        protected RanetraceApiClient $client
     ) {}
 
     /**

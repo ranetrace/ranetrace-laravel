@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Sorane\Laravel\Jobs;
+namespace Ranetrace\Laravel\Jobs;
 
-use Sorane\Laravel\Services\SoraneBatchBuffer;
+use Ranetrace\Laravel\Services\RanetraceBatchBuffer;
 
-class HandleEventJob extends BaseSoraneJob
+class HandleEventJob extends BaseRanetraceJob
 {
     public function __construct(
         protected array $eventData
@@ -22,7 +22,7 @@ class HandleEventJob extends BaseSoraneJob
         return $this->eventData;
     }
 
-    public function handle(SoraneBatchBuffer $buffer): void
+    public function handle(RanetraceBatchBuffer $buffer): void
     {
         $payload = $this->filterPayload($this->eventData);
 
@@ -32,7 +32,7 @@ class HandleEventJob extends BaseSoraneJob
 
     protected function getConfigPath(): string
     {
-        return 'sorane.events';
+        return 'ranetrace.events';
     }
 
     protected function getAllowedKeys(): array

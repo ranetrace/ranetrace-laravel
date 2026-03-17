@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Sorane\Laravel\Utilities;
+namespace Ranetrace\Laravel\Utilities;
 
 use Closure;
 use Throwable;

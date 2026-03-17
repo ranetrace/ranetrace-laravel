@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
-use Sorane\Laravel\Mcp\Tools\LatestErrorsTool;
-use Sorane\Laravel\Services\SoraneApiClient;
+use Ranetrace\Laravel\Mcp\Tools\LatestErrorsTool;
+use Ranetrace\Laravel\Services\RanetraceApiClient;
 
 beforeEach(function (): void {
     if (! class_exists(Laravel\Mcp\Server\Tool::class)) {
@@ -14,13 +14,13 @@ beforeEach(function (): void {
 });
 
 /**
- * Creates a mock SoraneApiClient configured to return errors.
+ * Creates a mock RanetraceApiClient configured to return errors.
  *
  * @param  array<int, array<string, mixed>>  $errors
  */
-function createClientWithErrors(array $errors): SoraneApiClient
+function createClientWithErrors(array $errors): RanetraceApiClient
 {
-    $mockClient = Mockery::mock(SoraneApiClient::class);
+    $mockClient = Mockery::mock(RanetraceApiClient::class);
     $mockClient->shouldReceive('getLatestErrors')
         ->once()
         ->andReturn([
@@ -32,13 +32,13 @@ function createClientWithErrors(array $errors): SoraneApiClient
 }
 
 /**
- * Creates a mock SoraneApiClient configured to expect specific parameters.
+ * Creates a mock RanetraceApiClient configured to expect specific parameters.
  *
  * @param  array<string, mixed>  $expectedParams
  */
-function createClientExpectingParams(array $expectedParams): SoraneApiClient
+function createClientExpectingParams(array $expectedParams): RanetraceApiClient
 {
-    $mockClient = Mockery::mock(SoraneApiClient::class);
+    $mockClient = Mockery::mock(RanetraceApiClient::class);
     $mockClient->shouldReceive('getLatestErrors')
         ->once()
         ->with($expectedParams)
@@ -51,13 +51,13 @@ function createClientExpectingParams(array $expectedParams): SoraneApiClient
 }
 
 /**
- * Creates a mock SoraneApiClient configured to return an error response.
+ * Creates a mock RanetraceApiClient configured to return an error response.
  *
  * @param  array<string, mixed>  $response
  */
-function createClientWithFailure(array $response): SoraneApiClient
+function createClientWithFailure(array $response): RanetraceApiClient
 {
-    $mockClient = Mockery::mock(SoraneApiClient::class);
+    $mockClient = Mockery::mock(RanetraceApiClient::class);
     $mockClient->shouldReceive('getLatestErrors')
         ->once()
         ->andReturn(array_merge(['success' => false], $response));
@@ -70,7 +70,7 @@ function createClientWithFailure(array $response): SoraneApiClient
  *
  * @param  array<string, mixed>  $requestParams
  */
-function executeToolAndGetText(SoraneApiClient $client, array $requestParams = []): string
+function executeToolAndGetText(RanetraceApiClient $client, array $requestParams = []): string
 {
     $tool = new LatestErrorsTool($client);
     $response = $tool->handle(new Request($requestParams));
@@ -202,7 +202,7 @@ test('handles missing fields with defaults', function (): void {
 });
 
 test('has correct description property', function (): void {
-    $mockClient = Mockery::mock(SoraneApiClient::class);
+    $mockClient = Mockery::mock(RanetraceApiClient::class);
     $tool = new LatestErrorsTool($mockClient);
 
     $reflection = new ReflectionProperty($tool, 'description');

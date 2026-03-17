@@ -6,17 +6,17 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
-use Sorane\Laravel\Jobs\HandleEventJob;
-use Sorane\Laravel\Jobs\SendBatchToSoraneJob;
-use Sorane\Laravel\Services\SoraneApiClient;
-use Sorane\Laravel\Services\SoraneBatchBuffer;
-use Sorane\Laravel\Services\SoranePauseManager;
+use Ranetrace\Laravel\Jobs\HandleEventJob;
+use Ranetrace\Laravel\Jobs\SendBatchToRanetraceJob;
+use Ranetrace\Laravel\Services\RanetraceApiClient;
+use Ranetrace\Laravel\Services\RanetraceBatchBuffer;
+use Ranetrace\Laravel\Services\RanetracePauseManager;
 
 beforeEach(function (): void {
-    Config::set('sorane.key', 'test-api-key');
-    Config::set('sorane.batch.cache_driver', 'array');
-    Config::set('sorane.batch.buffer_ttl', 3600);
-    Config::set('sorane.batch.size', 100);
+    Config::set('ranetrace.key', 'test-api-key');
+    Config::set('ranetrace.batch.cache_driver', 'array');
+    Config::set('ranetrace.batch.buffer_ttl', 3600);
+    Config::set('ranetrace.batch.size', 100);
 
     Cache::store('array')->flush();
     Queue::fake();
@@ -24,10 +24,10 @@ beforeEach(function (): void {
 });
 
 test('events are added to buffer', function (): void {
-    Config::set('sorane.events.enabled', true);
-    Config::set('sorane.events.queue', true);
+    Config::set('ranetrace.events.enabled', true);
+    Config::set('ranetrace.events.queue', true);
 
-    $buffer = app(SoraneBatchBuffer::class);
+    $buffer = app(RanetraceBatchBuffer::class);
 
     $job = new HandleEventJob(['event_name' => 'test_event']);
     $job->handle($buffer);
@@ -36,10 +36,10 @@ test('events are added to buffer', function (): void {
 });
 
 test('events are added to buffer without auto-dispatch', function (): void {
-    Config::set('sorane.batch.events.size', 2);
+    Config::set('ranetrace.batch.events.size', 2);
     Cache::store('array')->flush();
 
-    $buffer = app(SoraneBatchBuffer::class);
+    $buffer = app(RanetraceBatchBuffer::class);
 
     // Add first item
     $job1 = new HandleEventJob(['event_name' => 'event1']);
@@ -65,7 +65,7 @@ test('batch job sends multiple items in one request', function (): void {
         ], 200),
     ]);
 
-    $buffer = app(SoraneBatchBuffer::class);
+    $buffer = app(RanetraceBatchBuffer::class);
 
     // Add items to buffer
     $buffer->addItem('events', ['event_name' => 'event1']);
@@ -73,11 +73,11 @@ test('batch job sends multiple items in one request', function (): void {
     $buffer->addItem('events', ['event_name' => 'event3']);
 
     // Process batch
-    $batchJob = new SendBatchToSoraneJob('events', 10);
+    $batchJob = new SendBatchToRanetraceJob('events', 10);
     $batchJob->handle(
-        app(SoraneApiClient::class),
+        app(RanetraceApiClient::class),
         $buffer,
-        app(SoranePauseManager::class)
+        app(RanetracePauseManager::class)
     );
 
     // Verify single API call was made with all items
@@ -96,12 +96,12 @@ test('batch job sends multiple items in one request', function (): void {
 });
 
 test('different types maintain separate buffers', function (): void {
-    $buffer = app(SoraneBatchBuffer::class);
+    $buffer = app(RanetraceBatchBuffer::class);
 
     $eventJob = new HandleEventJob(['event_name' => 'test']);
     $eventJob->handle($buffer);
 
-    $logJob = new Sorane\Laravel\Jobs\HandleLogJob(['message' => 'test log']);
+    $logJob = new Ranetrace\Laravel\Jobs\HandleLogJob(['message' => 'test log']);
     $logJob->handle($buffer);
 
     expect($buffer->count('events'))->toBe(1);
@@ -117,7 +117,7 @@ test('batch job respects max items limit', function (): void {
         ], 200),
     ]);
 
-    $buffer = app(SoraneBatchBuffer::class);
+    $buffer = app(RanetraceBatchBuffer::class);
 
     // Add 10 items
     for ($i = 1; $i <= 10; $i++) {
@@ -127,11 +127,11 @@ test('batch job respects max items limit', function (): void {
     expect($buffer->count('events'))->toBe(10);
 
     // Process batch with limit of 5 (atomically removes 5 items)
-    $batchJob = new SendBatchToSoraneJob('events', 5);
+    $batchJob = new SendBatchToRanetraceJob('events', 5);
     $batchJob->handle(
-        app(SoraneApiClient::class),
+        app(RanetraceApiClient::class),
         $buffer,
-        app(SoranePauseManager::class)
+        app(RanetracePauseManager::class)
     );
 
     // Only 5 should be sent
@@ -148,13 +148,13 @@ test('batch job respects max items limit', function (): void {
 test('empty buffer does not make api calls', function (): void {
     Http::fake();
 
-    $buffer = app(SoraneBatchBuffer::class);
+    $buffer = app(RanetraceBatchBuffer::class);
 
-    $batchJob = new SendBatchToSoraneJob('events', 10);
+    $batchJob = new SendBatchToRanetraceJob('events', 10);
     $batchJob->handle(
-        app(SoraneApiClient::class),
+        app(RanetraceApiClient::class),
         $buffer,
-        app(SoranePauseManager::class)
+        app(RanetracePauseManager::class)
     );
 
     Http::assertNothingSent();
@@ -170,7 +170,7 @@ test('failed batch items are re-added to buffer for retry', function (): void {
         ], 500),
     ]);
 
-    $buffer = app(SoraneBatchBuffer::class);
+    $buffer = app(RanetraceBatchBuffer::class);
 
     // Add 3 items
     $buffer->addItem('events', ['event_name' => 'event1']);
@@ -180,14 +180,14 @@ test('failed batch items are re-added to buffer for retry', function (): void {
     expect($buffer->count('events'))->toBe(3);
 
     // Try to process batch (will fail and re-add to buffer)
-    $batchJob = new SendBatchToSoraneJob('events', 10);
+    $batchJob = new SendBatchToRanetraceJob('events', 10);
 
     $exceptionThrown = false;
     try {
         $batchJob->handle(
-            app(SoraneApiClient::class),
+            app(RanetraceApiClient::class),
             $buffer,
-            app(SoranePauseManager::class)
+            app(RanetracePauseManager::class)
         );
     } catch (Throwable $e) {
         $exceptionThrown = true;

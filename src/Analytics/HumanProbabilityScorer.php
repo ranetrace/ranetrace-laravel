@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Sorane\Laravel\Analytics;
+namespace Ranetrace\Laravel\Analytics;
 
 use Illuminate\Http\Request;
 
@@ -303,7 +303,7 @@ class HumanProbabilityScorer
      */
     protected function scoreRequestFrequency(Request $request, int $score): int
     {
-        $cacheKey = 'sorane:request_frequency:'.$request->ip();
+        $cacheKey = 'ranetrace:request_frequency:'.$request->ip();
         $requestCount = cache()->get($cacheKey, 0);
 
         if ($requestCount > 10) {

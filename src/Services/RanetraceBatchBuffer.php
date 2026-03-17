@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace Sorane\Laravel\Services;
+namespace Ranetrace\Laravel\Services;
 
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use Psr\SimpleCache\InvalidArgumentException;
-use Sorane\Laravel\Support\InternalLogger;
+use Ranetrace\Laravel\Support\InternalLogger;
 
-class SoraneBatchBuffer
+class RanetraceBatchBuffer
 {
-    protected const string BUFFER_PREFIX = 'sorane:buffer:';
+    protected const string BUFFER_PREFIX = 'ranetrace:buffer:';
 
     protected string $cacheDriver;
 
@@ -19,8 +19,8 @@ class SoraneBatchBuffer
 
     public function __construct()
     {
-        $this->cacheDriver = config('sorane.batch.cache_driver', 'redis');
-        $this->ttl = config('sorane.batch.buffer_ttl', 3600);
+        $this->cacheDriver = config('ranetrace.batch.cache_driver', 'redis');
+        $this->ttl = config('ranetrace.batch.buffer_ttl', 3600);
     }
 
     /**
@@ -182,6 +182,6 @@ class SoraneBatchBuffer
      */
     protected function getMaxBufferSize(): int
     {
-        return config('sorane.batch.max_buffer_size', 1000);
+        return config('ranetrace.batch.max_buffer_size', 1000);
     }
 }

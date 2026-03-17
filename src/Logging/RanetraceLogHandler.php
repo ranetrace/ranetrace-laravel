@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace Sorane\Laravel\Logging;
+namespace Ranetrace\Laravel\Logging;
 
 use Monolog\Handler\AbstractProcessingHandler;
 use Monolog\LogRecord;
-use Sorane\Laravel\Jobs\HandleLogJob;
-use Sorane\Laravel\Support\InternalLogger;
-use Sorane\Laravel\Utilities\DataSanitizer;
+use Ranetrace\Laravel\Jobs\HandleLogJob;
+use Ranetrace\Laravel\Support\InternalLogger;
+use Ranetrace\Laravel\Utilities\DataSanitizer;
 use Throwable;
 
-class SoraneLogHandler extends AbstractProcessingHandler
+class RanetraceLogHandler extends AbstractProcessingHandler
 {
     public function __construct(string|int $level = 'DEBUG', bool $bubble = true)
     {
@@ -23,24 +23,24 @@ class SoraneLogHandler extends AbstractProcessingHandler
      */
     protected function write(LogRecord $record): void
     {
-        // Skip if Sorane is not enabled globally
-        if (! config('sorane.enabled', false)) {
+        // Skip if Ranetrace is not enabled globally
+        if (! config('ranetrace.enabled', false)) {
             return;
         }
 
         // Skip if logging is not enabled
-        if (! config('sorane.logging.enabled', false)) {
+        if (! config('ranetrace.logging.enabled', false)) {
             return;
         }
 
         // Skip if the channel should be excluded
-        $excludedChannels = config('sorane.logging.excluded_channels', []);
+        $excludedChannels = config('ranetrace.logging.excluded_channels', []);
         $channelName = $record->channel ?? 'default';
         if (in_array($channelName, $excludedChannels)) {
             return;
         }
 
-        // Prepare log data for Sorane API
+        // Prepare log data for Ranetrace API
         // Limit field sizes to stay within API 5MB request limit
         $message = $record->message;
         $truncationSuffix = '... (truncated)';
@@ -75,14 +75,14 @@ class SoraneLogHandler extends AbstractProcessingHandler
 
         try {
             // Send via queue by default, or synchronously if queue is disabled
-            if (config('sorane.logging.queue', true)) {
+            if (config('ranetrace.logging.queue', true)) {
                 HandleLogJob::dispatch($logData);
             } else {
                 HandleLogJob::dispatchSync($logData);
             }
         } catch (Throwable $e) {
-            // Prevent infinite loops by using sorane_internal channel
-            InternalLogger::warning('Failed to queue log to Sorane: '.$e->getMessage());
+            // Prevent infinite loops by using ranetrace_internal channel
+            InternalLogger::warning('Failed to queue log to Ranetrace: '.$e->getMessage());
         }
     }
 }

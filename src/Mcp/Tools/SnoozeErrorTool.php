@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-namespace Sorane\Laravel\Mcp\Tools;
+namespace Ranetrace\Laravel\Mcp\Tools;
 
 use DateTimeImmutable;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
 use Laravel\Mcp\Server\Tool;
-use Sorane\Laravel\Mcp\Tools\Concerns\NormalizesIds;
-use Sorane\Laravel\Services\SoraneApiClient;
+use Ranetrace\Laravel\Mcp\Tools\Concerns\NormalizesIds;
+use Ranetrace\Laravel\Services\RanetraceApiClient;
 
 class SnoozeErrorTool extends Tool
 {
@@ -24,7 +24,7 @@ class SnoozeErrorTool extends Tool
     protected string $description = 'Temporarily snooze an error. Snoozed errors will not trigger notifications until the snooze period expires. Use "duration" for preset durations or "until" for a specific datetime.';
 
     public function __construct(
-        protected SoraneApiClient $client
+        protected RanetraceApiClient $client
     ) {}
 
     /**

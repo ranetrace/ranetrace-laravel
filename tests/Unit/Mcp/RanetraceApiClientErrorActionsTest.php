@@ -5,10 +5,10 @@ declare(strict_types=1);
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
-use Sorane\Laravel\Services\SoraneApiClient;
+use Ranetrace\Laravel\Services\RanetraceApiClient;
 
 beforeEach(function (): void {
-    $this->client = new SoraneApiClient('test-api-key');
+    $this->client = new RanetraceApiClient('test-api-key');
 });
 
 // ============================================
@@ -62,8 +62,8 @@ test('resolveError sends javascript type correctly', function (): void {
 });
 
 test('resolveError returns error when API key is not configured', function (): void {
-    config(['sorane.key' => null]);
-    $client = new SoraneApiClient(null);
+    config(['ranetrace.key' => null]);
+    $client = new RanetraceApiClient(null);
     $result = $client->resolveError('123');
 
     expect($result['success'])->toBeFalse();
@@ -124,8 +124,8 @@ test('reopenError sends correct request to API', function (): void {
 });
 
 test('reopenError returns error when API key is not configured', function (): void {
-    config(['sorane.key' => null]);
-    $client = new SoraneApiClient(null);
+    config(['ranetrace.key' => null]);
+    $client = new RanetraceApiClient(null);
     $result = $client->reopenError('123');
 
     expect($result['success'])->toBeFalse();
@@ -160,8 +160,8 @@ test('ignoreError sends correct request to API', function (): void {
 });
 
 test('ignoreError returns error when API key is not configured', function (): void {
-    config(['sorane.key' => null]);
-    $client = new SoraneApiClient(null);
+    config(['ranetrace.key' => null]);
+    $client = new RanetraceApiClient(null);
     $result = $client->ignoreError('123');
 
     expect($result['success'])->toBeFalse();
@@ -196,8 +196,8 @@ test('unignoreError sends correct request to API', function (): void {
 });
 
 test('unignoreError returns error when API key is not configured', function (): void {
-    config(['sorane.key' => null]);
-    $client = new SoraneApiClient(null);
+    config(['ranetrace.key' => null]);
+    $client = new RanetraceApiClient(null);
     $result = $client->unignoreError('123');
 
     expect($result['success'])->toBeFalse();
@@ -262,8 +262,8 @@ test('snoozeError handles javascript type', function (): void {
 });
 
 test('snoozeError returns error when API key is not configured', function (): void {
-    config(['sorane.key' => null]);
-    $client = new SoraneApiClient(null);
+    config(['ranetrace.key' => null]);
+    $client = new RanetraceApiClient(null);
     $result = $client->snoozeError('123', ['duration' => '24h']);
 
     expect($result['success'])->toBeFalse();
@@ -311,8 +311,8 @@ test('unsnoozeError sends correct request to API', function (): void {
 });
 
 test('unsnoozeError returns error when API key is not configured', function (): void {
-    config(['sorane.key' => null]);
-    $client = new SoraneApiClient(null);
+    config(['ranetrace.key' => null]);
+    $client = new RanetraceApiClient(null);
     $result = $client->unsnoozeError('123');
 
     expect($result['success'])->toBeFalse();
@@ -357,8 +357,8 @@ test('deleteError sends javascript type correctly', function (): void {
 });
 
 test('deleteError returns error when API key is not configured', function (): void {
-    config(['sorane.key' => null]);
-    $client = new SoraneApiClient(null);
+    config(['ranetrace.key' => null]);
+    $client = new RanetraceApiClient(null);
     $result = $client->deleteError('123');
 
     expect($result['success'])->toBeFalse();
@@ -446,8 +446,8 @@ test('getErrorActivity sends type parameter', function (): void {
 });
 
 test('getErrorActivity returns error when API key is not configured', function (): void {
-    config(['sorane.key' => null]);
-    $client = new SoraneApiClient(null);
+    config(['ranetrace.key' => null]);
+    $client = new RanetraceApiClient(null);
     $result = $client->getErrorActivity('123');
 
     expect($result['success'])->toBeFalse();
@@ -513,8 +513,8 @@ test('bulkResolveErrors sends javascript type', function (): void {
 });
 
 test('bulkResolveErrors returns error when API key is not configured', function (): void {
-    config(['sorane.key' => null]);
-    $client = new SoraneApiClient(null);
+    config(['ranetrace.key' => null]);
+    $client = new RanetraceApiClient(null);
     $result = $client->bulkResolveErrors(['123']);
 
     expect($result['success'])->toBeFalse();
@@ -561,8 +561,8 @@ test('bulkReopenErrors sends correct request to API', function (): void {
 });
 
 test('bulkReopenErrors returns error when API key is not configured', function (): void {
-    config(['sorane.key' => null]);
-    $client = new SoraneApiClient(null);
+    config(['ranetrace.key' => null]);
+    $client = new RanetraceApiClient(null);
     $result = $client->bulkReopenErrors(['123']);
 
     expect($result['success'])->toBeFalse();
@@ -597,8 +597,8 @@ test('bulkIgnoreErrors sends correct request to API', function (): void {
 });
 
 test('bulkIgnoreErrors returns error when API key is not configured', function (): void {
-    config(['sorane.key' => null]);
-    $client = new SoraneApiClient(null);
+    config(['ranetrace.key' => null]);
+    $client = new RanetraceApiClient(null);
     $result = $client->bulkIgnoreErrors(['123']);
 
     expect($result['success'])->toBeFalse();
@@ -632,8 +632,8 @@ test('bulkDeleteErrors sends correct request to API', function (): void {
 });
 
 test('bulkDeleteErrors returns error when API key is not configured', function (): void {
-    config(['sorane.key' => null]);
-    $client = new SoraneApiClient(null);
+    config(['ranetrace.key' => null]);
+    $client = new RanetraceApiClient(null);
     $result = $client->bulkDeleteErrors(['123']);
 
     expect($result['success'])->toBeFalse();
@@ -672,9 +672,9 @@ test('error action methods include correct headers', function (): void {
     $this->client->resolveError('123');
 
     Http::assertSent(function (Request $request) {
-        return $request->hasHeader('User-Agent', 'Sorane-Laravel/MCP/1.0')
+        return $request->hasHeader('User-Agent', 'Ranetrace-Laravel/MCP/1.0')
             && $request->hasHeader('Accept', 'application/json')
-            && $request->hasHeader('Sorane-API-Version', '1.0')
+            && $request->hasHeader('Ranetrace-API-Version', '1.0')
             && $request->hasHeader('Content-Type', 'application/json');
     });
 });

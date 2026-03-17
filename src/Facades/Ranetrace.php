@@ -2,32 +2,32 @@
 
 declare(strict_types=1);
 
-namespace Sorane\Laravel\Facades;
+namespace Ranetrace\Laravel\Facades;
 
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Support\Facades\Facade;
 use Throwable;
 
 /**
- * @see \Sorane\Laravel\Sorane
+ * @see \Ranetrace\Laravel\Ranetrace
  *
  * @method static void trackEvent(string $eventName, array $properties = [], ?int $userId = null, bool $validate = true)
  */
-class Sorane extends Facade
+class Ranetrace extends Facade
 {
     public static function handles(Exceptions $exceptions): void
     {
-        $exceptions->reportable(static function (Throwable $exception): \Sorane\Laravel\Sorane {
-            $sorane = app(\Sorane\Laravel\Sorane::class);
+        $exceptions->reportable(static function (Throwable $exception): \Ranetrace\Laravel\Ranetrace {
+            $ranetrace = app(\Ranetrace\Laravel\Ranetrace::class);
 
-            $sorane->report($exception);
+            $ranetrace->report($exception);
 
-            return $sorane;
+            return $ranetrace;
         });
     }
 
     protected static function getFacadeAccessor(): string
     {
-        return \Sorane\Laravel\Sorane::class;
+        return \Ranetrace\Laravel\Ranetrace::class;
     }
 }

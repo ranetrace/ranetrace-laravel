@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use Sorane\Laravel\Analytics\VisitDataCollector;
+use Ranetrace\Laravel\Analytics\VisitDataCollector;
 
 test('it collects basic visit data', function (): void {
     $request = Illuminate\Http\Request::create('https://example.com/test-page?utm_source=google', 'GET');

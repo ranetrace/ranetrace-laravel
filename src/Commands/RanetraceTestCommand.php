@@ -2,17 +2,17 @@
 
 declare(strict_types=1);
 
-namespace Sorane\Laravel\Commands;
+namespace Ranetrace\Laravel\Commands;
 
 use Illuminate\Console\Command;
 
-class SoraneTestCommand extends Command
+class RanetraceTestCommand extends Command
 {
-    public $signature = 'sorane:test
+    public $signature = 'ranetrace:test
                         {--feature= : Test specific feature(s) - comma-separated or use "all"}
                         {--all : Test all features}';
 
-    public $description = 'Validate Sorane configuration and optionally test specific features';
+    public $description = 'Validate Ranetrace configuration and optionally test specific features';
 
     public function handle(): int
     {
@@ -40,7 +40,7 @@ class SoraneTestCommand extends Command
 
     protected function testAllFeatures(): int
     {
-        $this->info('🧪 Testing All Sorane Features...');
+        $this->info('🧪 Testing All Ranetrace Features...');
         $this->newLine();
 
         $features = ['errors', 'events', 'logging', 'javascript_errors', 'analytics'];
@@ -105,11 +105,11 @@ class SoraneTestCommand extends Command
     protected function testSpecificFeature(string $feature, bool $showHeader = true): int
     {
         $featureCommands = [
-            'errors' => 'sorane:test-errors',
-            'events' => 'sorane:test-events',
-            'logging' => 'sorane:test-logging',
-            'javascript_errors' => 'sorane:test-javascript-errors',
-            'analytics' => 'sorane:test-analytics',
+            'errors' => 'ranetrace:test-errors',
+            'events' => 'ranetrace:test-events',
+            'logging' => 'ranetrace:test-logging',
+            'javascript_errors' => 'ranetrace:test-javascript-errors',
+            'analytics' => 'ranetrace:test-analytics',
         ];
 
         if (! isset($featureCommands[$feature])) {
@@ -131,22 +131,22 @@ class SoraneTestCommand extends Command
 
     protected function validateConfiguration(): int
     {
-        $this->info('🔍 Testing Sorane Configuration...');
+        $this->info('🔍 Testing Ranetrace Configuration...');
         $this->newLine();
 
-        $config = config('sorane');
+        $config = config('ranetrace');
 
         // Test the structure of the config file
         if (! is_array($config)) {
-            $this->error('❌ Sorane configuration file is not valid.');
+            $this->error('❌ Ranetrace configuration file is not valid.');
 
             return self::FAILURE;
         }
 
         // Check API key
         if (empty($config['key'])) {
-            $this->error('❌ Sorane API key is not set.');
-            $this->info('💡 Add to your .env file: SORANE_KEY=your-api-key-here');
+            $this->error('❌ Ranetrace API key is not set.');
+            $this->info('💡 Add to your .env file: RANETRACE_KEY=your-api-key-here');
 
             return self::FAILURE;
         }
@@ -206,11 +206,11 @@ class SoraneTestCommand extends Command
         if ($enabledFeatures->isEmpty()) {
             $this->warn('⚠️  All features are currently disabled.');
             $this->info('💡 Enable features in your .env file:');
-            $this->line('   SORANE_ERRORS_ENABLED=true');
-            $this->line('   SORANE_EVENTS_ENABLED=true');
-            $this->line('   SORANE_WEBSITE_ANALYTICS_ENABLED=true');
-            $this->line('   SORANE_JAVASCRIPT_ERRORS_ENABLED=true');
-            $this->line('   SORANE_LOGGING_ENABLED=true');
+            $this->line('   RANETRACE_ERRORS_ENABLED=true');
+            $this->line('   RANETRACE_EVENTS_ENABLED=true');
+            $this->line('   RANETRACE_WEBSITE_ANALYTICS_ENABLED=true');
+            $this->line('   RANETRACE_JAVASCRIPT_ERRORS_ENABLED=true');
+            $this->line('   RANETRACE_LOGGING_ENABLED=true');
             $this->newLine();
         }
 
@@ -229,29 +229,29 @@ class SoraneTestCommand extends Command
             $this->newLine();
         }
 
-        $this->info('✅ Sorane configuration is valid!');
+        $this->info('✅ Ranetrace configuration is valid!');
         $this->newLine();
 
         $this->info('📚 Test specific features:');
-        $this->line('   • <fg=yellow>php artisan sorane:test --feature=errors</> - Test error reporting');
-        $this->line('   • <fg=yellow>php artisan sorane:test --feature=events</> - Test event tracking');
-        $this->line('   • <fg=yellow>php artisan sorane:test --feature=logging</> - Test logging');
-        $this->line('   • <fg=yellow>php artisan sorane:test --feature=javascript_errors</> - JavaScript setup');
-        $this->line('   • <fg=yellow>php artisan sorane:test --feature=analytics</> - Analytics setup');
+        $this->line('   • <fg=yellow>php artisan ranetrace:test --feature=errors</> - Test error reporting');
+        $this->line('   • <fg=yellow>php artisan ranetrace:test --feature=events</> - Test event tracking');
+        $this->line('   • <fg=yellow>php artisan ranetrace:test --feature=logging</> - Test logging');
+        $this->line('   • <fg=yellow>php artisan ranetrace:test --feature=javascript_errors</> - JavaScript setup');
+        $this->line('   • <fg=yellow>php artisan ranetrace:test --feature=analytics</> - Analytics setup');
         $this->newLine();
 
         $this->info('Test multiple features:');
-        $this->line('   • <fg=yellow>php artisan sorane:test --feature=errors,events</> - Test multiple');
-        $this->line('   • <fg=yellow>php artisan sorane:test --all</> - Test all features');
-        $this->line('   • <fg=yellow>php artisan sorane:test --feature=all</> - Test all features');
+        $this->line('   • <fg=yellow>php artisan ranetrace:test --feature=errors,events</> - Test multiple');
+        $this->line('   • <fg=yellow>php artisan ranetrace:test --all</> - Test all features');
+        $this->line('   • <fg=yellow>php artisan ranetrace:test --feature=all</> - Test all features');
         $this->newLine();
 
         $this->info('Or use the specific commands:');
-        $this->line('   • <fg=yellow>php artisan sorane:test-errors</>');
-        $this->line('   • <fg=yellow>php artisan sorane:test-events</>');
-        $this->line('   • <fg=yellow>php artisan sorane:test-logging</>');
-        $this->line('   • <fg=yellow>php artisan sorane:test-javascript-errors</>');
-        $this->line('   • <fg=yellow>php artisan sorane:test-analytics</>');
+        $this->line('   • <fg=yellow>php artisan ranetrace:test-errors</>');
+        $this->line('   • <fg=yellow>php artisan ranetrace:test-events</>');
+        $this->line('   • <fg=yellow>php artisan ranetrace:test-logging</>');
+        $this->line('   • <fg=yellow>php artisan ranetrace:test-javascript-errors</>');
+        $this->line('   • <fg=yellow>php artisan ranetrace:test-analytics</>');
 
         return self::SUCCESS;
     }

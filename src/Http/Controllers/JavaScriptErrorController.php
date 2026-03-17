@@ -2,30 +2,30 @@
 
 declare(strict_types=1);
 
-namespace Sorane\Laravel\Http\Controllers;
+namespace Ranetrace\Laravel\Http\Controllers;
 
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Validator;
-use Sorane\Laravel\Jobs\HandleJavaScriptErrorJob;
-use Sorane\Laravel\Utilities\DataSanitizer;
+use Ranetrace\Laravel\Jobs\HandleJavaScriptErrorJob;
+use Ranetrace\Laravel\Utilities\DataSanitizer;
 use Throwable;
 
 class JavaScriptErrorController extends Controller
 {
     public function store(Request $request): JsonResponse
     {
-        // Check if Sorane is enabled globally
-        if (! config('sorane.enabled', false)) {
+        // Check if Ranetrace is enabled globally
+        if (! config('ranetrace.enabled', false)) {
             return response()->json([
                 'success' => false,
-                'message' => 'Sorane is not enabled',
+                'message' => 'Ranetrace is not enabled',
             ], 403);
         }
 
         // Check if JavaScript error tracking is enabled
-        if (! config('sorane.javascript_errors.enabled', false)) {
+        if (! config('ranetrace.javascript_errors.enabled', false)) {
             return response()->json([
                 'success' => false,
                 'message' => 'JavaScript error tracking is not enabled',
@@ -59,7 +59,7 @@ class JavaScriptErrorController extends Controller
         }
 
         // Check if error should be ignored based on patterns
-        $ignoredErrors = config('sorane.javascript_errors.ignored_errors', []);
+        $ignoredErrors = config('ranetrace.javascript_errors.ignored_errors', []);
         $errorMessage = $request->input('message');
 
         foreach ($ignoredErrors as $pattern) {
@@ -72,7 +72,7 @@ class JavaScriptErrorController extends Controller
         }
 
         // Apply sample rate
-        $sampleRate = config('sorane.javascript_errors.sample_rate', 1.0);
+        $sampleRate = config('ranetrace.javascript_errors.sample_rate', 1.0);
         if ($sampleRate < 1.0 && mt_rand() / mt_getrandmax() > $sampleRate) {
             return response()->json([
                 'success' => true,
@@ -80,7 +80,7 @@ class JavaScriptErrorController extends Controller
             ], 200);
         }
 
-        // Prepare error data for Sorane API
+        // Prepare error data for Ranetrace API
         // Limit context size to stay within API 5MB request limit
         $context = DataSanitizer::sanitizeForSerialization($request->input('context', []));
         $contextJson = json_encode($context);
@@ -116,7 +116,7 @@ class JavaScriptErrorController extends Controller
 
         try {
             // Send via queue by default, or synchronously if queue is disabled
-            if (config('sorane.javascript_errors.queue', true)) {
+            if (config('ranetrace.javascript_errors.queue', true)) {
                 HandleJavaScriptErrorJob::dispatch($errorData);
             } else {
                 HandleJavaScriptErrorJob::dispatchSync($errorData);
@@ -136,7 +136,7 @@ class JavaScriptErrorController extends Controller
 
     protected function sanitizeBreadcrumbs(array $breadcrumbs): array
     {
-        $maxBreadcrumbs = config('sorane.javascript_errors.max_breadcrumbs', 20);
+        $maxBreadcrumbs = config('ranetrace.javascript_errors.max_breadcrumbs', 20);
 
         // Limit the number of breadcrumbs
         $breadcrumbs = array_slice($breadcrumbs, -$maxBreadcrumbs);

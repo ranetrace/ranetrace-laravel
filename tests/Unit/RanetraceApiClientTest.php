@@ -3,11 +3,11 @@
 declare(strict_types=1);
 
 use Illuminate\Support\Facades\Http;
-use Sorane\Laravel\Services\SoraneApiClient;
+use Ranetrace\Laravel\Services\RanetraceApiClient;
 
 test('it sends error batch to correct endpoint', function (): void {
     Http::fake();
-    $client = new SoraneApiClient('test-key');
+    $client = new RanetraceApiClient('test-key');
 
     $client->sendErrorBatch([['message' => 'Test error']]);
 
@@ -19,7 +19,7 @@ test('it sends error batch to correct endpoint', function (): void {
 
 test('it sends javascript error batch to correct endpoint', function (): void {
     Http::fake();
-    $client = new SoraneApiClient('test-key');
+    $client = new RanetraceApiClient('test-key');
 
     $client->sendJavaScriptErrorBatch([['message' => 'JS error']]);
 
@@ -31,7 +31,7 @@ test('it sends javascript error batch to correct endpoint', function (): void {
 
 test('it includes api key in authorization header', function (): void {
     Http::fake();
-    $client = new SoraneApiClient('test-key-123');
+    $client = new RanetraceApiClient('test-key-123');
 
     $client->sendErrorBatch([['message' => 'Test']]);
 
@@ -42,40 +42,40 @@ test('it includes api key in authorization header', function (): void {
 
 test('it sends correct user agent header for errors', function (): void {
     Http::fake();
-    $client = new SoraneApiClient('test-key');
+    $client = new RanetraceApiClient('test-key');
 
     $client->sendErrorBatch([['message' => 'Test']]);
 
     Http::assertSent(function ($request): bool {
-        return $request->hasHeader('User-Agent', 'Sorane-Laravel/Errors/1.0');
+        return $request->hasHeader('User-Agent', 'Ranetrace-Laravel/Errors/1.0');
     });
 });
 
 test('it sends correct user agent header for javascript errors', function (): void {
     Http::fake();
-    $client = new SoraneApiClient('test-key');
+    $client = new RanetraceApiClient('test-key');
 
     $client->sendJavaScriptErrorBatch([['message' => 'Test']]);
 
     Http::assertSent(function ($request): bool {
-        return $request->hasHeader('User-Agent', 'Sorane-Laravel/JavaScriptErrors/1.0');
+        return $request->hasHeader('User-Agent', 'Ranetrace-Laravel/JavaScriptErrors/1.0');
     });
 });
 
 test('it sends correct user agent header for logs', function (): void {
     Http::fake();
-    $client = new SoraneApiClient('test-key');
+    $client = new RanetraceApiClient('test-key');
 
     $client->sendLogBatch([['message' => 'Test']]);
 
     Http::assertSent(function ($request): bool {
-        return $request->hasHeader('User-Agent', 'Sorane-Laravel/Logs/1.0');
+        return $request->hasHeader('User-Agent', 'Ranetrace-Laravel/Logs/1.0');
     });
 });
 
 test('it sends event batch to events endpoint', function (): void {
     Http::fake();
-    $client = new SoraneApiClient('test-key');
+    $client = new RanetraceApiClient('test-key');
 
     $client->sendEventBatch([['event_name' => 'test_event']]);
 
@@ -87,7 +87,7 @@ test('it sends event batch to events endpoint', function (): void {
 
 test('it sends page visit batch to analytics endpoint', function (): void {
     Http::fake();
-    $client = new SoraneApiClient('test-key');
+    $client = new RanetraceApiClient('test-key');
 
     $client->sendPageVisitBatch([['url' => 'https://example.com']]);
 
@@ -102,7 +102,7 @@ test('it returns success on successful response', function (): void {
         '*' => Http::response(['success' => true, 'received' => 1, 'processed' => 1], 200),
     ]);
 
-    $client = new SoraneApiClient('test-key');
+    $client = new RanetraceApiClient('test-key');
     $result = $client->sendErrorBatch([['message' => 'Test']]);
 
     expect($result['success'])->toBeTrue();
@@ -112,8 +112,8 @@ test('it returns success on successful response', function (): void {
 
 test('it returns error when api key is missing', function (): void {
     Http::fake();
-    config(['sorane.key' => null]);
-    $client = new SoraneApiClient(null);
+    config(['ranetrace.key' => null]);
+    $client = new RanetraceApiClient(null);
 
     $result = $client->sendErrorBatch([['message' => 'Test']]);
 
@@ -127,7 +127,7 @@ test('it returns error on failed response', function (): void {
         '*' => Http::response(['error' => 'Failed'], 500),
     ]);
 
-    $client = new SoraneApiClient('test-key');
+    $client = new RanetraceApiClient('test-key');
     $result = $client->sendErrorBatch([['message' => 'Test']]);
 
     expect($result['success'])->toBeFalse();
@@ -138,7 +138,7 @@ test('it handles network exceptions gracefully', function (): void {
         throw new Exception('Network error');
     });
 
-    $client = new SoraneApiClient('test-key');
+    $client = new RanetraceApiClient('test-key');
     $result = $client->sendErrorBatch([['message' => 'Test']]);
 
     expect($result['success'])->toBeFalse();
@@ -147,7 +147,7 @@ test('it handles network exceptions gracefully', function (): void {
 
 test('it returns error for empty batch', function (): void {
     Http::fake();
-    $client = new SoraneApiClient('test-key');
+    $client = new RanetraceApiClient('test-key');
 
     $result = $client->sendErrorBatch([]);
 
@@ -158,8 +158,8 @@ test('it returns error for empty batch', function (): void {
 
 test('it uses timeout from config', function (): void {
     Http::fake();
-    config(['sorane.errors.timeout' => 15]);
-    $client = new SoraneApiClient('test-key');
+    config(['ranetrace.errors.timeout' => 15]);
+    $client = new RanetraceApiClient('test-key');
 
     $client->sendErrorBatch([['message' => 'Test']]);
 

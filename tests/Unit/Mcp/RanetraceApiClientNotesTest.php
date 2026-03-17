@@ -5,10 +5,10 @@ declare(strict_types=1);
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
-use Sorane\Laravel\Services\SoraneApiClient;
+use Ranetrace\Laravel\Services\RanetraceApiClient;
 
 beforeEach(function (): void {
-    $this->client = new SoraneApiClient('test-api-key');
+    $this->client = new RanetraceApiClient('test-api-key');
 });
 
 // ============================================
@@ -43,8 +43,8 @@ test('createNote sends correct request to API', function (): void {
 });
 
 test('createNote returns error when API key is not configured', function (): void {
-    config(['sorane.key' => null]);
-    $client = new SoraneApiClient(null);
+    config(['ranetrace.key' => null]);
+    $client = new RanetraceApiClient(null);
     $result = $client->createNote('123', ['body' => 'Test']);
 
     expect($result['success'])->toBeFalse();
@@ -160,8 +160,8 @@ test('listNotes sends query parameters correctly', function (): void {
 });
 
 test('listNotes returns error when API key is not configured', function (): void {
-    config(['sorane.key' => null]);
-    $client = new SoraneApiClient(null);
+    config(['ranetrace.key' => null]);
+    $client = new RanetraceApiClient(null);
     $result = $client->listNotes('123');
 
     expect($result['success'])->toBeFalse();
@@ -208,8 +208,8 @@ test('getNote retrieves a specific note', function (): void {
 });
 
 test('getNote returns error when API key is not configured', function (): void {
-    config(['sorane.key' => null]);
-    $client = new SoraneApiClient(null);
+    config(['ranetrace.key' => null]);
+    $client = new RanetraceApiClient(null);
     $result = $client->getNote('123', '456');
 
     expect($result['success'])->toBeFalse();
@@ -260,8 +260,8 @@ test('updateNote sends correct request to API', function (): void {
 });
 
 test('updateNote returns error when API key is not configured', function (): void {
-    config(['sorane.key' => null]);
-    $client = new SoraneApiClient(null);
+    config(['ranetrace.key' => null]);
+    $client = new RanetraceApiClient(null);
     $result = $client->updateNote('123', '456', ['body' => 'Test']);
 
     expect($result['success'])->toBeFalse();
@@ -316,8 +316,8 @@ test('deleteNote sends correct request to API', function (): void {
 });
 
 test('deleteNote returns error when API key is not configured', function (): void {
-    config(['sorane.key' => null]);
-    $client = new SoraneApiClient(null);
+    config(['ranetrace.key' => null]);
+    $client = new RanetraceApiClient(null);
     $result = $client->deleteNote('123', '456');
 
     expect($result['success'])->toBeFalse();
@@ -393,8 +393,8 @@ test('createNotesBulk sends correct request to API', function (): void {
 });
 
 test('createNotesBulk returns error when API key is not configured', function (): void {
-    config(['sorane.key' => null]);
-    $client = new SoraneApiClient(null);
+    config(['ranetrace.key' => null]);
+    $client = new RanetraceApiClient(null);
     $result = $client->createNotesBulk('123', ['notes' => [['body' => 'Test']]]);
 
     expect($result['success'])->toBeFalse();
@@ -458,9 +458,9 @@ test('note methods include correct headers', function (): void {
     $this->client->createNote('123', ['body' => 'Test']);
 
     Http::assertSent(function (Request $request) {
-        return $request->hasHeader('User-Agent', 'Sorane-Laravel/MCP/1.0')
+        return $request->hasHeader('User-Agent', 'Ranetrace-Laravel/MCP/1.0')
             && $request->hasHeader('Accept', 'application/json')
-            && $request->hasHeader('Sorane-API-Version', '1.0')
+            && $request->hasHeader('Ranetrace-API-Version', '1.0')
             && $request->hasHeader('Content-Type', 'application/json');
     });
 });

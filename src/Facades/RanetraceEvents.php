@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Sorane\Laravel\Facades;
+namespace Ranetrace\Laravel\Facades;
 
 use Illuminate\Support\Facades\Facade;
 
 /**
- * @see \Sorane\Laravel\Events\EventTracker
+ * @see \Ranetrace\Laravel\Events\EventTracker
  *
  * @method static bool validateEventName(string $eventName)
  * @method static void ensureValidEventName(string $eventName)
@@ -19,10 +19,10 @@ use Illuminate\Support\Facades\Facade;
  * @method static void custom(string $eventName, array $properties = [], ?int $userId = null)
  * @method static void customUnsafe(string $eventName, array $properties = [], ?int $userId = null)
  */
-class SoraneEvents extends Facade
+class RanetraceEvents extends Facade
 {
     protected static function getFacadeAccessor(): string
     {
-        return \Sorane\Laravel\Events\EventTracker::class;
+        return \Ranetrace\Laravel\Events\EventTracker::class;
     }
 }

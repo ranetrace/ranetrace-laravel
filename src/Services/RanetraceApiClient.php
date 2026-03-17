@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Sorane\Laravel\Services;
+namespace Ranetrace\Laravel\Services;
 
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Response;
@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Http;
 use RuntimeException;
 use Throwable;
 
-class SoraneApiClient
+class RanetraceApiClient
 {
     protected string $apiUrl = 'https://api.ranetrace.com/v1';
 
@@ -19,11 +19,11 @@ class SoraneApiClient
     public function __construct(
         protected ?string $apiKey = null
     ) {
-        $this->apiKey = $apiKey ?? config('sorane.key');
+        $this->apiKey = $apiKey ?? config('ranetrace.key');
     }
 
     /**
-     * Send a batch of errors to Sorane.
+     * Send a batch of errors to Ranetrace.
      *
      * @param  array<int, array>  $errors
      * @return array<string, mixed>
@@ -39,14 +39,14 @@ class SoraneApiClient
         }
 
         try {
-            $timeout = config('sorane.errors.timeout', 10);
+            $timeout = config('ranetrace.errors.timeout', 10);
 
             $response = Http::withToken($this->apiKey)
                 ->withHeaders([
-                    'User-Agent' => 'Sorane-Laravel/Errors/1.0',
+                    'User-Agent' => 'Ranetrace-Laravel/Errors/1.0',
                     'Content-Type' => 'application/json',
                     'Accept' => 'application/json',
-                    'Sorane-API-Version' => '1.0',
+                    'Ranetrace-API-Version' => '1.0',
                 ])
                 ->timeout($timeout)
                 ->post($this->apiUrl.'/errors/store', [
@@ -60,7 +60,7 @@ class SoraneApiClient
     }
 
     /**
-     * Send a batch of JavaScript errors to Sorane.
+     * Send a batch of JavaScript errors to Ranetrace.
      *
      * @param  array<int, array>  $errors
      * @return array<string, mixed>
@@ -76,14 +76,14 @@ class SoraneApiClient
         }
 
         try {
-            $timeout = config('sorane.javascript_errors.timeout', 10);
+            $timeout = config('ranetrace.javascript_errors.timeout', 10);
 
             $response = Http::withToken($this->apiKey)
                 ->withHeaders([
-                    'User-Agent' => 'Sorane-Laravel/JavaScriptErrors/1.0',
+                    'User-Agent' => 'Ranetrace-Laravel/JavaScriptErrors/1.0',
                     'Content-Type' => 'application/json',
                     'Accept' => 'application/json',
-                    'Sorane-API-Version' => '1.0',
+                    'Ranetrace-API-Version' => '1.0',
                 ])
                 ->timeout($timeout)
                 ->post($this->apiUrl.'/javascript-errors/store', [
@@ -97,7 +97,7 @@ class SoraneApiClient
     }
 
     /**
-     * Send a batch of events to Sorane.
+     * Send a batch of events to Ranetrace.
      *
      * @param  array<int, array>  $events
      * @return array<string, mixed>
@@ -113,14 +113,14 @@ class SoraneApiClient
         }
 
         try {
-            $timeout = config('sorane.events.timeout', 10);
+            $timeout = config('ranetrace.events.timeout', 10);
 
             $response = Http::withToken($this->apiKey)
                 ->withHeaders([
-                    'User-Agent' => 'Sorane-Laravel/Events/1.0',
+                    'User-Agent' => 'Ranetrace-Laravel/Events/1.0',
                     'Content-Type' => 'application/json',
                     'Accept' => 'application/json',
-                    'Sorane-API-Version' => '1.0',
+                    'Ranetrace-API-Version' => '1.0',
                 ])
                 ->timeout($timeout)
                 ->post($this->apiUrl.'/events/store', [
@@ -134,7 +134,7 @@ class SoraneApiClient
     }
 
     /**
-     * Send a batch of logs to Sorane.
+     * Send a batch of logs to Ranetrace.
      *
      * @param  array<int, array>  $logs
      * @return array<string, mixed>
@@ -150,14 +150,14 @@ class SoraneApiClient
         }
 
         try {
-            $timeout = config('sorane.logging.timeout', 10);
+            $timeout = config('ranetrace.logging.timeout', 10);
 
             $response = Http::withToken($this->apiKey)
                 ->withHeaders([
-                    'User-Agent' => 'Sorane-Laravel/Logs/1.0',
+                    'User-Agent' => 'Ranetrace-Laravel/Logs/1.0',
                     'Content-Type' => 'application/json',
                     'Accept' => 'application/json',
-                    'Sorane-API-Version' => '1.0',
+                    'Ranetrace-API-Version' => '1.0',
                 ])
                 ->timeout($timeout)
                 ->post($this->apiUrl.'/logs/store', [
@@ -171,7 +171,7 @@ class SoraneApiClient
     }
 
     /**
-     * Send a batch of page visits to Sorane.
+     * Send a batch of page visits to Ranetrace.
      *
      * @param  array<int, array>  $visits
      * @return array<string, mixed>
@@ -187,14 +187,14 @@ class SoraneApiClient
         }
 
         try {
-            $timeout = config('sorane.website_analytics.timeout', 10);
+            $timeout = config('ranetrace.website_analytics.timeout', 10);
 
             $response = Http::withToken($this->apiKey)
                 ->withHeaders([
-                    'User-Agent' => 'Sorane-Laravel/PageVisits/1.0',
+                    'User-Agent' => 'Ranetrace-Laravel/PageVisits/1.0',
                     'Content-Type' => 'application/json',
                     'Accept' => 'application/json',
-                    'Sorane-API-Version' => '1.0',
+                    'Ranetrace-API-Version' => '1.0',
                 ])
                 ->timeout($timeout)
                 ->post($this->apiUrl.'/page-visits/store', [
@@ -208,7 +208,7 @@ class SoraneApiClient
     }
 
     /**
-     * Get the latest errors from Sorane.
+     * Get the latest errors from Ranetrace.
      *
      * @param  array{limit?: int, environment?: string, type?: string}  $params
      * @return array<string, mixed>
@@ -222,9 +222,9 @@ class SoraneApiClient
         try {
             $response = $this->executeWithRetry(fn () => Http::withToken($this->apiKey)
                 ->withHeaders([
-                    'User-Agent' => 'Sorane-Laravel/MCP/1.0',
+                    'User-Agent' => 'Ranetrace-Laravel/MCP/1.0',
                     'Accept' => 'application/json',
-                    'Sorane-API-Version' => '1.0',
+                    'Ranetrace-API-Version' => '1.0',
                 ])
                 ->timeout($this->timeout)
                 ->get($this->apiUrl.'/errors', $params)
@@ -237,7 +237,7 @@ class SoraneApiClient
     }
 
     /**
-     * Get a specific error by ID from Sorane.
+     * Get a specific error by ID from Ranetrace.
      *
      * @return array<string, mixed>
      */
@@ -250,9 +250,9 @@ class SoraneApiClient
         try {
             $response = $this->executeWithRetry(fn () => Http::withToken($this->apiKey)
                 ->withHeaders([
-                    'User-Agent' => 'Sorane-Laravel/MCP/1.0',
+                    'User-Agent' => 'Ranetrace-Laravel/MCP/1.0',
                     'Accept' => 'application/json',
-                    'Sorane-API-Version' => '1.0',
+                    'Ranetrace-API-Version' => '1.0',
                 ])
                 ->timeout($this->timeout)
                 ->get($this->apiUrl.'/errors/'.$errorId)
@@ -265,7 +265,7 @@ class SoraneApiClient
     }
 
     /**
-     * Get error statistics from Sorane.
+     * Get error statistics from Ranetrace.
      *
      * @param  array{period?: string}  $params
      * @return array<string, mixed>
@@ -279,9 +279,9 @@ class SoraneApiClient
         try {
             $response = $this->executeWithRetry(fn () => Http::withToken($this->apiKey)
                 ->withHeaders([
-                    'User-Agent' => 'Sorane-Laravel/MCP/1.0',
+                    'User-Agent' => 'Ranetrace-Laravel/MCP/1.0',
                     'Accept' => 'application/json',
-                    'Sorane-API-Version' => '1.0',
+                    'Ranetrace-API-Version' => '1.0',
                 ])
                 ->timeout($this->timeout)
                 ->get($this->apiUrl.'/errors/stats', $params)
@@ -308,10 +308,10 @@ class SoraneApiClient
         try {
             $response = $this->executeWithRetry(fn () => Http::withToken($this->apiKey)
                 ->withHeaders([
-                    'User-Agent' => 'Sorane-Laravel/MCP/1.0',
+                    'User-Agent' => 'Ranetrace-Laravel/MCP/1.0',
                     'Content-Type' => 'application/json',
                     'Accept' => 'application/json',
-                    'Sorane-API-Version' => '1.0',
+                    'Ranetrace-API-Version' => '1.0',
                 ])
                 ->timeout($this->timeout)
                 ->post($this->apiUrl.'/errors/'.$errorId.'/notes', $data)
@@ -338,9 +338,9 @@ class SoraneApiClient
         try {
             $response = $this->executeWithRetry(fn () => Http::withToken($this->apiKey)
                 ->withHeaders([
-                    'User-Agent' => 'Sorane-Laravel/MCP/1.0',
+                    'User-Agent' => 'Ranetrace-Laravel/MCP/1.0',
                     'Accept' => 'application/json',
-                    'Sorane-API-Version' => '1.0',
+                    'Ranetrace-API-Version' => '1.0',
                 ])
                 ->timeout($this->timeout)
                 ->get($this->apiUrl.'/errors/'.$errorId.'/notes', $params)
@@ -366,9 +366,9 @@ class SoraneApiClient
         try {
             $response = $this->executeWithRetry(fn () => Http::withToken($this->apiKey)
                 ->withHeaders([
-                    'User-Agent' => 'Sorane-Laravel/MCP/1.0',
+                    'User-Agent' => 'Ranetrace-Laravel/MCP/1.0',
                     'Accept' => 'application/json',
-                    'Sorane-API-Version' => '1.0',
+                    'Ranetrace-API-Version' => '1.0',
                 ])
                 ->timeout($this->timeout)
                 ->get($this->apiUrl.'/errors/'.$errorId.'/notes/'.$noteId)
@@ -395,10 +395,10 @@ class SoraneApiClient
         try {
             $response = $this->executeWithRetry(fn () => Http::withToken($this->apiKey)
                 ->withHeaders([
-                    'User-Agent' => 'Sorane-Laravel/MCP/1.0',
+                    'User-Agent' => 'Ranetrace-Laravel/MCP/1.0',
                     'Content-Type' => 'application/json',
                     'Accept' => 'application/json',
-                    'Sorane-API-Version' => '1.0',
+                    'Ranetrace-API-Version' => '1.0',
                 ])
                 ->timeout($this->timeout)
                 ->put($this->apiUrl.'/errors/'.$errorId.'/notes/'.$noteId, $data)
@@ -424,9 +424,9 @@ class SoraneApiClient
         try {
             $response = $this->executeWithRetry(fn () => Http::withToken($this->apiKey)
                 ->withHeaders([
-                    'User-Agent' => 'Sorane-Laravel/MCP/1.0',
+                    'User-Agent' => 'Ranetrace-Laravel/MCP/1.0',
                     'Accept' => 'application/json',
-                    'Sorane-API-Version' => '1.0',
+                    'Ranetrace-API-Version' => '1.0',
                 ])
                 ->timeout($this->timeout)
                 ->delete($this->apiUrl.'/errors/'.$errorId.'/notes/'.$noteId)
@@ -453,10 +453,10 @@ class SoraneApiClient
         try {
             $response = $this->executeWithRetry(fn () => Http::withToken($this->apiKey)
                 ->withHeaders([
-                    'User-Agent' => 'Sorane-Laravel/MCP/1.0',
+                    'User-Agent' => 'Ranetrace-Laravel/MCP/1.0',
                     'Content-Type' => 'application/json',
                     'Accept' => 'application/json',
-                    'Sorane-API-Version' => '1.0',
+                    'Ranetrace-API-Version' => '1.0',
                 ])
                 ->timeout($this->timeout)
                 ->post($this->apiUrl.'/errors/'.$errorId.'/notes/bulk', $data)
@@ -525,10 +525,10 @@ class SoraneApiClient
 
             $response = $this->executeWithRetry(fn () => Http::withToken($this->apiKey)
                 ->withHeaders([
-                    'User-Agent' => 'Sorane-Laravel/MCP/1.0',
+                    'User-Agent' => 'Ranetrace-Laravel/MCP/1.0',
                     'Content-Type' => 'application/json',
                     'Accept' => 'application/json',
-                    'Sorane-API-Version' => '1.0',
+                    'Ranetrace-API-Version' => '1.0',
                 ])
                 ->timeout($this->timeout)
                 ->post($url, $data)
@@ -566,9 +566,9 @@ class SoraneApiClient
 
             $response = $this->executeWithRetry(fn () => Http::withToken($this->apiKey)
                 ->withHeaders([
-                    'User-Agent' => 'Sorane-Laravel/MCP/1.0',
+                    'User-Agent' => 'Ranetrace-Laravel/MCP/1.0',
                     'Accept' => 'application/json',
-                    'Sorane-API-Version' => '1.0',
+                    'Ranetrace-API-Version' => '1.0',
                 ])
                 ->timeout($this->timeout)
                 ->delete($url)
@@ -597,9 +597,9 @@ class SoraneApiClient
 
             $response = $this->executeWithRetry(fn () => Http::withToken($this->apiKey)
                 ->withHeaders([
-                    'User-Agent' => 'Sorane-Laravel/MCP/1.0',
+                    'User-Agent' => 'Ranetrace-Laravel/MCP/1.0',
                     'Accept' => 'application/json',
-                    'Sorane-API-Version' => '1.0',
+                    'Ranetrace-API-Version' => '1.0',
                 ])
                 ->timeout($this->timeout)
                 ->get($this->apiUrl.'/errors/'.$errorId.'/activity', $queryParams)
@@ -689,9 +689,9 @@ class SoraneApiClient
         try {
             $response = $this->executeWithRetry(fn () => Http::withToken($this->apiKey)
                 ->withHeaders([
-                    'User-Agent' => 'Sorane-Laravel/MCP/1.0',
+                    'User-Agent' => 'Ranetrace-Laravel/MCP/1.0',
                     'Accept' => 'application/json',
-                    'Sorane-API-Version' => '1.0',
+                    'Ranetrace-API-Version' => '1.0',
                 ])
                 ->timeout($this->timeout)
                 ->get($this->apiUrl.'/errors/search', $params)
@@ -740,9 +740,9 @@ class SoraneApiClient
 
             $response = $this->executeWithRetry(fn () => Http::withToken($this->apiKey)
                 ->withHeaders([
-                    'User-Agent' => 'Sorane-Laravel/MCP/1.0',
+                    'User-Agent' => 'Ranetrace-Laravel/MCP/1.0',
                     'Accept' => 'application/json',
-                    'Sorane-API-Version' => '1.0',
+                    'Ranetrace-API-Version' => '1.0',
                 ])
                 ->timeout($this->timeout)
                 ->post($url)
@@ -769,10 +769,10 @@ class SoraneApiClient
         try {
             $response = $this->executeWithRetry(fn () => Http::withToken($this->apiKey)
                 ->withHeaders([
-                    'User-Agent' => 'Sorane-Laravel/MCP/1.0',
+                    'User-Agent' => 'Ranetrace-Laravel/MCP/1.0',
                     'Content-Type' => 'application/json',
                     'Accept' => 'application/json',
-                    'Sorane-API-Version' => '1.0',
+                    'Ranetrace-API-Version' => '1.0',
                 ])
                 ->timeout($this->timeout)
                 ->post($this->apiUrl.'/errors/bulk/'.$action, [

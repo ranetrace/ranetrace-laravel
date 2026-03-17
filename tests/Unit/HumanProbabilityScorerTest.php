@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use Sorane\Laravel\Analytics\HumanProbabilityScorer;
+use Ranetrace\Laravel\Analytics\HumanProbabilityScorer;
 
 test('it scores typical browser request as human', function (): void {
     $request = Illuminate\Http\Request::create('/', 'GET');

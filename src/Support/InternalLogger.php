@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-namespace Sorane\Laravel\Support;
+namespace Ranetrace\Laravel\Support;
 
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
 /**
- * Centralized internal logging for Sorane package.
+ * Centralized internal logging for Ranetrace package.
  *
- * Prevents infinite loops by using dedicated sorane_internal channel
+ * Prevents infinite loops by using dedicated ranetrace_internal channel
  * with fallback to stderr if channel is unavailable.
  */
 class InternalLogger
@@ -73,13 +73,13 @@ class InternalLogger
     protected static function log(string $level, string $message, array $context = []): void
     {
         // Check if internal logging is disabled
-        if (! config('sorane.internal_logging.enabled', true)) {
+        if (! config('ranetrace.internal_logging.enabled', true)) {
             return;
         }
 
         try {
-            // Try logging to sorane_internal channel
-            Log::channel('sorane_internal')->$level($message, $context);
+            // Try logging to ranetrace_internal channel
+            Log::channel('ranetrace_internal')->$level($message, $context);
         } catch (Throwable $e) {
             // Fallback to stderr if channel fails
             self::logToStderr($level, $message, $context, $e);
@@ -94,7 +94,7 @@ class InternalLogger
     protected static function logToStderr(string $level, string $message, array $context, Throwable $channelError): void
     {
         // Check if stderr fallback is enabled
-        if (! config('sorane.internal_logging.stderr_fallback', true)) {
+        if (! config('ranetrace.internal_logging.stderr_fallback', true)) {
             return;
         }
 
@@ -103,7 +103,7 @@ class InternalLogger
             $channelErrorMsg = ' | Channel Error: '.$channelError->getMessage();
 
             error_log(sprintf(
-                '[Sorane Internal %s] %s%s%s',
+                '[Ranetrace Internal %s] %s%s%s',
                 mb_strtoupper($level),
                 $message,
                 $formattedContext,

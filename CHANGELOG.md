@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to `sorane-laravel` will be documented in this file.
+All notable changes to `ranetrace-laravel` will be documented in this file.
 
 ## [Unreleased]
 
@@ -20,5 +20,5 @@ All notable changes to `sorane-laravel` will be documented in this file.
 - Resources and other non-serializable types are handled gracefully
 
 ### Added
-- Added test for closure serialization handling in `sorane:test-logging` command
+- Added test for closure serialization handling in `ranetrace:test-logging` command
 - Added centralized `DataSanitizer` utility class for data serialization handling

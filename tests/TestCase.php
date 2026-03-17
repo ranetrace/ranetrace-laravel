@@ -1,10 +1,10 @@
 <?php
 
-namespace Sorane\Laravel\Tests;
+namespace Ranetrace\Laravel\Tests;
 
 use Orchestra\Testbench\TestCase as Orchestra;
-use Sorane\Laravel\Analytics\Middleware\TrackPageVisit;
-use Sorane\Laravel\SoraneServiceProvider;
+use Ranetrace\Laravel\Analytics\Middleware\TrackPageVisit;
+use Ranetrace\Laravel\RanetraceServiceProvider;
 
 class TestCase extends Orchestra
 {
@@ -16,7 +16,7 @@ class TestCase extends Orchestra
     protected function getPackageProviders($app): array
     {
         return [
-            SoraneServiceProvider::class,
+            RanetraceServiceProvider::class,
         ];
     }
 
@@ -29,24 +29,24 @@ class TestCase extends Orchestra
         $app['config']->set('app.key', 'base64:'.base64_encode(random_bytes(32)));
 
         // Set test API key
-        $app['config']->set('sorane.key', 'test-api-key-12345');
+        $app['config']->set('ranetrace.key', 'test-api-key-12345');
 
-        // Enable Sorane globally
-        $app['config']->set('sorane.enabled', true);
+        // Enable Ranetrace globally
+        $app['config']->set('ranetrace.enabled', true);
 
         // Enable features for testing
-        $app['config']->set('sorane.events.enabled', true);
-        $app['config']->set('sorane.events.queue', true); // Enable queue for testing Queue::fake()
-        $app['config']->set('sorane.events.queue_name', 'default');
-        $app['config']->set('sorane.logging.enabled', true);
-        $app['config']->set('sorane.logging.queue', true);
-        $app['config']->set('sorane.logging.queue_name', 'default');
-        $app['config']->set('sorane.javascript_errors.enabled', true);
-        $app['config']->set('sorane.javascript_errors.queue', true);
-        $app['config']->set('sorane.javascript_errors.queue_name', 'default');
-        $app['config']->set('sorane.javascript_errors.sample_rate', 1.0);
-        $app['config']->set('sorane.website_analytics.enabled', true);
-        $app['config']->set('sorane.website_analytics.queue', 'default');
+        $app['config']->set('ranetrace.events.enabled', true);
+        $app['config']->set('ranetrace.events.queue', true); // Enable queue for testing Queue::fake()
+        $app['config']->set('ranetrace.events.queue_name', 'default');
+        $app['config']->set('ranetrace.logging.enabled', true);
+        $app['config']->set('ranetrace.logging.queue', true);
+        $app['config']->set('ranetrace.logging.queue_name', 'default');
+        $app['config']->set('ranetrace.javascript_errors.enabled', true);
+        $app['config']->set('ranetrace.javascript_errors.queue', true);
+        $app['config']->set('ranetrace.javascript_errors.queue_name', 'default');
+        $app['config']->set('ranetrace.javascript_errors.sample_rate', 1.0);
+        $app['config']->set('ranetrace.website_analytics.enabled', true);
+        $app['config']->set('ranetrace.website_analytics.queue', 'default');
     }
 
     protected function defineRoutes($router): void

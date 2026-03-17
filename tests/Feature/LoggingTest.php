@@ -4,23 +4,23 @@ declare(strict_types=1);
 
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Log;
-use Sorane\Laravel\Jobs\HandleLogJob;
+use Ranetrace\Laravel\Jobs\HandleLogJob;
 
 beforeEach(function (): void {
     Bus::fake();
     config([
-        'sorane.logging.enabled' => true,
-        'sorane.logging.queue' => true,
-        'sorane.logging.queue_name' => 'default',
-        'logging.channels.sorane' => [
-            'driver' => 'sorane',
+        'ranetrace.logging.enabled' => true,
+        'ranetrace.logging.queue' => true,
+        'ranetrace.logging.queue_name' => 'default',
+        'logging.channels.ranetrace' => [
+            'driver' => 'ranetrace',
             'level' => 'debug',
         ],
     ]);
 });
 
-test('it sends logs to sorane channel', function (): void {
-    Log::channel('sorane')->error('Test error message', [
+test('it sends logs to ranetrace channel', function (): void {
+    Log::channel('ranetrace')->error('Test error message', [
         'context' => 'test',
     ]);
 
@@ -32,7 +32,7 @@ test('it sends logs to sorane channel', function (): void {
 });
 
 test('it includes environment information', function (): void {
-    Log::channel('sorane')->error('Test');
+    Log::channel('ranetrace')->error('Test');
 
     Bus::assertDispatched(HandleLogJob::class, function ($job): bool {
         return isset($job->getLogData()['extra']['environment'])
@@ -42,19 +42,19 @@ test('it includes environment information', function (): void {
 });
 
 test('it respects enabled configuration', function (): void {
-    config(['sorane.logging.enabled' => false]);
+    config(['ranetrace.logging.enabled' => false]);
 
-    Log::channel('sorane')->error('Test');
+    Log::channel('ranetrace')->error('Test');
 
     Bus::assertNotDispatched(HandleLogJob::class);
 });
 
 test('it respects excluded channels', function (): void {
-    config(['sorane.logging.excluded_channels' => ['test-channel']]);
+    config(['ranetrace.logging.excluded_channels' => ['test-channel']]);
 
     // Create a custom logger for testing
     $logger = Log::build([
-        'driver' => 'sorane',
+        'driver' => 'ranetrace',
         'channel' => 'test-channel',
     ]);
 
@@ -67,14 +67,14 @@ test('it handles different log levels', function (): void {
     $levels = ['emergency', 'alert', 'critical', 'error', 'warning', 'notice', 'info', 'debug'];
 
     foreach ($levels as $level) {
-        Log::channel('sorane')->{$level}("Test {$level} message");
+        Log::channel('ranetrace')->{$level}("Test {$level} message");
     }
 
     Bus::assertDispatchedTimes(HandleLogJob::class, count($levels));
 });
 
 test('it sanitizes context with closures', function (): void {
-    Log::channel('sorane')->error('Test', [
+    Log::channel('ranetrace')->error('Test', [
         'closure' => fn () => 'test',
         'safe' => 'value',
     ]);
@@ -86,7 +86,7 @@ test('it sanitizes context with closures', function (): void {
 });
 
 test('it formats timestamp correctly', function (): void {
-    Log::channel('sorane')->error('Test');
+    Log::channel('ranetrace')->error('Test');
 
     Bus::assertDispatched(HandleLogJob::class, function ($job): bool {
         // ISO 8601 format
@@ -95,9 +95,9 @@ test('it formats timestamp correctly', function (): void {
 });
 
 test('it includes channel name', function (): void {
-    Log::channel('sorane')->error('Test');
+    Log::channel('ranetrace')->error('Test');
 
     Bus::assertDispatched(HandleLogJob::class, function ($job): bool {
-        return $job->getLogData()['channel'] === 'sorane';
+        return $job->getLogData()['channel'] === 'ranetrace';
     });
 });

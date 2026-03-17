@@ -1,10 +1,10 @@
-@if(config('sorane.javascript_errors.enabled'))
+@if(config('ranetrace.javascript_errors.enabled'))
 <script>
 /**
- * Sorane JavaScript Error Tracking
+ * Ranetrace JavaScript Error Tracking
  * Version: 1.0.0
  *
- * This script automatically captures JavaScript errors and sends them to Sorane.
+ * This script automatically captures JavaScript errors and sends them to Ranetrace.
  * It includes support for:
  * - Global error handling (window.onerror)
  * - Unhandled promise rejections
@@ -17,12 +17,12 @@
     'use strict';
 
     const config = {
-        endpoint: '{{ route('sorane.javascript-errors.store') }}',
-        enabled: {{ config('sorane.javascript_errors.enabled') ? 'true' : 'false' }},
-        sampleRate: {{ config('sorane.javascript_errors.sample_rate', 1.0) }},
-        captureConsoleErrors: {{ config('sorane.javascript_errors.capture_console_errors') ? 'true' : 'false' }},
-        maxBreadcrumbs: {{ config('sorane.javascript_errors.max_breadcrumbs', 20) }},
-        ignoredErrors: @json(config('sorane.javascript_errors.ignored_errors', [])),
+        endpoint: '{{ route('ranetrace.javascript-errors.store') }}',
+        enabled: {{ config('ranetrace.javascript_errors.enabled') ? 'true' : 'false' }},
+        sampleRate: {{ config('ranetrace.javascript_errors.sample_rate', 1.0) }},
+        captureConsoleErrors: {{ config('ranetrace.javascript_errors.capture_console_errors') ? 'true' : 'false' }},
+        maxBreadcrumbs: {{ config('ranetrace.javascript_errors.max_breadcrumbs', 20) }},
+        ignoredErrors: @json(config('ranetrace.javascript_errors.ignored_errors', [])),
         csrfToken: '{{ csrf_token() }}',
     };
 
@@ -108,7 +108,7 @@
     }
 
     /**
-     * Send error to Sorane
+     * Send error to Ranetrace
      */
     function sendError(errorData) {
         // Apply sample rate
@@ -152,7 +152,7 @@
             keepalive: true
         }).catch(function(err) {
             // Silently fail - don't want error tracking to cause more errors
-            console.warn('Failed to send error to Sorane:', err);
+            console.warn('Failed to send error to Ranetrace:', err);
         });
     }
 
@@ -287,8 +287,8 @@
         const originalSend = XMLHttpRequest.prototype.send;
 
         XMLHttpRequest.prototype.open = function(method, url) {
-            this._sorane_method = method;
-            this._sorane_url = url;
+            this._ranetrace_method = method;
+            this._ranetrace_url = url;
             return originalOpen.apply(this, arguments);
         };
 
@@ -297,16 +297,16 @@
 
             xhr.addEventListener('load', function() {
                 addBreadcrumb('http', 'XHR completed', {
-                    method: xhr._sorane_method,
-                    url: xhr._sorane_url,
+                    method: xhr._ranetrace_method,
+                    url: xhr._ranetrace_url,
                     status: xhr.status
                 });
             });
 
             xhr.addEventListener('error', function() {
                 addBreadcrumb('http', 'XHR failed', {
-                    method: xhr._sorane_method,
-                    url: xhr._sorane_url
+                    method: xhr._ranetrace_method,
+                    url: xhr._ranetrace_url
                 });
             });
 
@@ -346,8 +346,8 @@
     }
 
     // Expose API for manual error tracking
-    window.Sorane = window.Sorane || {};
-    window.Sorane.captureError = function(error, context) {
+    window.Ranetrace = window.Ranetrace || {};
+    window.Ranetrace.captureError = function(error, context) {
         sendError({
             message: error.message || String(error),
             stack: error.stack || '',
@@ -359,7 +359,7 @@
         });
     };
 
-    window.Sorane.addBreadcrumb = addBreadcrumb;
+    window.Ranetrace.addBreadcrumb = addBreadcrumb;
 
 })();
 </script>

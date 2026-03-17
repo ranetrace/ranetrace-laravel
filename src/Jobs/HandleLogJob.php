@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-namespace Sorane\Laravel\Jobs;
+namespace Ranetrace\Laravel\Jobs;
 
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Sorane\Laravel\Services\SoraneBatchBuffer;
-use Sorane\Laravel\Support\InternalLogger;
+use Ranetrace\Laravel\Services\RanetraceBatchBuffer;
+use Ranetrace\Laravel\Support\InternalLogger;
 use Throwable;
 
 class HandleLogJob implements ShouldQueue
@@ -21,7 +21,7 @@ class HandleLogJob implements ShouldQueue
         protected array $logData
     ) {
         // Optionally assign queue name from config
-        $this->onQueue(config('sorane.logging.queue_name', 'default'));
+        $this->onQueue(config('ranetrace.logging.queue_name', 'default'));
     }
 
     /**
@@ -32,7 +32,7 @@ class HandleLogJob implements ShouldQueue
         return $this->logData;
     }
 
-    public function handle(SoraneBatchBuffer $buffer): void
+    public function handle(RanetraceBatchBuffer $buffer): void
     {
         $payload = $this->filterPayload($this->logData);
 
@@ -42,11 +42,11 @@ class HandleLogJob implements ShouldQueue
 
     /**
      * Handle job failure after all retries exhausted.
-     * Logs to 'sorane_internal' channel to prevent infinite error loops (never logs to Sorane).
+     * Logs to 'ranetrace_internal' channel to prevent infinite error loops (never logs to Ranetrace).
      */
     public function failed(Throwable $exception): void
     {
-        InternalLogger::critical('Sorane job failed after all retries', [
+        InternalLogger::critical('Ranetrace job failed after all retries', [
             'job_class' => static::class,
             'exception' => $exception->getMessage(),
         ]);

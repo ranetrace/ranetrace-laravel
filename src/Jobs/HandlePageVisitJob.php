@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-namespace Sorane\Laravel\Jobs;
+namespace Ranetrace\Laravel\Jobs;
 
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Sorane\Laravel\Services\SoraneBatchBuffer;
-use Sorane\Laravel\Support\InternalLogger;
+use Ranetrace\Laravel\Services\RanetraceBatchBuffer;
+use Ranetrace\Laravel\Support\InternalLogger;
 use Throwable;
 
 class HandlePageVisitJob implements ShouldQueue
@@ -21,7 +21,7 @@ class HandlePageVisitJob implements ShouldQueue
         protected array $visitData
     ) {
         // Optionally assign queue name from config
-        $this->onQueue(config('sorane.website_analytics.queue_name', 'default'));
+        $this->onQueue(config('ranetrace.website_analytics.queue_name', 'default'));
     }
 
     /**
@@ -32,7 +32,7 @@ class HandlePageVisitJob implements ShouldQueue
         return $this->visitData;
     }
 
-    public function handle(SoraneBatchBuffer $buffer): void
+    public function handle(RanetraceBatchBuffer $buffer): void
     {
         $payload = $this->filterPayload($this->visitData);
 
@@ -42,13 +42,13 @@ class HandlePageVisitJob implements ShouldQueue
 
     /**
      * Handle job failure after all retries exhausted.
-     * Logs to 'sorane_internal' channel to prevent infinite error loops (never logs to Sorane).
+     * Logs to 'ranetrace_internal' channel to prevent infinite error loops (never logs to Ranetrace).
      */
     public function failed(Throwable $exception): void
     {
-        // Use 'sorane_internal' channel
-        // to prevent infinite loops by bypassing Sorane's own capture
-        InternalLogger::critical('Sorane job failed after all retries', [
+        // Use 'ranetrace_internal' channel
+        // to prevent infinite loops by bypassing Ranetrace's own capture
+        InternalLogger::critical('Ranetrace job failed after all retries', [
             'job_class' => static::class,
             'exception' => $exception->getMessage(),
         ]);
@@ -77,8 +77,8 @@ class HandlePageVisitJob implements ShouldQueue
 
         // Development mode that preserves the unhashed user agent
         // Using this setting in production is pointless and unsafe
-        // Sorane will ignore non-hashed user agents
-        $preserveUserAgent = config('sorane.website_analytics.debug.preserve_user_agent', false);
+        // Ranetrace will ignore non-hashed user agents
+        $preserveUserAgent = config('ranetrace.website_analytics.debug.preserve_user_agent', false);
         if ($preserveUserAgent) {
             $keys[] = 'user_agent';
         }

@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
-use Sorane\Laravel\SoraneServiceProvider;
-use Sorane\Laravel\Tests\TestCase;
+use Ranetrace\Laravel\RanetraceServiceProvider;
+use Ranetrace\Laravel\Tests\TestCase;
 
 uses(TestCase::class)->in('Feature', 'Unit');
 
@@ -12,7 +12,7 @@ uses(TestCase::class)->in('Feature', 'Unit');
 | Test Case Setup
 |--------------------------------------------------------------------------
 |
-| Configure the test case to properly load the Sorane service provider
+| Configure the test case to properly load the Ranetrace service provider
 | and set up the testing environment.
 |
 */
@@ -26,7 +26,7 @@ uses()->beforeEach(function (): void {
 function getPackageProviders($app): array
 {
     return [
-        SoraneServiceProvider::class,
+        RanetraceServiceProvider::class,
     ];
 }
 
@@ -38,22 +38,22 @@ function getEnvironmentSetUp($app): void
     $app['config']->set('queue.default', 'sync');
 
     // Set test API key
-    $app['config']->set('sorane.key', 'test-api-key-12345');
+    $app['config']->set('ranetrace.key', 'test-api-key-12345');
 
     // Enable features for testing
-    $app['config']->set('sorane.events.enabled', true);
-    $app['config']->set('sorane.events.queue', true);
-    $app['config']->set('sorane.events.queue_name', 'default');
+    $app['config']->set('ranetrace.events.enabled', true);
+    $app['config']->set('ranetrace.events.queue', true);
+    $app['config']->set('ranetrace.events.queue_name', 'default');
 
-    $app['config']->set('sorane.logging.enabled', true);
-    $app['config']->set('sorane.logging.queue', true);
-    $app['config']->set('sorane.logging.queue_name', 'default');
+    $app['config']->set('ranetrace.logging.enabled', true);
+    $app['config']->set('ranetrace.logging.queue', true);
+    $app['config']->set('ranetrace.logging.queue_name', 'default');
 
-    $app['config']->set('sorane.javascript_errors.enabled', true);
-    $app['config']->set('sorane.javascript_errors.queue', true);
-    $app['config']->set('sorane.javascript_errors.sample_rate', 1.0);
-    $app['config']->set('sorane.javascript_errors.queue_name', 'default');
+    $app['config']->set('ranetrace.javascript_errors.enabled', true);
+    $app['config']->set('ranetrace.javascript_errors.queue', true);
+    $app['config']->set('ranetrace.javascript_errors.sample_rate', 1.0);
+    $app['config']->set('ranetrace.javascript_errors.queue_name', 'default');
 
-    $app['config']->set('sorane.website_analytics.enabled', true);
-    $app['config']->set('sorane.website_analytics.queue', 'default');
+    $app['config']->set('ranetrace.website_analytics.enabled', true);
+    $app['config']->set('ranetrace.website_analytics.queue', 'default');
 }

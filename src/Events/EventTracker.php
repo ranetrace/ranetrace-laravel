@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Sorane\Laravel\Events;
+namespace Ranetrace\Laravel\Events;
 
 use InvalidArgumentException;
-use Sorane\Laravel\Facades\Sorane;
+use Ranetrace\Laravel\Facades\Ranetrace;
 
 class EventTracker
 {
@@ -93,7 +93,7 @@ class EventTracker
             $properties['category'] = $category;
         }
 
-        Sorane::trackEvent(self::PRODUCT_ADDED_TO_CART, $properties);
+        Ranetrace::trackEvent(self::PRODUCT_ADDED_TO_CART, $properties);
     }
 
     /**
@@ -114,7 +114,7 @@ class EventTracker
             'product_count' => count($products),
         ], $additionalProperties);
 
-        Sorane::trackEvent(self::SALE, $properties);
+        Ranetrace::trackEvent(self::SALE, $properties);
     }
 
     /**
@@ -122,7 +122,7 @@ class EventTracker
      */
     public static function userRegistered(?int $userId = null, array $additionalProperties = []): void
     {
-        Sorane::trackEvent(self::USER_REGISTERED, $additionalProperties, $userId);
+        Ranetrace::trackEvent(self::USER_REGISTERED, $additionalProperties, $userId);
     }
 
     /**
@@ -130,7 +130,7 @@ class EventTracker
      */
     public static function userLoggedIn(?int $userId = null, array $additionalProperties = []): void
     {
-        Sorane::trackEvent(self::USER_LOGGED_IN, $additionalProperties, $userId);
+        Ranetrace::trackEvent(self::USER_LOGGED_IN, $additionalProperties, $userId);
     }
 
     /**
@@ -142,7 +142,7 @@ class EventTracker
             'page_name' => $pageName,
         ], $additionalProperties);
 
-        Sorane::trackEvent(self::PAGE_VIEW, $properties);
+        Ranetrace::trackEvent(self::PAGE_VIEW, $properties);
     }
 
     /**
@@ -152,7 +152,7 @@ class EventTracker
     public static function custom(string $eventName, array $properties = [], ?int $userId = null): void
     {
         self::ensureValidEventName($eventName);
-        Sorane::trackEvent($eventName, $properties, $userId);
+        Ranetrace::trackEvent($eventName, $properties, $userId);
     }
 
     /**
@@ -161,6 +161,6 @@ class EventTracker
      */
     public static function customUnsafe(string $eventName, array $properties = [], ?int $userId = null): void
     {
-        Sorane::trackEvent($eventName, $properties, $userId, false);
+        Ranetrace::trackEvent($eventName, $properties, $userId, false);
     }
 }

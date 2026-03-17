@@ -2,26 +2,26 @@
 
 declare(strict_types=1);
 
-namespace Sorane\Laravel\Commands;
+namespace Ranetrace\Laravel\Commands;
 
 use Illuminate\Console\Command;
-use Sorane\Laravel\Jobs\SendBatchToSoraneJob;
-use Sorane\Laravel\Services\SoraneBatchBuffer;
-use Sorane\Laravel\Services\SoranePauseManager;
+use Ranetrace\Laravel\Jobs\SendBatchToRanetraceJob;
+use Ranetrace\Laravel\Services\RanetraceBatchBuffer;
+use Ranetrace\Laravel\Services\RanetracePauseManager;
 
-class SoraneWorkCommand extends Command
+class RanetraceWorkCommand extends Command
 {
-    protected $signature = 'sorane:work
+    protected $signature = 'ranetrace:work
                             {--type= : Specific type to process (errors, events, logs, page_visits, javascript_errors)}';
 
-    protected $description = 'Process pending Sorane batches and send to the API';
+    protected $description = 'Process pending Ranetrace batches and send to the API';
 
-    public function handle(SoraneBatchBuffer $buffer, SoranePauseManager $pauseManager): int
+    public function handle(RanetraceBatchBuffer $buffer, RanetracePauseManager $pauseManager): int
     {
         // Check global pause first
         if ($pauseManager->isGloballyPaused()) {
             $pauseData = $pauseManager->getGlobalPause();
-            $this->warn('Sorane is globally paused until '.$pauseData['paused_until'].' (reason: '.$pauseData['reason'].')');
+            $this->warn('Ranetrace is globally paused until '.$pauseData['paused_until'].' (reason: '.$pauseData['reason'].')');
 
             return self::SUCCESS;
         }
@@ -50,7 +50,7 @@ class SoraneWorkCommand extends Command
             }
 
             // Dispatch batch job to send items
-            SendBatchToSoraneJob::dispatch($type);
+            SendBatchToRanetraceJob::dispatch($type);
 
             $this->info("Dispatched batch job for {$type}: {$count} items");
             $sentCount++;
