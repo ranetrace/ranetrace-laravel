@@ -1,374 +1,109 @@
-# Ranetrace: Web Application Monitoring for Laravel.
+# Ranetrace: Web Application Monitoring for Laravel
 
 [![Latest Version on Packagist](https://img.shields.io/packagist/v/ranetrace/ranetrace-laravel.svg?style=flat-square)](https://packagist.org/packages/ranetrace/ranetrace-laravel)
 [![Total Downloads](https://img.shields.io/packagist/dt/ranetrace/ranetrace-laravel.svg?style=flat-square)](https://packagist.org/packages/ranetrace/ranetrace-laravel)
 
-[//]: # ([![GitHub Tests Action Status]&#40;https://img.shields.io/github/actions/workflow/status/ranetrace/ranetrace-laravel/run-tests.yml?branch=main&label=tests&style=flat-square&#41;]&#40;https://github.com/ranetrace/ranetrace-laravel/actions?query=workflow%3Arun-tests+branch%3Amain&#41;)
-[//]: # ([![GitHub Code Style Action Status]&#40;https://img.shields.io/github/actions/workflow/status/ranetrace/ranetrace-laravel/fix-php-code-style-issues.yml?branch=main&label=code%20style&style=flat-square&#41;]&#40;https://github.com/ranetrace/ranetrace-laravel/actions?query=workflow%3A"Fix+PHP+code+style+issues"+branch%3Amain&#41;)
+Ranetrace is an all-in-one tool for **Error Tracking**, **Website Analytics**, and **Website Monitoring** for Laravel applications.
 
-Ranetrace is an all-in-one tool for Error Tracking, Website Analytics, and Website Monitoring for websites made with Laravel.
-
-It alerts you about errors in your applications and provides the context you need to fix them.
-
-Ranetrace’s Website Analytics is fully server-side, with a focus on privacy-first tracking.
-It only collects essential visit data without cookies, invasive fingerprinting, or intrusive scripts.
-
-It also keeps an eye on your website’s health. Ranetrace monitors uptime, performance, SSL certificates, domain and DNS status, Lighthouse scores, and broken links. So when something goes wrong, you’ll know.
+- Alerts you about errors and provides the context you need to fix them
+- Privacy-first, fully server-side website analytics — no cookies, no fingerprinting, no intrusive scripts
+- Monitors uptime, performance, SSL certificates, domain and DNS status, Lighthouse scores, and broken links
 
 Check out the [Ranetrace website](https://ranetrace.com) for more information.
 
 ## Installation
 
-You can install the package via composer:
+Install the package via Composer:
 
 ```bash
 composer require ranetrace/ranetrace-laravel
 ```
 
-You can publish the config file with:
+Add your Ranetrace key to `.env`:
+
+```env
+RANETRACE_KEY=your-key-here
+```
+
+Optionally publish the config file:
 
 ```bash
 php artisan vendor:publish --tag="ranetrace-laravel-config"
 ```
 
-This is the contents of the published config file:
-
-```php
-return [
-    'key' => env('RANETRACE_KEY'),
-
-    'error_reporting' => [
-        'enabled' => env('RANETRACE_ERROR_REPORTING_ENABLED', true),
-        'queue' => env('RANETRACE_ERROR_REPORTING_QUEUE', false),
-        'queue_name' => env('RANETRACE_ERROR_REPORTING_QUEUE_NAME', 'default'),
-        'timeout' => env('RANETRACE_ERROR_REPORTING_TIMEOUT', 5),
-        'max_file_size' => env('RANETRACE_ERROR_REPORTING_MAX_FILE_SIZE', 1048576), // 1MB
-        'max_trace_length' => env('RANETRACE_ERROR_REPORTING_MAX_TRACE_LENGTH', 5000),
-    ],
-
-    'events' => [
-        'enabled' => env('RANETRACE_EVENTS_ENABLED', true),
-        'queue' => env('RANETRACE_EVENTS_QUEUE', true),
-        'queue_name' => env('RANETRACE_EVENTS_QUEUE_NAME', 'default'),
-    ],
-
-    'logging' => [
-        'enabled' => env('RANETRACE_LOGGING_ENABLED', false),
-        'queue' => env('RANETRACE_LOGGING_QUEUE', true),
-        'queue_name' => env('RANETRACE_LOGGING_QUEUE_NAME', 'default'),
-        'excluded_channels' => [
-            // Add channels here that should never be sent to Ranetrace
-            // Note: The handler uses 'single' channel for its own error logging to prevent loops
-        ],
-    ],
-
-    'website_analytics' => [
-        'enabled' => env('RANETRACE_WEBSITE_ANALYTICS_ENABLED', false),
-        'queue' => env('RANETRACE_WEBSITE_ANALYTICS_QUEUE', true),
-        'queue_name' => env('RANETRACE_WEBSITE_ANALYTICS_QUEUE_NAME', 'default'),
-        'excluded_paths' => [
-            'horizon',
-            'nova',
-            'telescope',
-            'admin',
-            'filament',
-            'api',
-            'debugbar',
-            'storage',
-            'livewire',
-            '_debugbar',
-        ],
-        'request_filter' => null,
-        'user_agent' => [
-            'min_length' => env('RANETRACE_WEBSITE_ANALYTICS_UA_MIN_LENGTH', 10),
-            'max_length' => env('RANETRACE_WEBSITE_ANALYTICS_UA_MAX_LENGTH', 1000),
-        ],
-        'throttle_seconds' => env('RANETRACE_WEBSITE_ANALYTICS_THROTTLE_SECONDS', 30),
-        'debug' => [
-            'preserve_user_agent' => env('RANETRACE_WEBSITE_ANALYTICS_DEBUG_PRESERVE_UA', false),
-        ],
-    ],
-
-    'javascript_errors' => [
-        'enabled' => env('RANETRACE_JAVASCRIPT_ERRORS_ENABLED', false),
-        'queue' => env('RANETRACE_JAVASCRIPT_ERRORS_QUEUE', true),
-        'queue_name' => env('RANETRACE_JAVASCRIPT_ERRORS_QUEUE_NAME', 'default'),
-        'sample_rate' => env('RANETRACE_JAVASCRIPT_ERRORS_SAMPLE_RATE', 1.0), // 1.0 = 100%, 0.1 = 10%
-        'ignored_errors' => [
-            // Browser quirks and unfixable issues
-            'ResizeObserver loop limit exceeded',
-            'ResizeObserver loop completed with undelivered notifications',
-
-            // Cross-origin errors (no useful information due to CORS)
-            'Script error.',
-            'Script error',
-
-            // Network errors (usually user connection issues, not bugs)
-            'Failed to fetch',
-            'NetworkError when attempting to fetch resource',
-            'Network request failed',
-            'Load failed',
-
-            // Webpack/Vite chunk loading (usually navigation/stale deployments)
-            'Loading chunk',
-            'ChunkLoadError',
-
-            // User-cancelled operations
-            'cancelled',
-            'canceled',
-            'The operation was aborted',
-            'AbortError',
-
-            // Browser extension interference
-            'Illegal invocation',
-
-            // Add your own patterns here as needed
-        ],
-        'capture_console_errors' => env('RANETRACE_JAVASCRIPT_CAPTURE_CONSOLE_ERRORS', false),
-        'max_breadcrumbs' => env('RANETRACE_JAVASCRIPT_MAX_BREADCRUMBS', 20),
-    ],
-];
-```
-
 ## Usage
+
+### Error Tracking
+
+Error tracking is enabled by default. Once installed, unhandled exceptions are automatically reported to your Ranetrace dashboard.
 
 ### JavaScript Error Tracking
 
-Ranetrace automatically captures JavaScript errors from your frontend application, providing full stack traces, browser context, and user interaction breadcrumbs to help you debug issues.
-
-#### Quick Start
-
-1. Enable JavaScript error tracking in your `.env`:
+1. Enable it in your `.env`:
 
 ```env
 RANETRACE_JAVASCRIPT_ERRORS_ENABLED=true
 ```
 
-2. Add the tracking script to your layout file:
+2. Add the Blade directive to your layout:
 
 ```blade
-<!DOCTYPE html>
-<html>
-<head>
-    <title>My App</title>
-</head>
 <body>
     @yield('content')
-    
+
     @ranetraceErrorTracking
 </body>
-</html>
 ```
 
-That's it! JavaScript errors are now automatically tracked.
-
-#### Manual Error Capture
-
-You can also manually capture errors with custom context:
+You can also capture errors manually:
 
 ```javascript
-try {
-  processPayment(amount);
-} catch (error) {
-  window.Ranetrace.captureError(error, {
-    payment_amount: amount,
-    user_type: 'premium'
-  });
-}
+window.Ranetrace.captureError(error, { payment_amount: amount });
 ```
 
 ### Event Tracking
 
-Ranetrace makes it easy to track custom events in your Laravel application. You can track anything from e-commerce events to user interactions.
-
-**Privacy-First Approach**: Event tracking uses the same privacy-focused fingerprinting as website analytics:
-- User agents are hashed with SHA256 (never stored in plain text)
-- Session IDs are generated from hashed IP + user agent + date (daily rotation)
-- IP addresses are never sent to Ranetrace
-- Only essential data is collected for linking events and visits
-
-#### Basic Event Tracking
+Track custom events with a privacy-first approach — no IP addresses are stored, user agents are hashed, and session IDs rotate daily.
 
 ```php
 use Ranetrace\Laravel\Facades\Ranetrace;
-use Ranetrace\Laravel\Events\EventTracker;
 
-// Track a simple event (names must be snake_case)
 Ranetrace::trackEvent('button_clicked', [
     'button_id' => 'header-cta',
     'page' => 'homepage'
 ]);
-
-// Track an event with user ID
-Ranetrace::trackEvent('feature_used', [
-    'feature_name' => 'export_data',
-    'export_type' => 'csv'
-], $userId);
-
-// Use predefined constants to prevent typos
-Ranetrace::trackEvent(EventTracker::USER_REGISTERED, [
-    'registration_source' => 'website'
-], $userId);
 ```
 
-#### Event Name Validation
-
-Ranetrace enforces strict event naming conventions to ensure consistency and prevent categorization issues:
-
-- **Format**: `snake_case` (lowercase with underscores)
-- **Length**: 3-50 characters
-- **Start**: Must begin with a letter
-- **Characters**: Only letters, numbers, and underscores allowed
-
-**Valid examples**: `user_registered`, `product_added_to_cart`, `newsletter_signup`  
-**Invalid examples**: `User Registered`, `product-added`, `123_event`, `user@registered`
-
-```php
-// ✅ Valid - uses snake_case format
-Ranetrace::trackEvent('newsletter_signup', ['source' => 'footer']);
-
-// ❌ Invalid - will throw InvalidArgumentException
-Ranetrace::trackEvent('Newsletter Signup', ['source' => 'footer']);
-
-// ✅ Use constants to avoid validation issues
-use Ranetrace\Laravel\Events\EventTracker;
-Ranetrace::trackEvent(EventTracker::NEWSLETTER_SIGNUP, ['source' => 'footer']);
-
-// ✅ Bypass validation if needed (advanced usage)
-Ranetrace::trackEvent('Legacy Event Name', [], null, false);
-```
-
-#### E-commerce Event Tracking
-
-Ranetrace provides convenient helper methods for common e-commerce events with predefined naming:
+E-commerce helpers are available via the `RanetraceEvents` facade:
 
 ```php
 use Ranetrace\Laravel\Facades\RanetraceEvents;
 
-// Track product added to cart
-RanetraceEvents::productAddedToCart(
-    productId: 'PROD-123',
-    productName: 'Awesome Widget',
-    price: 29.99,
-    quantity: 2,
-    category: 'Widgets',
-    additionalProperties: ['color' => 'blue', 'size' => 'large']
-);
-
-// Track a sale
 RanetraceEvents::sale(
     orderId: 'ORDER-456',
     totalAmount: 89.97,
-    products: [
-        [
-            'id' => 'PROD-123',
-            'name' => 'Awesome Widget',
-            'price' => 29.99,
-            'quantity' => 2,
-        ]
-    ],
-    currency: 'USD',
-    additionalProperties: ['payment_method' => 'credit_card']
-);
-
-// Track user registration
-RanetraceEvents::userRegistered(
-    userId: 123,
-    additionalProperties: ['registration_source' => 'website']
-);
-
-// Track user login
-RanetraceEvents::userLoggedIn(
-    userId: 123,
-    additionalProperties: ['login_method' => 'email']
-);
-
-// Track custom page views
-RanetraceEvents::pageView(
-    pageName: 'Product Details',
-    additionalProperties: ['product_id' => 'PROD-123']
-);
-
-// Track custom events with validation
-RanetraceEvents::custom(
-    eventName: 'newsletter_signup',
-    properties: ['source' => 'footer'],
-    userId: 123
-);
-
-// Track custom events without validation (advanced usage)
-RanetraceEvents::customUnsafe(
-    eventName: 'Legacy Event Name',
-    properties: ['source' => 'migration']
+    products: [['id' => 'PROD-123', 'name' => 'Widget', 'price' => 29.99, 'quantity' => 3]],
+    currency: 'USD'
 );
 ```
 
-#### Available Event Constants
-
-Use predefined constants to ensure consistent naming and avoid typos:
-
-```php
-use Ranetrace\Laravel\Events\EventTracker;
-
-EventTracker::PRODUCT_ADDED_TO_CART      // 'product_added_to_cart'
-EventTracker::PRODUCT_REMOVED_FROM_CART  // 'product_removed_from_cart'
-EventTracker::CART_VIEWED               // 'cart_viewed'
-EventTracker::CHECKOUT_STARTED          // 'checkout_started'
-EventTracker::CHECKOUT_COMPLETED        // 'checkout_completed'
-EventTracker::SALE                      // 'sale'
-EventTracker::USER_REGISTERED           // 'user_registered'
-EventTracker::USER_LOGGED_IN           // 'user_logged_in'
-EventTracker::USER_LOGGED_OUT          // 'user_logged_out'
-EventTracker::PAGE_VIEW                // 'page_view'
-EventTracker::SEARCH                   // 'search'
-EventTracker::NEWSLETTER_SIGNUP        // 'newsletter_signup'
-EventTracker::CONTACT_FORM_SUBMITTED   // 'contact_form_submitted'
-```
-
-#### Configuration
-
-Event tracking can be configured in your `config/ranetrace.php` file:
-
-```php
-'events' => [
-    'enabled' => env('RANETRACE_EVENTS_ENABLED', true),
-    'queue' => env('RANETRACE_EVENTS_QUEUE', true),
-    'queue_name' => env('RANETRACE_EVENTS_QUEUE_NAME', 'default'),
-],
-```
-
-- `enabled`: Enable or disable event tracking
-- `queue`: Whether to send events via Laravel queues (recommended for production)
-- `queue_name`: Which queue to use for sending events
-
-#### Testing Event Tracking
-
-You can test your event tracking setup using the included command:
+Test your setup with:
 
 ```bash
 php artisan ranetrace:test-events
 ```
 
-This will send various test events to your Ranetrace dashboard.
-
 ### Centralized Logging
 
-Ranetrace provides centralized logging capabilities that capture and store all your application logs in one place. This makes it easy to monitor, search, and analyze log data across your entire application.
-
-**Laravel Integration**: The recommended approach is to integrate Ranetrace with Laravel's built-in logging system using log stacks.
-
-#### Laravel Logging Integration (Recommended)
-
-Add the Ranetrace driver to your `config/logging.php`:
+Send your application logs to Ranetrace by adding the driver to `config/logging.php`:
 
 ```php
 'channels' => [
     'ranetrace' => [
         'driver' => 'ranetrace',
-        'level' => 'error', // Control which levels are sent to Ranetrace
+        'level' => 'error',
     ],
-    
-    // Recommended: Create a stack for production
+
     'production' => [
         'driver' => 'stack',
         'channels' => array_merge(explode(',', env('LOG_STACK', 'single')), ['ranetrace']),
@@ -377,87 +112,22 @@ Add the Ranetrace driver to your `config/logging.php`:
 ],
 ```
 
-Set your log channel in `config/app.php` or `.env`:
+Then enable it in your `.env`:
 
 ```env
 LOG_CHANNEL=production
-```
-
-Now all your application logs will automatically be sent to both files and Ranetrace:
-
-```php
-use Illuminate\Support\Facades\Log;
-
-// These automatically go to both file and Ranetrace
-Log::error('Database connection failed', [
-    'database' => 'mysql',
-    'error_code' => 1045,
-]);
-
-Log::critical('System overload detected', [
-    'cpu_usage' => '98%',
-    'memory_usage' => '95%',
-]);
-
-// Use specific channels when needed
-Log::channel('ranetrace')->error('This goes only to Ranetrace');
-```
-
-#### Configuration
-
-Logging can be configured in your `config/ranetrace.php` file:
-
-```php
-'logging' => [
-    'enabled' => env('RANETRACE_LOGGING_ENABLED', false),
-    'queue' => env('RANETRACE_LOGGING_QUEUE', true),
-    'queue_name' => env('RANETRACE_LOGGING_QUEUE_NAME', 'default'),
-    'excluded_channels' => ['ranetrace'],
-],
-```
-
-Add to your `.env` file:
-```env
 RANETRACE_LOGGING_ENABLED=true
 ```
 
-**Optional Configuration (with defaults):**
-```env
-# Optional: Use queues for logging (default: true - recommended for production)
-RANETRACE_LOGGING_QUEUE=true
-
-# Optional: Custom queue name for log jobs (default: default)
-RANETRACE_LOGGING_QUEUE_NAME=default
-```
-
-All optional settings use sensible defaults, so you only need to set them if you want to customize the behavior.
-
-#### Available Log Levels
-
-Standard PSR-3 log levels are supported:
-
-- `emergency` - System is unusable
-- `alert` - Action must be taken immediately  
-- `critical` - Critical conditions
-- `error` - Error conditions
-- `warning` - Warning conditions
-- `notice` - Normal but significant condition
-- `info` - Informational messages
-- `debug` - Debug-level messages
-
-#### Testing Logging
-
-You can test your logging configuration using the included command:
+Test your setup with:
 
 ```bash
 php artisan ranetrace:test-logging
 ```
 
-This will send various test logs to your Ranetrace dashboard and display your current configuration.
+### Website Analytics
 
-### Error Tracking & Website Analytics
-
-Please refer to the [Ranetrace website](https://ranetrace.com) for more information on how to use Ranetrace.
+Refer to the [Ranetrace website](https://ranetrace.com) for setup instructions.
 
 ## Testing
 
