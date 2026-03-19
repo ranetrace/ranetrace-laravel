@@ -75,6 +75,6 @@ Individual test commands: `ranetrace:test-errors`, `ranetrace:test-events`, `ran
 ### Common Pitfalls
 
 - Both `RANETRACE_ENABLED=true` and the feature-specific env var must be set for any feature to work.
-- Batch processing requires Redis as the cache driver (`RANETRACE_BATCH_CACHE_DRIVER=redis`).
+- Batch processing requires a persistent cache driver (configured via `RANETRACE_BATCH_CACHE_DRIVER`, defaults to `redis`).
 - The logging channel name `ranetrace_internal` is reserved for internal diagnostics — do not use it in your application.
 - When adding the Ranetrace logging channel to a stack, add it to the `excluded_channels` config to prevent infinite loops.
