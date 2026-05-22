@@ -6,13 +6,27 @@ namespace Ranetrace\Laravel\Commands;
 
 use Carbon\Carbon;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Ranetrace\Laravel\Jobs\SendBatchToRanetraceJob;
 use Ranetrace\Laravel\Services\RanetraceBatchBuffer;
 use Ranetrace\Laravel\Services\RanetracePauseManager;
 use Throwable;
 
 class RanetraceStatusCommand extends Command
 {
+    /**
+     * A buffer is considered "drain-stalled" when it holds items but has not
+     * had a successful batch send within this many seconds (and is not paused).
+     */
+    protected const int DRAIN_STALE_SECONDS = 600;
+
+    /**
+     * Fraction of a buffer's max size at which it is considered "near capacity"
+     * — drives both the overall health flag and the recommendations output.
+     */
+    protected const float NEAR_CAPACITY_RATIO = 0.8;
+
     protected $signature = 'ranetrace:status
                             {--json : Output as JSON instead of formatted text}';
 
@@ -36,44 +50,87 @@ class RanetraceStatusCommand extends Command
     /**
      * Collect all status information.
      *
+     * All cache/database reads degrade gracefully — the status command is a
+     * diagnostic tool and must never throw, even when subsystems are down.
+     *
      * @return array<string, mixed>
      */
     protected function collectStatus(RanetraceBatchBuffer $buffer, RanetracePauseManager $pauseManager): array
     {
-        $features = ['errors', 'events', 'logs', 'page_visits', 'javascript_errors'];
+        $features = RanetraceBatchBuffer::TYPES;
 
         // Check global pause
-        $globalPause = $pauseManager->getGlobalPause();
-        $isGloballyPaused = $pauseManager->isGloballyPaused();
+        try {
+            $globalPause = $pauseManager->getGlobalPause();
+            $isGloballyPaused = $pauseManager->isGloballyPaused();
+        } catch (Throwable) {
+            $globalPause = null;
+            $isGloballyPaused = false;
+        }
 
         // Check feature pauses
         $featurePauses = [];
         foreach ($features as $feature) {
-            $pauseData = $pauseManager->getFeaturePause($feature);
-            $featurePauses[$feature] = $pauseData ? [
-                'paused' => $pauseManager->isFeaturePaused($feature),
-                'paused_until' => $pauseData['paused_until'],
-                'reason' => $pauseData['reason'],
-                'time_remaining_seconds' => max(0, Carbon::now()->diffInSeconds(Carbon::parse($pauseData['paused_until']), false)),
-            ] : null;
+            try {
+                $pauseData = $pauseManager->getFeaturePause($feature);
+                $featurePauses[$feature] = $pauseData ? [
+                    'paused' => $pauseManager->isFeaturePaused($feature),
+                    'paused_until' => $pauseData['paused_until'],
+                    'reason' => $pauseData['reason'],
+                    'time_remaining_seconds' => max(0, Carbon::now()->diffInSeconds(Carbon::parse($pauseData['paused_until']), false)),
+                ] : null;
+            } catch (Throwable) {
+                $featurePauses[$feature] = null;
+            }
         }
 
-        // Get buffer sizes
+        // Get buffer sizes and last-drain timestamps
         $buffers = [];
+        $lastBatch = [];
         $totalBuffered = 0;
         foreach ($features as $feature) {
-            $count = $buffer->count($feature);
+            try {
+                $count = $buffer->count($feature);
+            } catch (Throwable) {
+                $count = 0;
+            }
             $buffers[$feature] = $count;
             $totalBuffered += $count;
+            $lastBatch[$feature] = $this->getLastBatchTimestamp($feature);
+        }
+
+        $maxPerFeature = config('ranetrace.batch.max_buffer_size', 5000);
+
+        // Detect drain-stalled buffers: items present, not paused, no recent drain.
+        $stalledFeatures = [];
+        foreach ($features as $feature) {
+            if ($buffers[$feature] <= 0) {
+                continue;
+            }
+
+            if ($isGloballyPaused || ($featurePauses[$feature]['paused'] ?? false)) {
+                continue;
+            }
+
+            $last = $lastBatch[$feature];
+            if ($last === null || (Carbon::now()->timestamp - $last) > self::DRAIN_STALE_SECONDS) {
+                $stalledFeatures[] = $feature;
+            }
         }
 
         // Get failed jobs count (last 24 hours)
         $failedJobsCount = $this->getFailedJobsCount();
 
-        // Overall health determination
+        // Overall health: no single buffer near its own capacity, not globally
+        // paused, and few failed jobs.
+        $anyBufferNearCapacity = array_any(
+            $buffers,
+            fn (int $count): bool => $count >= $maxPerFeature * self::NEAR_CAPACITY_RATIO
+        );
+
         $healthy = ! $isGloballyPaused
-            && $totalBuffered < config('ranetrace.batch.max_buffer_size', 5000) * 0.8 // Not approaching max
-            && $failedJobsCount < 10; // Fewer than 10 failed jobs
+            && ! $anyBufferNearCapacity
+            && $failedJobsCount < 10;
 
         return [
             'healthy' => $healthy,
@@ -89,12 +146,16 @@ class RanetraceStatusCommand extends Command
             ],
             'buffers' => [
                 'total' => $totalBuffered,
-                'max_per_feature' => config('ranetrace.batch.max_buffer_size', 5000),
+                'max_per_feature' => $maxPerFeature,
                 'features' => $buffers,
+            ],
+            'drain' => [
+                'last_batch' => $lastBatch,
+                'stalled' => $stalledFeatures,
             ],
             'failed_jobs_last_24h' => $failedJobsCount,
             'config' => [
-                'enabled' => config('ranetrace.enabled', false),
+                'enabled' => config('ranetrace.enabled', true),
                 'api_key_configured' => ! empty(config('ranetrace.key')),
                 'cache_driver' => config('ranetrace.batch.cache_driver', 'redis'),
                 'queue_name' => config('ranetrace.batch.queue_name', 'default'),
@@ -155,10 +216,8 @@ class RanetraceStatusCommand extends Command
         // Feature pauses
         $this->line('<fg=cyan>FEATURE PAUSE STATUS</>');
         $this->line('─────────────────────────────────────────────────────────────');
-        $pausedCount = 0;
         foreach ($status['pauses']['features'] as $feature => $pause) {
             if ($pause) {
-                $pausedCount++;
                 if ($pause['paused']) {
                     $this->line(sprintf(
                         '  <fg=red>✗</> %-20s <fg=red>PAUSED</> (reason: %s, remaining: %s)',
@@ -218,6 +277,14 @@ class RanetraceStatusCommand extends Command
         }
         $this->newLine();
 
+        // Drain warning — buffers holding items with no recent batch send
+        if (! empty($status['drain']['stalled'])) {
+            $this->warn('! No recent batch drain for: '.implode(', ', $status['drain']['stalled']));
+            $this->line('  Buffered items are not being sent to Ranetrace.');
+            $this->line('  Is the <fg=cyan>ranetrace:work</> command scheduled (every minute)?');
+            $this->newLine();
+        }
+
         // Failed jobs
         $this->line('<fg=cyan>FAILED JOBS (Last 24h)</>');
         $this->line('─────────────────────────────────────────────────────────────');
@@ -231,7 +298,7 @@ class RanetraceStatusCommand extends Command
         $this->newLine();
 
         // Recommendations
-        if (! $status['healthy']) {
+        if (! $status['healthy'] || ! empty($status['drain']['stalled'])) {
             $this->line('<fg=cyan>RECOMMENDATIONS</>');
             $this->line('─────────────────────────────────────────────────────────────');
 
@@ -267,9 +334,18 @@ class RanetraceStatusCommand extends Command
                 }
             }
 
-            if ($status['buffers']['total'] > $status['buffers']['max_per_feature'] * 0.8) {
-                $this->line('• Buffers approaching capacity - data may be dropped');
+            $nearCapacity = array_keys(array_filter(
+                $status['buffers']['features'],
+                fn (int $count): bool => $count >= $status['buffers']['max_per_feature'] * self::NEAR_CAPACITY_RATIO
+            ));
+            if (! empty($nearCapacity)) {
+                $this->line('• Buffers approaching capacity: '.implode(', ', $nearCapacity).' - data may be dropped');
                 $this->line('• Check if ranetrace:work command is running on schedule');
+            }
+
+            if (! empty($status['drain']['stalled'])) {
+                $this->line('• No recent drain for: '.implode(', ', $status['drain']['stalled']));
+                $this->line('• Ensure ranetrace:work is scheduled every minute (see documentation)');
             }
 
             if ($status['failed_jobs_last_24h'] >= 10) {
@@ -313,6 +389,21 @@ class RanetraceStatusCommand extends Command
         }
 
         return "{$seconds}s";
+    }
+
+    /**
+     * Get the timestamp of the last successful batch send for a feature.
+     */
+    protected function getLastBatchTimestamp(string $feature): ?int
+    {
+        try {
+            $cacheDriver = config('ranetrace.batch.cache_driver', 'redis');
+            $value = Cache::store($cacheDriver)->get(SendBatchToRanetraceJob::LAST_BATCH_PREFIX.$feature);
+
+            return is_int($value) ? $value : null;
+        } catch (Throwable) {
+            return null;
+        }
     }
 
     /**

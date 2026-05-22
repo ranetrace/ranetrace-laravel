@@ -1,0 +1,22 @@
+parameters:
+	ignoreErrors:
+		-
+			message: '''
+				#^Call to deprecated method get\(\) of class Illuminate\\Http\\Request\:
+				since Symfony 7\.4, use properties `\-\>attributes`, `query` or `request` directly instead$#
+			'''
+			identifier: method.deprecated
+			count: 5
+			path: src/Analytics/VisitDataCollector.php
+
+		-
+			message: '#^Dead catch \- InvalidArgumentException is never thrown in the try block\.$#'
+			identifier: catch.neverThrown
+			count: 1
+			path: src/Commands/RanetraceEventTestCommand.php
+
+		-
+			message: '#^Property Monolog\\LogRecord\:\:\$channel \(string\) on left side of \?\? is not nullable\.$#'
+			identifier: nullCoalesce.property
+			count: 1
+			path: src/Logging/RanetraceLogHandler.php

@@ -10,6 +10,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Cache;
 use InvalidArgumentException;
 use Ranetrace\Laravel\Services\RanetraceApiClient;
 use Ranetrace\Laravel\Services\RanetraceBatchBuffer;
@@ -22,7 +23,25 @@ class SendBatchToRanetraceJob implements ShouldBeUnique, ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public int $tries = 3;
+    /**
+     * Cache key prefix for the per-type "last successful batch" timestamp,
+     * read by ranetrace:status to detect a stalled/unscheduled work command.
+     */
+    public const string LAST_BATCH_PREFIX = 'ranetrace:last_batch:';
+
+    /**
+     * Total attempts: 1 initial + 3 retries. Combined with backoff() of
+     * 60/300/900s this produces the 21-minute retry window mandated by
+     * client-response-handling.md.
+     */
+    public int $tries = 4;
+
+    /**
+     * Keep the uniqueness lock alive across the full retry envelope (backoff
+     * 60+300+900s plus per-attempt runtime) so a concurrent ranetrace:work run
+     * cannot dispatch a duplicate batch job for the same type during a retry gap.
+     */
+    public int $uniqueFor = 1500;
 
     /** @var array<int, array{id: string, data: array, timestamp: int}> */
     protected array $items = [];
@@ -54,26 +73,21 @@ class SendBatchToRanetraceJob implements ShouldBeUnique, ShouldQueue
             return;
         }
 
-        try {
-            // Extract just the data payloads for the API
-            $payloads = array_map(fn ($item) => $item['data'], $this->items);
+        // Extract just the data payloads for the API
+        $payloads = array_map(fn ($item) => $item['data'], $this->items);
 
-            // Send batch to Ranetrace API
-            $result = match ($this->type) {
-                'errors' => $client->sendErrorBatch($payloads),
-                'events' => $client->sendEventBatch($payloads),
-                'logs' => $client->sendLogBatch($payloads),
-                'page_visits' => $client->sendPageVisitBatch($payloads),
-                'javascript_errors' => $client->sendJavaScriptErrorBatch($payloads),
-                default => throw new InvalidArgumentException("Unknown batch type: {$this->type}"),
-            };
+        // Send batch to Ranetrace API
+        $result = match ($this->type) {
+            'errors' => $client->sendErrorBatch($payloads),
+            'events' => $client->sendEventBatch($payloads),
+            'logs' => $client->sendLogBatch($payloads),
+            'page_visits' => $client->sendPageVisitBatch($payloads),
+            'javascript_errors' => $client->sendJavaScriptErrorBatch($payloads),
+            default => throw new InvalidArgumentException("Unknown batch type: {$this->type}"),
+        };
 
-            // Handle response based on status code
-            $this->handleResponse($result, $buffer, $pauseManager);
-        } catch (Throwable $e) {
-            // Re-throw to trigger job retry
-            throw $e;
-        }
+        // Handle response based on status code (throws on retryable failures)
+        $this->handleResponse($result, $buffer, $pauseManager);
     }
 
     /**
@@ -141,6 +155,9 @@ class SendBatchToRanetraceJob implements ShouldBeUnique, ShouldQueue
      */
     protected function handle200Response(array $data, RanetraceBatchBuffer $buffer): void
     {
+        // Record a successful drain so ranetrace:status can detect a stalled worker.
+        $this->recordLastBatch();
+
         $items = $data['items'] ?? [];
         $received = $items['received'] ?? 0;
         $processed = $items['processed'] ?? 0;
@@ -296,13 +313,14 @@ class SendBatchToRanetraceJob implements ShouldBeUnique, ShouldQueue
     }
 
     /**
-     * Re-add all items to the buffer.
+     * Re-add all items to the buffer in a single locked operation.
      */
     protected function reAddAllItemsToBuffer(RanetraceBatchBuffer $buffer): void
     {
-        foreach ($this->items as $item) {
-            $buffer->addItem($this->type, $item['data']);
-        }
+        $buffer->addItems(
+            $this->type,
+            array_map(fn (array $item): array => $item['data'], $this->items)
+        );
     }
 
     /**
@@ -312,11 +330,31 @@ class SendBatchToRanetraceJob implements ShouldBeUnique, ShouldQueue
      */
     protected function reAddUnprocessedItemsToBuffer(RanetraceBatchBuffer $buffer, array $indexes): void
     {
+        $dataItems = [];
+
         foreach ($indexes as $index) {
             if (isset($this->items[$index])) {
-                $buffer->addItem($this->type, $this->items[$index]['data']);
+                $dataItems[] = $this->items[$index]['data'];
             }
         }
+
+        $buffer->addItems($this->type, $dataItems);
+    }
+
+    /**
+     * Record the timestamp of a successful batch send for this type, so
+     * ranetrace:status can warn when buffers hold items but no recent drain
+     * has occurred (a sign ranetrace:work is not scheduled).
+     */
+    protected function recordLastBatch(): void
+    {
+        $cacheDriver = config('ranetrace.batch.cache_driver', 'redis');
+
+        Cache::store($cacheDriver)->put(
+            self::LAST_BATCH_PREFIX.$this->type,
+            now()->timestamp,
+            now()->addWeek()
+        );
     }
 
     /**

@@ -4,24 +4,14 @@ declare(strict_types=1);
 
 namespace Ranetrace\Laravel\Jobs;
 
-use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Foundation\Bus\Dispatchable;
-use Illuminate\Queue\InteractsWithQueue;
-use Illuminate\Queue\SerializesModels;
 use Ranetrace\Laravel\Services\RanetraceBatchBuffer;
-use Ranetrace\Laravel\Support\InternalLogger;
-use Throwable;
 
-class HandleErrorJob implements ShouldQueue
+class HandleErrorJob extends BaseRanetraceJob
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
-
     public function __construct(
         protected array $errorData
     ) {
-        // Optionally assign queue name from config
-        $this->onQueue(config('ranetrace.errors.queue_name', 'default'));
+        $this->assignQueue();
     }
 
     public function handle(RanetraceBatchBuffer $buffer): void
@@ -32,23 +22,17 @@ class HandleErrorJob implements ShouldQueue
         $buffer->addItem('errors', $payload);
     }
 
-    /**
-     * Handle job failure after all retries exhausted.
-     * Logs to 'ranetrace_internal' channel to prevent infinite error loops (never logs to Ranetrace).
-     */
-    public function failed(Throwable $exception): void
+    protected function getConfigPath(): string
     {
-        // Use 'ranetrace_internal' channel
-        // to prevent infinite loops by bypassing Ranetrace's own capture
-        InternalLogger::critical('Ranetrace job failed after all retries', [
-            'job_class' => static::class,
-            'exception' => $exception->getMessage(),
-        ]);
+        return 'ranetrace.errors';
     }
 
-    protected function filterPayload(array $data): array
+    /**
+     * @return array<int, string>
+     */
+    protected function getAllowedKeys(): array
     {
-        $allowedKeys = [
+        return [
             'for',
             'message',
             'file',
@@ -70,9 +54,5 @@ class HandleErrorJob implements ShouldQueue
             'console_arguments',
             'console_options',
         ];
-
-        return collect($data)
-            ->only($allowedKeys)
-            ->toArray();
     }
 }

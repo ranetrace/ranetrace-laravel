@@ -182,3 +182,61 @@ test('it returns empty array when no types have items', function (): void {
     expect($availableTypes)->toBeArray();
     expect($availableTypes)->toBeEmpty();
 });
+
+test('getAvailableTypes includes errors when the errors buffer has items', function (): void {
+    $buffer = new RanetraceBatchBuffer;
+
+    $buffer->addItem('errors', ['message' => 'boom']);
+
+    expect($buffer->getAvailableTypes())->toContain('errors');
+});
+
+test('addItems adds multiple items in a single call', function (): void {
+    $buffer = new RanetraceBatchBuffer;
+
+    $buffer->addItems('events', [
+        ['event_name' => 'event1'],
+        ['event_name' => 'event2'],
+        ['event_name' => 'event3'],
+    ]);
+
+    expect($buffer->count('events'))->toBe(3);
+
+    $items = $buffer->getItems('events', 10);
+    expect($items[0]['data']['event_name'])->toBe('event1');
+    expect($items[2]['data']['event_name'])->toBe('event3');
+});
+
+test('addItems with an empty array is a no-op', function (): void {
+    $buffer = new RanetraceBatchBuffer;
+
+    $buffer->addItems('events', []);
+
+    expect($buffer->count('events'))->toBe(0);
+});
+
+test('buffer overflow sets the overflow flag', function (): void {
+    Config::set('ranetrace.batch.max_buffer_size', 3);
+    $buffer = new RanetraceBatchBuffer;
+
+    for ($i = 1; $i <= 5; $i++) {
+        $buffer->addItem('events', ['event_name' => "event{$i}"]);
+    }
+
+    expect($buffer->count('events'))->toBe(3);
+    expect(Cache::store('array')->get('ranetrace:buffer:events:overflow'))->toBeTrue();
+});
+
+test('draining the buffer below capacity clears the overflow flag', function (): void {
+    Config::set('ranetrace.batch.max_buffer_size', 3);
+    $buffer = new RanetraceBatchBuffer;
+
+    for ($i = 1; $i <= 5; $i++) {
+        $buffer->addItem('events', ['event_name' => "event{$i}"]);
+    }
+    expect(Cache::store('array')->get('ranetrace:buffer:events:overflow'))->toBeTrue();
+
+    $buffer->getItems('events', 10);
+
+    expect(Cache::store('array')->get('ranetrace:buffer:events:overflow'))->toBeNull();
+});

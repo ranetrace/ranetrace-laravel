@@ -30,7 +30,7 @@ class RanetraceWorkCommand extends Command
 
         $types = $specificType
             ? [$specificType]
-            : ['errors', 'events', 'logs', 'page_visits', 'javascript_errors'];
+            : $buffer->getAvailableTypes();
 
         $sentCount = 0;
 

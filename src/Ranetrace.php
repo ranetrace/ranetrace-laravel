@@ -6,37 +6,149 @@ namespace Ranetrace\Laravel;
 
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Request;
 use Ranetrace\Laravel\Analytics\FingerprintGenerator;
 use Ranetrace\Laravel\Events\EventTracker;
 use Ranetrace\Laravel\Jobs\HandleErrorJob;
 use Ranetrace\Laravel\Jobs\HandleEventJob;
+use Ranetrace\Laravel\Support\InternalLogger;
 use Ranetrace\Laravel\Utilities\DataSanitizer;
 use Throwable;
 
 class Ranetrace
 {
+    /**
+     * Request headers considered safe to capture. Every other header is masked,
+     * so a header carrying a secret that we did not anticipate is masked by
+     * default rather than leaked into the error backend.
+     *
+     * @var array<int, string>
+     */
+    protected const array SAFE_HEADERS = [
+        'accept',
+        'accept-charset',
+        'accept-encoding',
+        'accept-language',
+        'cache-control',
+        'connection',
+        'content-length',
+        'content-type',
+        'host',
+        'referer',
+        'user-agent',
+        'x-requested-with',
+        'x-forwarded-for',
+        'x-forwarded-proto',
+        'x-forwarded-host',
+    ];
+
     public function report(Throwable $exception): void
     {
-        if (! config('ranetrace.enabled', false)) {
+        if (! $this->isCaptureEnabled('errors')) {
             return;
         }
 
-        if (! config('ranetrace.errors.enabled', true)) {
+        // Ranetrace must never throw from its capture path — losing a single
+        // error event is acceptable, breaking the host application is not.
+        // See specs/.../client-internal-error-handling.md (Core Rule).
+        try {
+            $data = $this->buildErrorPayload($exception);
+
+            if (config('ranetrace.errors.queue', true)) {
+                HandleErrorJob::dispatch($data);
+            } else {
+                HandleErrorJob::dispatchSync($data);
+            }
+        } catch (Throwable $e) {
+            InternalLogger::error('Failed to capture exception', [
+                'exception' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    public function trackEvent(string $eventName, array $properties = [], ?int $userId = null, bool $validate = true): void
+    {
+        if (! $this->isCaptureEnabled('events')) {
             return;
         }
 
+        // Validation stays OUTSIDE the try/catch: an invalid event name is a
+        // developer mistake and should fail loudly during development.
+        if ($validate) {
+            EventTracker::ensureValidEventName($eventName);
+        }
+
+        // Everything past validation must never throw into the caller's
+        // business logic — fail silently per the package's Core Rule.
+        try {
+            $user = $userId ? ['id' => $userId] : (Auth::user() ? ['id' => Auth::id()] : null);
+
+            $eventData = [
+                'event_name' => $eventName,
+                'properties' => DataSanitizer::sanitizeForSerialization($properties),
+                'user' => $user,
+                'timestamp' => Carbon::now()->toISOString(),
+                'url' => request()->fullUrl(),
+                'user_agent_hash' => FingerprintGenerator::generateUserAgentHash(),
+                'session_id_hash' => FingerprintGenerator::generateSessionIdHash(),
+            ];
+
+            if (config('ranetrace.events.queue', true)) {
+                HandleEventJob::dispatch($eventData);
+            } else {
+                HandleEventJob::dispatchSync($eventData);
+            }
+        } catch (Throwable $e) {
+            InternalLogger::error('Failed to track event', [
+                'event_name' => $eventName,
+                'exception' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Determine whether capture is enabled for the given feature: the package
+     * must be enabled, the feature itself enabled, and an API key configured.
+     */
+    private function isCaptureEnabled(string $feature): bool
+    {
+        return config('ranetrace.enabled', true)
+            && config("ranetrace.{$feature}.enabled", true)
+            && ! empty(config('ranetrace.key'));
+    }
+
+    /**
+     * Mask every request header not on the safe-header allowlist, so a header
+     * carrying a secret we did not anticipate is masked rather than leaked.
+     *
+     * @param  array<string, mixed>  $headers
+     * @return array<string, mixed>
+     */
+    private function maskUnsafeHeaders(array $headers): array
+    {
+        foreach ($headers as $header => &$value) {
+            if (! in_array($header, self::SAFE_HEADERS, true)) {
+                $value = '***';
+            }
+        }
+        unset($value);
+
+        return $headers;
+    }
+
+    /**
+     * Build the error payload sent to Ranetrace.
+     *
+     * @return array<string, mixed>
+     */
+    private function buildErrorPayload(Throwable $exception): array
+    {
         $request = Request::instance();
         $user = Auth::user();
 
-        // Get PHP version
         $phpVersion = phpversion();
-
-        // Get Laravel version
         $laravelVersion = app()->version();
 
-        // Initialize headers, URL, and method as null
         $headers = null;
         $url = null;
         $method = null;
@@ -46,19 +158,7 @@ class Ranetrace
 
         // If the error occurred via HTTP, gather request data
         if (! $isConsole) {
-            // Get headers
-            $headers = $request->headers->all();
-
-            // Remove sensitive headers
-            $sensitiveHeaders = ['cookie', 'authorization', 'x-csrf-token', 'x-xsrf-token'];
-
-            foreach ($headers as $header => &$value) {
-                if (in_array($header, $sensitiveHeaders)) {
-                    $value = '***';  // Mask sensitive headers
-                }
-            }
-
-            $headers = json_encode($headers);
+            $headers = json_encode($this->maskUnsafeHeaders($request->headers->all()));
 
             $url = $request->fullUrl();
             $method = $request->method();
@@ -87,12 +187,10 @@ class Ranetrace
         $consoleOptions = null;
 
         if ($isConsole) {
-            // Get the command and its input if available
             if (defined('ARTISAN_BINARY')) {
                 $consoleCommand = implode(' ', $_SERVER['argv'] ?? []);
             }
 
-            // You can gather arguments/options if available (e.g., in custom exception handlers)
             $consoleArguments = json_encode(request()->server('argv') ?? []);
         }
 
@@ -125,8 +223,7 @@ class Ranetrace
 
         $time = Carbon::now()->toDateTimeString();
 
-        // Data array to send
-        $data = [
+        return [
             'for' => 'ranetrace',
             'message' => $message,
             'file' => $file,
@@ -148,53 +245,6 @@ class Ranetrace
             'console_arguments' => $consoleArguments,
             'console_options' => $consoleOptions,
         ];
-
-        try {
-            // Dispatch job to send error data
-            if (config('ranetrace.errors.queue', true)) {
-                HandleErrorJob::dispatch($data);
-            } else {
-                HandleErrorJob::dispatchSync($data);
-            }
-        } catch (Throwable $e) {
-            // Log the failure but don't rethrow to avoid infinite loops
-            Log::warning('Failed to send error report to Ranetrace: '.$e->getMessage());
-        }
-    }
-
-    public function trackEvent(string $eventName, array $properties = [], ?int $userId = null, bool $validate = true): void
-    {
-        if (! config('ranetrace.enabled', false)) {
-            return;
-        }
-
-        if (! config('ranetrace.events.enabled', true)) {
-            return;
-        }
-
-        // Validate event name by default (can be disabled for flexibility)
-        if ($validate) {
-            EventTracker::ensureValidEventName($eventName);
-        }
-
-        $user = $userId ? ['id' => $userId] : (Auth::user() ? ['id' => Auth::id()] : null);
-
-        $eventData = [
-            'event_name' => $eventName,
-            'properties' => DataSanitizer::sanitizeForSerialization($properties),
-            'user' => $user,
-            'timestamp' => Carbon::now()->toISOString(),
-            'url' => request()->fullUrl(),
-            'user_agent_hash' => FingerprintGenerator::generateUserAgentHash(),
-            'session_id_hash' => FingerprintGenerator::generateSessionIdHash(),
-        ];
-
-        // Dispatch job to send event data
-        if (config('ranetrace.events.queue', true)) {
-            HandleEventJob::dispatch($eventData);
-        } else {
-            HandleEventJob::dispatchSync($eventData);
-        }
     }
 
     private function cleanCode(string $code): string

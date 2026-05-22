@@ -80,12 +80,12 @@ class RanetraceServiceProvider extends ServiceProvider
         $this->loadViewsFrom(__DIR__.'/../resources/views', 'ranetrace');
 
         // Add middleware to web group
-        if (config('ranetrace.enabled', false) && config('ranetrace.website_analytics.enabled')) {
+        if (config('ranetrace.enabled', true) && config('ranetrace.website_analytics.enabled')) {
             $this->app['router']->pushMiddlewareToGroup('web', TrackPageVisit::class);
         }
 
         // Register JavaScript error tracking route
-        if (config('ranetrace.enabled', false) && config('ranetrace.javascript_errors.enabled')) {
+        if (config('ranetrace.enabled', true) && config('ranetrace.javascript_errors.enabled')) {
             $this->registerJavaScriptErrorRoute();
         }
 

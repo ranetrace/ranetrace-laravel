@@ -4,24 +4,14 @@ declare(strict_types=1);
 
 namespace Ranetrace\Laravel\Jobs;
 
-use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Foundation\Bus\Dispatchable;
-use Illuminate\Queue\InteractsWithQueue;
-use Illuminate\Queue\SerializesModels;
 use Ranetrace\Laravel\Services\RanetraceBatchBuffer;
-use Ranetrace\Laravel\Support\InternalLogger;
-use Throwable;
 
-class HandlePageVisitJob implements ShouldQueue
+class HandlePageVisitJob extends BaseRanetraceJob
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
-
     public function __construct(
         protected array $visitData
     ) {
-        // Optionally assign queue name from config
-        $this->onQueue(config('ranetrace.website_analytics.queue_name', 'default'));
+        $this->assignQueue();
     }
 
     /**
@@ -40,21 +30,15 @@ class HandlePageVisitJob implements ShouldQueue
         $buffer->addItem('page_visits', $payload);
     }
 
-    /**
-     * Handle job failure after all retries exhausted.
-     * Logs to 'ranetrace_internal' channel to prevent infinite error loops (never logs to Ranetrace).
-     */
-    public function failed(Throwable $exception): void
+    protected function getConfigPath(): string
     {
-        // Use 'ranetrace_internal' channel
-        // to prevent infinite loops by bypassing Ranetrace's own capture
-        InternalLogger::critical('Ranetrace job failed after all retries', [
-            'job_class' => static::class,
-            'exception' => $exception->getMessage(),
-        ]);
+        return 'ranetrace.website_analytics';
     }
 
-    protected function filterPayload(array $data): array
+    /**
+     * @return array<int, string>
+     */
+    protected function getAllowedKeys(): array
     {
         $keys = [
             'url',
@@ -75,16 +59,13 @@ class HandlePageVisitJob implements ShouldQueue
             'human_probability_reasons',
         ];
 
-        // Development mode that preserves the unhashed user agent
-        // Using this setting in production is pointless and unsafe
-        // Ranetrace will ignore non-hashed user agents
-        $preserveUserAgent = config('ranetrace.website_analytics.debug.preserve_user_agent', false);
-        if ($preserveUserAgent) {
+        // Development mode that preserves the unhashed user agent.
+        // Using this setting in production is pointless and unsafe;
+        // Ranetrace will ignore non-hashed user agents.
+        if (config('ranetrace.website_analytics.debug.preserve_user_agent', false)) {
             $keys[] = 'user_agent';
         }
 
-        return collect($data)
-            ->only($keys)
-            ->toArray();
+        return $keys;
     }
 }

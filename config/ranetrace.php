@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 return [
-    'enabled' => env('RANETRACE_ENABLED', false),
+    'enabled' => env('RANETRACE_ENABLED', true),
     'key' => env('RANETRACE_KEY'),
 
     'errors' => [

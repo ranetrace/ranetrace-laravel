@@ -11,6 +11,14 @@ use Ranetrace\Laravel\Support\InternalLogger;
 
 class RanetraceBatchBuffer
 {
+    /**
+     * Canonical list of all buffer types. Single source of truth — consumers
+     * must derive from this rather than hardcoding their own lists.
+     *
+     * @var array<int, string>
+     */
+    public const array TYPES = ['errors', 'events', 'logs', 'page_visits', 'javascript_errors'];
+
     protected const string BUFFER_PREFIX = 'ranetrace:buffer:';
 
     protected string $cacheDriver;
@@ -24,36 +32,62 @@ class RanetraceBatchBuffer
     }
 
     /**
-     * Add an item to the buffer for a specific type.
+     * Add a single item to the buffer for a specific type.
      */
     public function addItem(string $type, array $data): void
     {
+        $this->addItems($type, [$data]);
+    }
+
+    /**
+     * Add multiple items to the buffer for a specific type in a single locked
+     * cache operation. Used for both single adds and bulk failure re-queues so
+     * a failed batch is re-buffered with one get/put instead of N.
+     *
+     * @param  array<int, array>  $dataItems
+     */
+    public function addItems(string $type, array $dataItems): void
+    {
+        if (empty($dataItems)) {
+            return;
+        }
+
         $cacheKey = $this->getCacheKey($type);
 
-        $item = [
-            'id' => (string) Str::uuid(),
-            'data' => $data,
-            'timestamp' => now()->timestamp,
-        ];
-
         // Use cache lock to ensure thread-safety
-        $addItemResult = Cache::store($this->cacheDriver)->lock($cacheKey.':lock', 10)->get(function () use ($cacheKey, $item) {
+        $addItemsResult = Cache::store($this->cacheDriver)->lock($cacheKey.':lock', 10)->get(function () use ($type, $cacheKey, $dataItems) {
             $buffer = Cache::store($this->cacheDriver)->get($cacheKey, []);
-            $buffer[] = $item;
+
+            foreach ($dataItems as $data) {
+                $buffer[] = [
+                    'id' => (string) Str::uuid(),
+                    'data' => $data,
+                    'timestamp' => now()->timestamp,
+                ];
+            }
 
             // Check max buffer size
             $maxSize = $this->getMaxBufferSize();
             if (count($buffer) > $maxSize) {
-                // Keep only the most recent items
+                $dropped = count($buffer) - $maxSize;
+
+                // Keep only the most recent items (FIFO — oldest dropped first)
                 $buffer = array_slice($buffer, -$maxSize);
+
+                // Buffer overflow drops data by design — log it so the loss is
+                // visible, but only once per overflow cycle (see logOverflowOnce).
+                $this->logOverflowOnce($type, $dropped, $maxSize);
             }
 
             Cache::store($this->cacheDriver)->put($cacheKey, $buffer, $this->ttl);
         });
 
-        if ($addItemResult === false) {
+        if ($addItemsResult === false) {
             // This means the lock could not be acquired; log a warning
-            InternalLogger::warning('Could not acquire cache lock to add item to buffer', ['type' => $type]);
+            InternalLogger::warning('Could not acquire cache lock to add items to buffer', [
+                'type' => $type,
+                'count' => count($dataItems),
+            ]);
         }
     }
 
@@ -77,6 +111,12 @@ class RanetraceBatchBuffer
 
             // Remove these items from the buffer atomically
             $buffer = array_slice($buffer, $limit);
+
+            // A drain that brings the buffer below capacity ends the overflow
+            // cycle — clear the flag so the next overflow is logged again.
+            if (count($buffer) < $this->getMaxBufferSize()) {
+                Cache::store($this->cacheDriver)->forget($cacheKey.':overflow');
+            }
 
             // Update cache
             if (empty($buffer)) {
@@ -161,12 +201,10 @@ class RanetraceBatchBuffer
      */
     public function getAvailableTypes(): array
     {
-        return array_filter([
-            'events',
-            'logs',
-            'page_visits',
-            'javascript_errors',
-        ], fn ($type) => $this->count($type) > 0);
+        return array_values(array_filter(
+            self::TYPES,
+            fn (string $type): bool => $this->count($type) > 0
+        ));
     }
 
     /**
@@ -178,10 +216,32 @@ class RanetraceBatchBuffer
     }
 
     /**
+     * Log a buffer-overflow drop at most once per overflow cycle. An overflow
+     * flag is set on the first drop and cleared by getItems() once a drain
+     * brings the buffer back below capacity — preventing log spam under load.
+     */
+    protected function logOverflowOnce(string $type, int $dropped, int $maxSize): void
+    {
+        $flagKey = $this->getCacheKey($type).':overflow';
+
+        if (Cache::store($this->cacheDriver)->get($flagKey, false)) {
+            return;
+        }
+
+        Cache::store($this->cacheDriver)->put($flagKey, true, $this->ttl);
+
+        InternalLogger::warning('Ranetrace buffer overflow — oldest items dropped', [
+            'type' => $type,
+            'dropped' => $dropped,
+            'max' => $maxSize,
+        ]);
+    }
+
+    /**
      * Get the maximum buffer size to prevent memory issues.
      */
     protected function getMaxBufferSize(): int
     {
-        return config('ranetrace.batch.max_buffer_size', 1000);
+        return config('ranetrace.batch.max_buffer_size', 5000);
     }
 }
