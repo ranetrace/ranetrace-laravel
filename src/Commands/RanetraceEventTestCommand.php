@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Ranetrace\Laravel\Commands;
 
-use Exception;
 use Illuminate\Console\Command;
 use InvalidArgumentException;
 use Ranetrace\Laravel\Events\EventTracker;
@@ -23,21 +22,20 @@ class RanetraceEventTestCommand extends Command
 
         // Test event name validation
         $this->info('1. Testing event name validation...');
+
+        $this->info('   ✓ Valid event name: user_registered');
+        RanetraceEvents::custom('user_registered', ['source' => 'test']);
+
+        $this->info('   ✓ Using predefined constant: EventTracker::PRODUCT_ADDED_TO_CART');
+        Ranetrace::trackEvent(EventTracker::PRODUCT_ADDED_TO_CART, ['test' => true]);
+
+        $this->info('   ⚠ Testing invalid event name (this will show validation error)...');
         try {
-            $this->info('   ✓ Valid event name: user_registered');
-            RanetraceEvents::custom('user_registered', ['source' => 'test']);
-
-            $this->info('   ✓ Using predefined constant: EventTracker::PRODUCT_ADDED_TO_CART');
-            Ranetrace::trackEvent(EventTracker::PRODUCT_ADDED_TO_CART, ['test' => true]);
-
-            $this->info('   ⚠ Testing invalid event name (this will show validation error)...');
-            try {
-                RanetraceEvents::custom('Invalid Event Name!', []);
-            } catch (InvalidArgumentException $e) {
-                $this->warn('   Expected validation error: '.$e->getMessage());
-            }
-        } catch (Exception $e) {
-            $this->error('Validation test failed: '.$e->getMessage());
+            // Direct call (not via the RanetraceEvents facade) so static
+            // analysis can see the InvalidArgumentException throw path.
+            EventTracker::custom('Invalid Event Name!', []);
+        } catch (InvalidArgumentException $e) {
+            $this->warn('   Expected validation error: '.$e->getMessage());
         }
 
         // Test basic event tracking
@@ -99,8 +97,16 @@ class RanetraceEventTestCommand extends Command
             userId: 123
         );
 
-        $this->info('✅ All test events have been sent to Ranetrace!');
-        $this->info('Check your Ranetrace dashboard to see the events.');
+        $this->newLine();
+        if (config('ranetrace.events.queue', true)) {
+            $this->info('✅ 8 test events have been queued for Ranetrace.');
+            $this->info('They will be sent the next time the ranetrace:work command runs.');
+            $this->info('To send them immediately, run: php artisan ranetrace:work');
+        } else {
+            $this->info('✅ 8 test events have been sent to Ranetrace.');
+        }
+        $this->newLine();
+        $this->info('Check your Ranetrace dashboard once the events have been sent.');
 
         $this->newLine();
         $this->info('Available Event Constants:');

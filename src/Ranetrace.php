@@ -103,7 +103,7 @@ class Ranetrace
         }
     }
 
-    public function trackEvent(string $eventName, array $properties = [], ?int $userId = null, bool $validate = true): void
+    public function trackEvent(string $eventName, array $properties = [], int|string|null $userId = null, bool $validate = true): void
     {
         if (! $this->isCaptureEnabled('events')) {
             return;
@@ -118,14 +118,24 @@ class Ranetrace
         // Everything past validation must never throw into the caller's
         // business logic — fail silently per the package's Core Rule.
         try {
-            $user = $userId ? ['id' => $userId] : (Auth::user() ? ['id' => Auth::id()] : null);
+            // getAuthIdentifier() is the safe contract method — works for any
+            // Authenticatable, Eloquent or not. Skip the Auth lookup entirely
+            // when the caller already provided a userId.
+            if ($userId !== null) {
+                $user = ['id' => $userId];
+            } else {
+                $authenticated = Auth::user();
+                $user = $authenticated !== null
+                    ? ['id' => $authenticated->getAuthIdentifier()]
+                    : null;
+            }
 
             $eventData = [
                 'event_name' => $eventName,
                 'properties' => DataSanitizer::sanitizeForSerialization($properties),
                 'user' => $user,
                 'timestamp' => Carbon::now()->toISOString(),
-                'url' => request()->fullUrl(),
+                'url' => app()->runningInConsole() ? null : request()->fullUrl(),
                 'user_agent_hash' => FingerprintGenerator::generateUserAgentHash(),
                 'session_id_hash' => FingerprintGenerator::generateSessionIdHash(),
             ];

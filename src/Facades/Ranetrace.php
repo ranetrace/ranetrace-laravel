@@ -11,7 +11,7 @@ use Throwable;
 /**
  * @see \Ranetrace\Laravel\Ranetrace
  *
- * @method static void trackEvent(string $eventName, array $properties = [], ?int $userId = null, bool $validate = true)
+ * @method static void trackEvent(string $eventName, array $properties = [], int|string|null $userId = null, bool $validate = true)
  */
 class Ranetrace extends Facade
 {

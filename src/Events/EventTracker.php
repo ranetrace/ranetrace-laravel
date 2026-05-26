@@ -120,7 +120,7 @@ class EventTracker
     /**
      * Track user registration
      */
-    public static function userRegistered(?int $userId = null, array $additionalProperties = []): void
+    public static function userRegistered(int|string|null $userId = null, array $additionalProperties = []): void
     {
         Ranetrace::trackEvent(self::USER_REGISTERED, $additionalProperties, $userId);
     }
@@ -128,7 +128,7 @@ class EventTracker
     /**
      * Track user login
      */
-    public static function userLoggedIn(?int $userId = null, array $additionalProperties = []): void
+    public static function userLoggedIn(int|string|null $userId = null, array $additionalProperties = []): void
     {
         Ranetrace::trackEvent(self::USER_LOGGED_IN, $additionalProperties, $userId);
     }
@@ -149,7 +149,7 @@ class EventTracker
      * Track custom event with custom properties
      * This method validates the event name to ensure consistency
      */
-    public static function custom(string $eventName, array $properties = [], ?int $userId = null): void
+    public static function custom(string $eventName, array $properties = [], int|string|null $userId = null): void
     {
         self::ensureValidEventName($eventName);
         Ranetrace::trackEvent($eventName, $properties, $userId);
@@ -159,7 +159,7 @@ class EventTracker
      * Track custom event without validation (for advanced users who need flexibility)
      * Use this only if you need to bypass validation for specific cases
      */
-    public static function customUnsafe(string $eventName, array $properties = [], ?int $userId = null): void
+    public static function customUnsafe(string $eventName, array $properties = [], int|string|null $userId = null): void
     {
         Ranetrace::trackEvent($eventName, $properties, $userId, false);
     }
