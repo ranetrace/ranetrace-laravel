@@ -64,6 +64,7 @@ test('it ignores errors matching ignored patterns', function (): void {
 
     $response = $this->postJson(route('ranetrace.javascript-errors.store'), [
         'message' => 'ResizeObserver loop limit exceeded',
+        'url' => 'https://example.com/',
     ]);
 
     $response->assertStatus(200);
@@ -76,6 +77,7 @@ test('it ignores errors matching ignored patterns', function (): void {
 test('it sanitizes breadcrumbs', function (): void {
     $response = $this->postJson(route('ranetrace.javascript-errors.store'), [
         'message' => 'Test error',
+        'url' => 'https://example.com/',
         'breadcrumbs' => [
             [
                 'timestamp' => now()->toISOString(),
@@ -104,6 +106,7 @@ test('it limits breadcrumb count', function (): void {
 
     $response = $this->postJson(route('ranetrace.javascript-errors.store'), [
         'message' => 'Test error',
+        'url' => 'https://example.com/',
         'breadcrumbs' => $breadcrumbs,
     ]);
 
@@ -113,6 +116,7 @@ test('it limits breadcrumb count', function (): void {
 test('it includes browser info', function (): void {
     $response = $this->postJson(route('ranetrace.javascript-errors.store'), [
         'message' => 'Test error',
+        'url' => 'https://example.com/',
         'browser_info' => [
             'screen_width' => 1920,
             'screen_height' => 1080,
@@ -122,6 +126,31 @@ test('it includes browser info', function (): void {
     ]);
 
     $response->assertStatus(200);
+});
+
+test('url is required when Referer header is absent', function (): void {
+    $response = $this->postJson(route('ranetrace.javascript-errors.store'), [
+        'message' => 'Test error',
+    ]);
+
+    $response->assertStatus(422);
+    $response->assertJsonValidationErrors(['url']);
+});
+
+test('Referer header is used as url fallback before validation', function (): void {
+    $response = $this->postJson(
+        route('ranetrace.javascript-errors.store'),
+        ['message' => 'Test error'],
+        ['Referer' => 'https://example.com/from-referer']
+    );
+
+    $response->assertStatus(200);
+    $response->assertJson(['success' => true]);
+});
+
+test('endpoint lives at /ranetrace/javascript-errors/store', function (): void {
+    expect(route('ranetrace.javascript-errors.store', [], false))
+        ->toBe('/ranetrace/javascript-errors/store');
 });
 
 test('it validates breadcrumb structure', function (): void {

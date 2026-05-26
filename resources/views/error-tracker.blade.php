@@ -36,6 +36,12 @@
     const sentErrors = new Set();
     const ERROR_CACHE_SIZE = 50;
 
+    // Browsers cap fetch(keepalive: true) bodies at ~64KB total. We stay under
+    // it with headroom; if a payload still exceeds the cap after trimming, we
+    // fall back to keepalive:false (loses page-unload survivability but gets
+    // the payload through).
+    const KEEPALIVE_SIZE_LIMIT = 60000;
+
     /**
      * Add a breadcrumb for debugging context
      */
@@ -139,6 +145,8 @@
         errorData.url = window.location.href;
         errorData.timestamp = new Date().toISOString();
 
+        const { body, keepalive } = trimToFit(errorData);
+
         // Send to server
         fetch(config.endpoint, {
             method: 'POST',
@@ -147,13 +155,48 @@
                 'X-CSRF-TOKEN': config.csrfToken,
                 'X-Requested-With': 'XMLHttpRequest'
             },
-            body: JSON.stringify(errorData),
-            // Use keepalive to ensure request completes even if page unloads
-            keepalive: true
+            body: body,
+            keepalive: keepalive
         }).catch(function(err) {
             // Silently fail - don't want error tracking to cause more errors
             console.warn('Failed to send error to Ranetrace:', err);
         });
+    }
+
+    /**
+     * Shrink the error payload so it fits under the browser's keepalive body
+     * cap (~64KB). Order of compromise: trim breadcrumbs → drop context →
+     * fall back to keepalive:false (which has no body cap).
+     */
+    function trimToFit(errorData) {
+        let body = JSON.stringify(errorData);
+        if (body.length <= KEEPALIVE_SIZE_LIMIT) {
+            return { body: body, keepalive: true };
+        }
+
+        // 1) Drop oldest half of breadcrumbs (recent ones are most diagnostic)
+        if (Array.isArray(errorData.breadcrumbs) && errorData.breadcrumbs.length > 0) {
+            errorData.breadcrumbs = errorData.breadcrumbs.slice(
+                Math.floor(errorData.breadcrumbs.length / 2)
+            );
+            body = JSON.stringify(errorData);
+            if (body.length <= KEEPALIVE_SIZE_LIMIT) {
+                return { body: body, keepalive: true };
+            }
+        }
+
+        // 2) Drop the free-form context object entirely
+        if (errorData.context && Object.keys(errorData.context).length > 0) {
+            errorData.context = {};
+            body = JSON.stringify(errorData);
+            if (body.length <= KEEPALIVE_SIZE_LIMIT) {
+                return { body: body, keepalive: true };
+            }
+        }
+
+        // 3) Still oversize — send without keepalive (browser allows larger body
+        // but the request won't survive a page unload).
+        return { body: body, keepalive: false };
     }
 
     /**

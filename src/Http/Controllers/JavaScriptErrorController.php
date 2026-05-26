@@ -9,22 +9,51 @@ use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Validator;
 use Ranetrace\Laravel\Jobs\HandleJavaScriptErrorJob;
+use Ranetrace\Laravel\Support\InternalLogger;
 use Ranetrace\Laravel\Utilities\DataSanitizer;
 use Throwable;
 
 class JavaScriptErrorController extends Controller
 {
+    /**
+     * Maximum serialized context size (JSON-encoded bytes). Oversize context is
+     * replaced with a truncation marker rather than truncated mid-structure.
+     */
+    private const int MAX_CONTEXT_BYTES = 51_200; // 50 KB
+
+    /**
+     * Maximum serialized data size per breadcrumb (JSON-encoded bytes).
+     */
+    private const int MAX_BREADCRUMB_DATA_BYTES = 5_120; // 5 KB
+
     public function store(Request $request): JsonResponse
     {
-        // Check if Ranetrace is enabled globally
-        if (! config('ranetrace.enabled', false)) {
+        // The JS error endpoint is part of the capture path and must never
+        // throw uncaught into the host app, even if sanitization/dispatch
+        // fails. (Failure-isolation Core Rule.)
+        try {
+            return $this->process($request);
+        } catch (Throwable $e) {
+            InternalLogger::error('Failed to process JavaScript error', [
+                'exception' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to process error',
+            ], 500);
+        }
+    }
+
+    private function process(Request $request): JsonResponse
+    {
+        if (! config('ranetrace.enabled', true)) {
             return response()->json([
                 'success' => false,
                 'message' => 'Ranetrace is not enabled',
             ], 403);
         }
 
-        // Check if JavaScript error tracking is enabled
         if (! config('ranetrace.javascript_errors.enabled', false)) {
             return response()->json([
                 'success' => false,
@@ -32,7 +61,12 @@ class JavaScriptErrorController extends Controller
             ], 403);
         }
 
-        // Validate the incoming error data
+        // Apply Referer fallback BEFORE validation so the validator is the
+        // single source of truth that `url` is present.
+        if (blank($request->input('url'))) {
+            $request->merge(['url' => $request->header('Referer')]);
+        }
+
         $validator = Validator::make($request->all(), [
             'message' => 'required|string|max:2000',
             'stack' => 'nullable|string|max:10000',
@@ -40,7 +74,7 @@ class JavaScriptErrorController extends Controller
             'filename' => 'nullable|string|max:500',
             'line' => 'nullable|integer',
             'column' => 'nullable|integer',
-            'url' => 'nullable|string|max:2000',
+            'url' => 'required|string|max:2000',
             'timestamp' => 'nullable|string',
             'breadcrumbs' => 'nullable|array',
             'breadcrumbs.*.timestamp' => 'required|string',
@@ -58,7 +92,6 @@ class JavaScriptErrorController extends Controller
             ], 422);
         }
 
-        // Check if error should be ignored based on patterns
         $ignoredErrors = config('ranetrace.javascript_errors.ignored_errors', []);
         $errorMessage = $request->input('message');
 
@@ -71,7 +104,6 @@ class JavaScriptErrorController extends Controller
             }
         }
 
-        // Apply sample rate
         $sampleRate = config('ranetrace.javascript_errors.sample_rate', 1.0);
         if ($sampleRate < 1.0 && mt_rand() / mt_getrandmax() > $sampleRate) {
             return response()->json([
@@ -80,11 +112,10 @@ class JavaScriptErrorController extends Controller
             ], 200);
         }
 
-        // Prepare error data for Ranetrace API
-        // Limit context size to stay within API 5MB request limit
+        // Cap context size: oversize objects are replaced with a marker
+        // (truncating mid-structure would yield invalid JSON).
         $context = DataSanitizer::sanitizeForSerialization($request->input('context', []));
-        $contextJson = json_encode($context);
-        if (mb_strlen($contextJson) > 51200) { // 50KB
+        if (strlen((string) json_encode($context)) > self::MAX_CONTEXT_BYTES) {
             $context = ['_truncated' => 'Context exceeded 50KB limit and was removed'];
         }
 
@@ -96,10 +127,11 @@ class JavaScriptErrorController extends Controller
             'line' => $request->input('line'),
             'column' => $request->input('column'),
             'user_agent' => $request->userAgent(),
-            'url' => $request->input('url', $request->header('Referer')),
+            'url' => $request->input('url'),
             'timestamp' => $request->input('timestamp', now()->format('c')),
             'environment' => config('app.env'),
-            'user_id' => $request->user()?->id,
+            // Contract method on Authenticatable — safe for non-Eloquent user models.
+            'user_id' => $request->user()?->getAuthIdentifier(),
             'session_id' => session()->getId(),
             'breadcrumbs' => $this->sanitizeBreadcrumbs($request->input('breadcrumbs', [])),
             'context' => $context,
@@ -114,47 +146,45 @@ class JavaScriptErrorController extends Controller
             ],
         ];
 
-        try {
-            // Send via queue by default, or synchronously if queue is disabled
-            if (config('ranetrace.javascript_errors.queue', true)) {
-                HandleJavaScriptErrorJob::dispatch($errorData);
-            } else {
-                HandleJavaScriptErrorJob::dispatchSync($errorData);
-            }
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Error received',
-            ], 200);
-        } catch (Throwable $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to process error',
-            ], 500);
+        if (config('ranetrace.javascript_errors.queue', true)) {
+            HandleJavaScriptErrorJob::dispatch($errorData);
+        } else {
+            HandleJavaScriptErrorJob::dispatchSync($errorData);
         }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Error received',
+        ], 200);
     }
 
+    /**
+     * Cap breadcrumb count and per-breadcrumb data size.
+     *
+     * Required breadcrumb fields (timestamp/category/message) are guaranteed
+     * present by the validator; no fallback defaults are applied here.
+     *
+     * @param  array<int, array<string, mixed>>  $breadcrumbs
+     * @return array<int, array<string, mixed>>
+     */
     protected function sanitizeBreadcrumbs(array $breadcrumbs): array
     {
         $maxBreadcrumbs = config('ranetrace.javascript_errors.max_breadcrumbs', 20);
 
-        // Limit the number of breadcrumbs
+        // Keep the most recent N breadcrumbs (oldest dropped)
         $breadcrumbs = array_slice($breadcrumbs, -$maxBreadcrumbs);
 
-        // Sanitize each breadcrumb
-        return array_map(function ($breadcrumb) {
+        return array_map(function (array $breadcrumb): array {
             $data = DataSanitizer::sanitizeForSerialization($breadcrumb['data'] ?? []);
-            $dataJson = json_encode($data);
 
-            // Limit breadcrumb data to 5KB to stay within API limits
-            if (mb_strlen($dataJson) > 5120) {
+            if (strlen((string) json_encode($data)) > self::MAX_BREADCRUMB_DATA_BYTES) {
                 $data = ['_truncated' => 'Breadcrumb data exceeded 5KB limit and was removed'];
             }
 
             return [
-                'timestamp' => $breadcrumb['timestamp'] ?? now()->format('c'),
-                'category' => $breadcrumb['category'] ?? 'unknown',
-                'message' => mb_substr($breadcrumb['message'] ?? '', 0, 500),
+                'timestamp' => $breadcrumb['timestamp'],
+                'category' => $breadcrumb['category'],
+                'message' => $breadcrumb['message'],
                 'data' => $data,
             ];
         }, $breadcrumbs);

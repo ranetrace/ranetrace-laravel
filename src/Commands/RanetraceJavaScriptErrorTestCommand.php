@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Ranetrace\Laravel\Commands;
 
 use Illuminate\Console\Command;
+use Ranetrace\Laravel\Jobs\HandleJavaScriptErrorJob;
 
 class RanetraceJavaScriptErrorTestCommand extends Command
 {
@@ -53,6 +54,44 @@ class RanetraceJavaScriptErrorTestCommand extends Command
         }
 
         $this->info('✅ JavaScript error tracking is enabled and configured!');
+        $this->newLine();
+
+        // Dispatch a synthetic JavaScript error so the user can verify the
+        // job → buffer → API path end-to-end without a browser. Mirrors the
+        // behavior of ranetrace:test-errors, test-events, and test-logging.
+        HandleJavaScriptErrorJob::dispatch([
+            'message' => 'Test JavaScript error from ranetrace:test-javascript-errors',
+            'stack' => "TestError: Test JavaScript error from ranetrace:test-javascript-errors\n    at ranetrace:test-javascript-errors (artisan)",
+            'type' => 'TestError',
+            'filename' => 'artisan',
+            'line' => 0,
+            'column' => 0,
+            'user_agent' => 'Ranetrace-CLI/Test',
+            'url' => 'cli://ranetrace:test-javascript-errors',
+            'timestamp' => now()->format('c'),
+            'environment' => config('app.env'),
+            'user_id' => null,
+            'session_id' => null,
+            'breadcrumbs' => [],
+            'context' => ['source' => 'cli-test'],
+            'browser_info' => [
+                'screen_width' => null,
+                'screen_height' => null,
+                'viewport_width' => null,
+                'viewport_height' => null,
+                'device_memory' => null,
+                'hardware_concurrency' => null,
+                'connection_type' => null,
+            ],
+        ]);
+
+        if (config('ranetrace.javascript_errors.queue', true)) {
+            $this->info('✅ Test JavaScript error queued for Ranetrace.');
+            $this->info('It will be sent the next time the ranetrace:work command runs.');
+            $this->info('To send it immediately, run: php artisan ranetrace:work');
+        } else {
+            $this->info('✅ Test JavaScript error sent to Ranetrace.');
+        }
         $this->newLine();
 
         // Display usage instructions

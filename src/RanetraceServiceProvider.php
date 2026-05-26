@@ -98,9 +98,11 @@ class RanetraceServiceProvider extends ServiceProvider
 
     protected function registerJavaScriptErrorRoute(): void
     {
+        $throttle = config('ranetrace.javascript_errors.throttle', '60,1');
+
         $this->app['router']
-            ->post('ranetrace/js-errors', [Http\Controllers\JavaScriptErrorController::class, 'store'])
-            ->middleware(['web', 'throttle:60,1'])
+            ->post('ranetrace/javascript-errors/store', [Http\Controllers\JavaScriptErrorController::class, 'store'])
+            ->middleware(['web', "throttle:{$throttle}"])
             ->name('ranetrace.javascript-errors.store');
     }
 

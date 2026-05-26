@@ -63,6 +63,7 @@ return [
         'queue' => env('RANETRACE_JAVASCRIPT_ERRORS_QUEUE', true),
         'queue_name' => env('RANETRACE_JAVASCRIPT_ERRORS_QUEUE_NAME', 'default'),
         'timeout' => env('RANETRACE_JAVASCRIPT_ERRORS_TIMEOUT', 10),
+        'throttle' => env('RANETRACE_JAVASCRIPT_ERRORS_THROTTLE', '60,1'),
         'sample_rate' => env('RANETRACE_JAVASCRIPT_ERRORS_SAMPLE_RATE', 1.0), // 1.0 = 100%, 0.1 = 10%
         'ignored_errors' => [
             // Browser quirks and unfixable issues
