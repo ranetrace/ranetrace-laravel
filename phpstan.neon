@@ -13,10 +13,3 @@ parameters:
         -
             message: '#Call to an undefined method .*::lock\(\)#'
             path: src/Services/RanetraceBatchBuffer.php
-        # Auth::user() is typed as the framework's base User; the host app's
-        # User model defines the `email` column. buildErrorPayload() runs
-        # inside report()'s try/catch, so a model lacking `email` cannot break
-        # the host application.
-        -
-            message: '#Access to an undefined property .*::\$email#'
-            path: src/Ranetrace.php

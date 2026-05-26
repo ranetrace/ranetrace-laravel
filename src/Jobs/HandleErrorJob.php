@@ -33,7 +33,6 @@ class HandleErrorJob extends BaseRanetraceJob
     protected function getAllowedKeys(): array
     {
         return [
-            'for',
             'message',
             'file',
             'line',
@@ -52,7 +51,6 @@ class HandleErrorJob extends BaseRanetraceJob
             'is_console',
             'console_command',
             'console_arguments',
-            'console_options',
         ];
     }
 }

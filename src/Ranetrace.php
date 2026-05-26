@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Ranetrace\Laravel;
 
+use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Request;
@@ -18,9 +19,45 @@ use Throwable;
 class Ranetrace
 {
     /**
-     * Request headers considered safe to capture. Every other header is masked,
-     * so a header carrying a secret that we did not anticipate is masked by
-     * default rather than leaked into the error backend.
+     * Truncation suffix appended to fields that exceed their length limit.
+     */
+    protected const string TRUNCATION_SUFFIX = '... (truncated)';
+
+    /**
+     * Per-field caps. These keep each error item small enough that a 1000-item
+     * batch fits comfortably under the API's 5MB request limit. NOT user-tunable:
+     * raising any of these risks 413 batch rejections.
+     */
+    protected const int MAX_MESSAGE_LENGTH = 10_000;
+
+    protected const int MAX_TRACE_LENGTH = 5_000;
+
+    protected const int MAX_FILE_PATH_LENGTH = 500;
+
+    protected const int MAX_URL_LENGTH = 2_000;
+
+    protected const int MAX_SOURCE_FILE_BYTES = 1_048_576; // 1 MB
+
+    /**
+     * Bounded shape for the `headers` field (now sent as a nested object, not a
+     * JSON-encoded string).
+     */
+    protected const int MAX_HEADER_COUNT = 50;
+
+    protected const int MAX_HEADER_VALUE_LENGTH = 500;
+
+    /**
+     * Bounded shape for the `console_arguments` field (now sent as an array,
+     * not a JSON-encoded string).
+     */
+    protected const int MAX_CONSOLE_ARGV_COUNT = 50;
+
+    protected const int MAX_CONSOLE_ARGV_LENGTH = 500;
+
+    /**
+     * Request headers considered safe to capture in plaintext. Every other
+     * header is masked, so a header carrying a secret that we did not
+     * anticipate is masked by default rather than leaked.
      *
      * @var array<int, string>
      */
@@ -118,22 +155,91 @@ class Ranetrace
     }
 
     /**
-     * Mask every request header not on the safe-header allowlist, so a header
-     * carrying a secret we did not anticipate is masked rather than leaked.
+     * Mask every request header not on the safe-header allowlist AND cap the
+     * header count + per-value length. Returns a nested object shape (header
+     * name → array of values), which goes on the wire directly (no JSON string
+     * encoding).
      *
-     * @param  array<string, mixed>  $headers
-     * @return array<string, mixed>
+     * @param  array<string, array<int, string>|string>  $headers
+     * @return array<string, array<int, string>>
      */
-    private function maskUnsafeHeaders(array $headers): array
+    private function maskAndBoundHeaders(array $headers): array
     {
-        foreach ($headers as $header => &$value) {
-            if (! in_array($header, self::SAFE_HEADERS, true)) {
-                $value = '***';
-            }
-        }
-        unset($value);
+        $bounded = [];
 
-        return $headers;
+        foreach (array_slice($headers, 0, self::MAX_HEADER_COUNT, true) as $name => $values) {
+            $values = is_array($values) ? $values : [$values];
+
+            if (! in_array($name, self::SAFE_HEADERS, true)) {
+                $bounded[$name] = ['***'];
+
+                continue;
+            }
+
+            $bounded[$name] = array_map(
+                fn (mixed $v): string => $this->truncate((string) $v, self::MAX_HEADER_VALUE_LENGTH),
+                $values
+            );
+        }
+
+        return $bounded;
+    }
+
+    /**
+     * Bound `console_arguments` shape: cap argv count + per-value length.
+     * Returns an array (no JSON string encoding).
+     *
+     * @param  array<int, mixed>  $argv
+     * @return array<int, string>
+     */
+    private function boundConsoleArgv(array $argv): array
+    {
+        $argv = array_slice($argv, 0, self::MAX_CONSOLE_ARGV_COUNT);
+
+        return array_map(
+            fn (mixed $v): string => $this->truncate((string) $v, self::MAX_CONSOLE_ARGV_LENGTH),
+            $argv
+        );
+    }
+
+    /**
+     * Truncate a string to at most $maxLength characters, including the
+     * truncation suffix. The final length never exceeds $maxLength.
+     */
+    private function truncate(string $value, int $maxLength): string
+    {
+        if (mb_strlen($value) <= $maxLength) {
+            return $value;
+        }
+
+        return mb_substr($value, 0, $maxLength - mb_strlen(self::TRUNCATION_SUFFIX)).self::TRUNCATION_SUFFIX;
+    }
+
+    /**
+     * Shape the authenticated user into the error payload's `user` field.
+     *
+     * - getAuthIdentifier() is on the Authenticatable contract — safe across
+     *   every implementation, Eloquent or not.
+     * - getAttribute() returns null when the column is missing, so a host app
+     *   whose User model has no `email` does not break error capture. The
+     *   method_exists guard covers non-Eloquent custom Authenticatables;
+     *   PHPStan doesn't know the host app may not use Eloquent.
+     *
+     * @return array{id: mixed, email: mixed}|null
+     */
+    private function buildUserPayload(?Authenticatable $user): ?array
+    {
+        if ($user === null) {
+            return null;
+        }
+
+        return [
+            'id' => $user->getAuthIdentifier(),
+            // @phpstan-ignore function.alreadyNarrowedType
+            'email' => method_exists($user, 'getAttribute')
+                ? $user->getAttribute('email')
+                : null,
+        ];
     }
 
     /**
@@ -146,9 +252,6 @@ class Ranetrace
         $request = Request::instance();
         $user = Auth::user();
 
-        $phpVersion = phpversion();
-        $laravelVersion = app()->version();
-
         $headers = null;
         $url = null;
         $method = null;
@@ -158,20 +261,18 @@ class Ranetrace
 
         // If the error occurred via HTTP, gather request data
         if (! $isConsole) {
-            $headers = json_encode($this->maskUnsafeHeaders($request->headers->all()));
-
-            $url = $request->fullUrl();
+            $headers = $this->maskAndBoundHeaders($request->headers->all());
+            $url = $this->truncate($request->fullUrl(), self::MAX_URL_LENGTH);
             $method = $request->method();
         }
 
-        // Get code context
+        // Get code context (only for readable, reasonably-sized source files)
         $file = $exception->getFile();
         $line = $exception->getLine();
         $context = null;
         $highlightLine = null;
 
-        $maxFileSize = 1048576; // 1MB
-        if (is_readable($file) && filesize($file) < $maxFileSize) {
+        if (is_readable($file) && filesize($file) < self::MAX_SOURCE_FILE_BYTES) {
             $lines = file($file);
             if (is_array($lines)) {
                 $startLine = max(0, $line - 6); // 5 lines before the error line
@@ -184,47 +285,27 @@ class Ranetrace
         // Gather console-specific data if applicable
         $consoleCommand = null;
         $consoleArguments = null;
-        $consoleOptions = null;
 
         if ($isConsole) {
             if (defined('ARTISAN_BINARY')) {
                 $consoleCommand = implode(' ', $_SERVER['argv'] ?? []);
             }
 
-            $consoleArguments = json_encode(request()->server('argv') ?? []);
+            $consoleArguments = $this->boundConsoleArgv(request()->server('argv') ?? []);
         }
 
-        // Trace
-        $trace = $exception->getTraceAsString();
-        $maxTraceLength = 5000;
-        $truncationSuffix = '... (truncated)';
+        // Truncate variable-length string fields to per-field caps
+        $message = $this->truncate($exception->getMessage(), self::MAX_MESSAGE_LENGTH);
+        $trace = $this->truncate($exception->getTraceAsString(), self::MAX_TRACE_LENGTH);
 
-        if (mb_strlen($trace) > $maxTraceLength) {
-            $trace = mb_substr($trace, 0, $maxTraceLength - mb_strlen($truncationSuffix)).$truncationSuffix;
+        // File paths are truncated from the LEFT (keep the tail), unlike every
+        // other field — the filename + last segments matter more than the
+        // repo root prefix when debugging.
+        if ($file && mb_strlen($file) > self::MAX_FILE_PATH_LENGTH) {
+            $file = mb_substr($file, -self::MAX_FILE_PATH_LENGTH);
         }
-
-        // Truncate fields to stay within API 5MB request limit
-        $message = $exception->getMessage();
-        if (mb_strlen($message) > 10000) {
-            $message = mb_substr($message, 0, 10000 - mb_strlen($truncationSuffix)).$truncationSuffix;
-        }
-
-        if ($file && mb_strlen($file) > 500) {
-            $file = mb_substr($file, -500); // Keep last 500 chars (end of path)
-        }
-
-        if ($url && mb_strlen($url) > 2000) {
-            $url = mb_substr($url, 0, 2000 - mb_strlen($truncationSuffix)).$truncationSuffix;
-        }
-
-        if ($headers && mb_strlen($headers) > 5000) {
-            $headers = mb_substr($headers, 0, 5000 - mb_strlen($truncationSuffix)).$truncationSuffix;
-        }
-
-        $time = Carbon::now()->toDateTimeString();
 
         return [
-            'for' => 'ranetrace',
             'message' => $message,
             'file' => $file,
             'line' => $line,
@@ -234,16 +315,15 @@ class Ranetrace
             'headers' => $headers,
             'context' => $context,
             'highlight_line' => $highlightLine,
-            'user' => $user ? ['id' => $user->id, 'email' => $user->email] : null,
-            'time' => $time,
+            'user' => $this->buildUserPayload($user),
+            'time' => Carbon::now()->toDateTimeString(),
             'url' => $url,
             'method' => $method,
-            'php_version' => $phpVersion,
-            'laravel_version' => $laravelVersion,
+            'php_version' => phpversion(),
+            'laravel_version' => app()->version(),
             'is_console' => $isConsole,
             'console_command' => $consoleCommand,
             'console_arguments' => $consoleArguments,
-            'console_options' => $consoleOptions,
         ];
     }
 

@@ -15,6 +15,8 @@ class RanetraceErrorTestCommand extends Command
 
     protected $description = 'Test Ranetrace error reporting functionality';
 
+    private const int TEST_COUNT = 4;
+
     public function handle(): void
     {
         $this->info('Testing Ranetrace Error Reporting...');
@@ -67,8 +69,15 @@ class RanetraceErrorTestCommand extends Command
         }
 
         $this->newLine();
-        $this->info('✅ All test errors have been sent to Ranetrace!');
-        $this->info('Check your Ranetrace dashboard to see the error reports.');
+        if (config('ranetrace.errors.queue', true)) {
+            $this->info('✅ '.self::TEST_COUNT.' test errors have been queued for Ranetrace.');
+            $this->info('They will be sent the next time the ranetrace:work command runs.');
+            $this->info('To send them immediately, run: php artisan ranetrace:work');
+        } else {
+            $this->info('✅ '.self::TEST_COUNT.' test errors have been sent to Ranetrace.');
+        }
+        $this->newLine();
+        $this->info('Check your Ranetrace dashboard once the errors have been sent.');
 
         $this->newLine();
         $this->info('What gets reported:');
@@ -96,9 +105,6 @@ class RanetraceErrorTestCommand extends Command
                 ['Queue Enabled', config('ranetrace.errors.queue') ? 'Yes' : 'No'],
                 ['Queue Name', config('ranetrace.errors.queue_name')],
                 ['Timeout', config('ranetrace.errors.timeout').' seconds'],
-                ['Max File Size', number_format(config('ranetrace.errors.max_file_size')).' bytes'],
-                ['Max Trace Length', number_format(config('ranetrace.errors.max_trace_length')).' chars'],
-                ['Batch Size', config('ranetrace.errors.batch.size')],
                 ['API Key Set', config('ranetrace.key') ? 'Yes' : 'No'],
             ]
         );
@@ -108,7 +114,7 @@ class RanetraceErrorTestCommand extends Command
         $this->table(
             ['Item', 'How It\'s Handled'],
             [
-                ['Sensitive Headers', 'Cookie, Authorization, X-CSRF-Token are masked'],
+                ['Request Headers', 'Only an allowlist of safe headers (accept, user-agent, referer, host, ...) is sent; every other header is masked with ***'],
                 ['Code Context', 'Only included if file is readable and under size limit'],
                 ['Stack Trace', 'Truncated if exceeds max length'],
                 ['User Data', 'Only ID and email (no passwords or sensitive data)'],
@@ -125,16 +131,19 @@ class RanetraceErrorTestCommand extends Command
         $this->line('}</>');
         $this->newLine();
 
-        $this->line('<fg=green>Or use Laravel\'s exception handler:</> (recommended)');
-        $this->line('Add to <fg=yellow>app/Exceptions/Handler.php</>:');
-        $this->line('<fg=yellow>public function register(): void');
-        $this->line('{');
-        $this->line('    $this->reportable(function (Throwable $e) {');
-        $this->line('        if (app()->bound(\'ranetrace\')) {');
-        $this->line('            app(\'ranetrace\')->report($e);');
-        $this->line('        }');
-        $this->line('    });');
-        $this->line('}</>');
+        $this->line('<fg=green>For automatic capture of all unhandled exceptions (recommended):</>');
+        $this->line('Add to <fg=yellow>bootstrap/app.php</> in the <fg=yellow>->withExceptions()</> block:');
+        $this->newLine();
+        $this->line(<<<'WIRING'
+            <fg=yellow>use Ranetrace\Laravel\Facades\Ranetrace;
+            use Illuminate\Foundation\Configuration\Exceptions;
+
+            ->withExceptions(function (Exceptions $exceptions) {
+                Ranetrace::handles($exceptions);
+            })</>
+            WIRING);
+        $this->newLine();
+        $this->warn('Without this wiring, the package will NOT auto-capture unhandled exceptions.');
     }
 
     /**
