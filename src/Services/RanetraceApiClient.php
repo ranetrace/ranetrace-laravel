@@ -521,8 +521,6 @@ class RanetraceApiClient
         }
 
         try {
-            $url = $this->apiUrl.'/errors/'.$errorId.'/snooze?'.http_build_query(['type' => $type]);
-
             $response = $this->executeWithRetry(fn () => Http::withToken($this->apiKey)
                 ->withHeaders([
                     'User-Agent' => 'Ranetrace-Laravel/MCP/1.0',
@@ -531,7 +529,7 @@ class RanetraceApiClient
                     'Ranetrace-API-Version' => '1.0',
                 ])
                 ->timeout($this->timeout)
-                ->post($url, $data)
+                ->post($this->apiUrl.'/errors/'.$errorId.'/snooze', [...$data, 'type' => $type])
             );
 
             return $this->formatResponse($response);
@@ -562,16 +560,15 @@ class RanetraceApiClient
         }
 
         try {
-            $url = $this->apiUrl.'/errors/'.$errorId.'?'.http_build_query(['type' => $type]);
-
             $response = $this->executeWithRetry(fn () => Http::withToken($this->apiKey)
                 ->withHeaders([
                     'User-Agent' => 'Ranetrace-Laravel/MCP/1.0',
+                    'Content-Type' => 'application/json',
                     'Accept' => 'application/json',
                     'Ranetrace-API-Version' => '1.0',
                 ])
                 ->timeout($this->timeout)
-                ->delete($url)
+                ->delete($this->apiUrl.'/errors/'.$errorId, ['type' => $type])
             );
 
             return $this->formatResponse($response);
@@ -736,16 +733,15 @@ class RanetraceApiClient
         }
 
         try {
-            $url = $this->apiUrl.'/errors/'.$errorId.'/'.$action.'?'.http_build_query(['type' => $type]);
-
             $response = $this->executeWithRetry(fn () => Http::withToken($this->apiKey)
                 ->withHeaders([
                     'User-Agent' => 'Ranetrace-Laravel/MCP/1.0',
+                    'Content-Type' => 'application/json',
                     'Accept' => 'application/json',
                     'Ranetrace-API-Version' => '1.0',
                 ])
                 ->timeout($this->timeout)
-                ->post($url)
+                ->post($this->apiUrl.'/errors/'.$errorId.'/'.$action, ['type' => $type])
             );
 
             return $this->formatResponse($response);

@@ -31,11 +31,56 @@ Optionally publish the config file:
 php artisan vendor:publish --tag="ranetrace-laravel-config"
 ```
 
+### Schedule the work command
+
+Captured items (errors, events, logs, page visits, JS errors) are buffered locally and sent to Ranetrace in batches by the `ranetrace:work` artisan command. Add it to your scheduler:
+
+```php
+// In your scheduler (routes/console.php on Laravel 11+, or app/Console/Kernel.php on Laravel 10)
+Schedule::command('ranetrace:work')
+    ->everyMinute()
+    ->withoutOverlapping()
+    ->runInBackground();
+```
+
+> **Don't skip this step.** Without it, buffered telemetry never reaches Ranetrace. Run `php artisan ranetrace:status` at any time to verify health and see whether buffers are draining.
+
 ## Usage
 
 ### Error Tracking
 
-Error tracking is enabled by default. Once installed, unhandled exceptions are automatically reported to your Ranetrace dashboard.
+Wire Ranetrace into Laravel's exception handling in `bootstrap/app.php`:
+
+```php
+use Illuminate\Foundation\Configuration\Exceptions;
+use Ranetrace\Laravel\Facades\Ranetrace;
+
+return Application::configure(basePath: dirname(__DIR__))
+    // ...
+    ->withExceptions(function (Exceptions $exceptions) {
+        Ranetrace::handles($exceptions);
+    })
+    ->create();
+```
+
+That's it — every unhandled exception is now reported to your Ranetrace dashboard (alongside Laravel's normal logging). You can also capture exceptions in-flow:
+
+```php
+use Ranetrace\Laravel\Facades\Ranetrace;
+
+try {
+    // ...
+} catch (Throwable $e) {
+    Ranetrace::report($e);
+    throw $e;
+}
+```
+
+Test your setup with:
+
+```bash
+php artisan ranetrace:test-errors
+```
 
 ### JavaScript Error Tracking
 
@@ -54,6 +99,8 @@ RANETRACE_JAVASCRIPT_ERRORS_ENABLED=true
     @ranetraceErrorTracking
 </body>
 ```
+
+The directive injects a small script that captures `window.onerror`, unhandled promise rejections, and (optionally) `console.error` calls. It also collects breadcrumbs for clicks, form submissions, and XHR/fetch activity to give you context around each error.
 
 You can also capture errors manually:
 
@@ -95,15 +142,17 @@ php artisan ranetrace:test-events
 
 ### Centralized Logging
 
-Send your application logs to Ranetrace by adding the driver to `config/logging.php`:
+Enable it in your `.env`:
+
+```env
+RANETRACE_LOGGING_ENABLED=true
+```
+
+The package auto-registers a `ranetrace` log channel — no `config/logging.php` edit is required. Add it to your existing log stack so application logs are routed to both your normal destination AND Ranetrace:
 
 ```php
+// config/logging.php — example stacked channel
 'channels' => [
-    'ranetrace' => [
-        'driver' => 'ranetrace',
-        'level' => 'error',
-    ],
-
     'production' => [
         'driver' => 'stack',
         'channels' => array_merge(explode(',', env('LOG_STACK', 'single')), ['ranetrace']),
@@ -112,12 +161,13 @@ Send your application logs to Ranetrace by adding the driver to `config/logging.
 ],
 ```
 
-Then enable it in your `.env`:
+Then point Laravel at it:
 
 ```env
 LOG_CHANNEL=production
-RANETRACE_LOGGING_ENABLED=true
 ```
+
+By default the package captures `notice` and above. Tune via `RANETRACE_LOG_LEVEL`.
 
 Test your setup with:
 
@@ -127,7 +177,25 @@ php artisan ranetrace:test-logging
 
 ### Website Analytics
 
-Refer to the [Ranetrace website](https://ranetrace.com) for setup instructions.
+Enable it in your `.env`:
+
+```env
+RANETRACE_WEBSITE_ANALYTICS_ENABLED=true
+```
+
+The `TrackPageVisit` middleware is automatically added to the `web` middleware group. It applies extensive bot and crawler filtering before sending visits to your Ranetrace dashboard. No code changes needed.
+
+See the [Ranetrace website](https://ranetrace.com) for dashboard setup and configuration details.
+
+## Health Check
+
+At any time, see what the package is doing:
+
+```bash
+php artisan ranetrace:status
+```
+
+Reports overall health, configured features, buffer sizes, pause states (if the API has rate-limited you), and recent failed jobs — both as formatted output and via `--json` for monitoring integrations.
 
 ## Testing
 

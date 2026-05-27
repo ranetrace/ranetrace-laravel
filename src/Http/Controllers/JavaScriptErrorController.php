@@ -64,7 +64,7 @@ class JavaScriptErrorController extends Controller
         return array_map(function (array $breadcrumb): array {
             $data = DataSanitizer::sanitizeForSerialization($breadcrumb['data'] ?? []);
 
-            if (strlen((string) json_encode($data)) > self::MAX_BREADCRUMB_DATA_BYTES) {
+            if (mb_strlen((string) json_encode($data), '8bit') > self::MAX_BREADCRUMB_DATA_BYTES) {
                 $data = ['_truncated' => 'Breadcrumb data exceeded 5KB limit and was removed'];
             }
 
@@ -147,7 +147,7 @@ class JavaScriptErrorController extends Controller
         // Cap context size: oversize objects are replaced with a marker
         // (truncating mid-structure would yield invalid JSON).
         $context = DataSanitizer::sanitizeForSerialization($request->input('context', []));
-        if (strlen((string) json_encode($context)) > self::MAX_CONTEXT_BYTES) {
+        if (mb_strlen((string) json_encode($context), '8bit') > self::MAX_CONTEXT_BYTES) {
             $context = ['_truncated' => 'Context exceeded 50KB limit and was removed'];
         }
 

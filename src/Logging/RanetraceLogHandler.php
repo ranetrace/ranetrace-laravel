@@ -62,7 +62,7 @@ class RanetraceLogHandler extends AbstractProcessingHandler
             // Cap context/extra sizes (replace mid-structure rather than
             // truncate, since partial JSON is invalid).
             $context = DataSanitizer::sanitizeForSerialization($record->context);
-            if (mb_strlen((string) json_encode($context)) > self::MAX_CONTEXT_BYTES) {
+            if (mb_strlen((string) json_encode($context), '8bit') > self::MAX_CONTEXT_BYTES) {
                 $context = ['_truncated' => 'Context exceeded 50KB limit and was removed'];
             }
 
@@ -71,7 +71,7 @@ class RanetraceLogHandler extends AbstractProcessingHandler
                 'laravel_version' => app()->version(),
                 'php_version' => phpversion(),
             ]));
-            if (mb_strlen((string) json_encode($extra)) > self::MAX_EXTRA_BYTES) {
+            if (mb_strlen((string) json_encode($extra), '8bit') > self::MAX_EXTRA_BYTES) {
                 $extra = ['_truncated' => 'Extra data exceeded 10KB limit and was removed'];
             }
 
