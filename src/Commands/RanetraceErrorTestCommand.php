@@ -11,11 +11,11 @@ use RuntimeException;
 
 class RanetraceErrorTestCommand extends Command
 {
+    private const int TEST_COUNT = 4;
+
     protected $signature = 'ranetrace:test-errors';
 
     protected $description = 'Test Ranetrace error reporting functionality';
-
-    private const int TEST_COUNT = 4;
 
     public function handle(): void
     {

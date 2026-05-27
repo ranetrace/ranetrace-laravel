@@ -38,7 +38,10 @@ class RanetraceServer extends Server
     protected string $name = 'Ranetrace';
 
     /**
-     * The MCP server's version.
+     * The MCP server's implementation version. This is the version reported
+     * over the MCP protocol to the connecting client — it advertises the
+     * server's capabilities and is intentionally independent of the package's
+     * Composer release version (which a downstream client doesn't see).
      */
     protected string $version = '1.0.0';
 

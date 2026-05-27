@@ -8,14 +8,14 @@ use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
 use Laravel\Mcp\Server\Tool;
+use Ranetrace\Laravel\Mcp\Tools\Concerns\HasBulkErrorLimits;
 use Ranetrace\Laravel\Mcp\Tools\Concerns\NormalizesIds;
 use Ranetrace\Laravel\Services\RanetraceApiClient;
 
 class BulkIgnoreErrorsTool extends Tool
 {
+    use HasBulkErrorLimits;
     use NormalizesIds;
-
-    protected const MAX_ERRORS = 50;
 
     /**
      * The tool's description.
@@ -67,61 +67,14 @@ class BulkIgnoreErrorsTool extends Tool
         ];
     }
 
-    /**
-     * Normalize the error type parameter.
-     */
-    protected function normalizeType(?string $type): string
+    protected function bulkActionVerb(): string
     {
-        if ($type === null) {
-            return 'php';
-        }
-
-        return $type === 'js' ? 'javascript' : $type;
+        return 'ignore';
     }
 
-    /**
-     * Validate the error IDs array.
-     *
-     * @param  mixed  $errorIds
-     */
-    protected function validateErrorIds($errorIds): ?string
+    protected function bulkActionPastVerb(): string
     {
-        if (! is_array($errorIds)) {
-            return 'The "error_ids" parameter must be an array.';
-        }
-
-        if (empty($errorIds)) {
-            return 'At least one error ID is required.';
-        }
-
-        if (count($errorIds) > self::MAX_ERRORS) {
-            return 'Maximum '.self::MAX_ERRORS.' errors can be ignored at once.';
-        }
-
-        foreach ($errorIds as $index => $id) {
-            if (! is_string($id) || empty($id)) {
-                return "Invalid error ID at index {$index}.";
-            }
-        }
-
-        return null;
-    }
-
-    /**
-     * Handle error responses from the API.
-     *
-     * @param  array<string, mixed>  $result
-     */
-    protected function handleErrorResponse(array $result): Response
-    {
-        $errorMessage = $result['error'] ?? 'Unknown error occurred';
-
-        return match ($result['status']) {
-            404 => Response::error("One or more errors not found: {$errorMessage}"),
-            403 => Response::error("Access denied: {$errorMessage}"),
-            422 => Response::error("Validation failed: {$errorMessage}"),
-            default => Response::error("Failed to bulk ignore errors: {$errorMessage}"),
-        };
+        return 'ignored';
     }
 
     /**

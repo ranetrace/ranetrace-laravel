@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-use Laravel\Mcp\Attributes\IsReadOnly;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
+use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 use Ranetrace\Laravel\Mcp\Tools\GetErrorActivityTool;
 use Ranetrace\Laravel\Services\RanetraceApiClient;
 

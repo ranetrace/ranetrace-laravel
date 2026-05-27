@@ -6,6 +6,7 @@ use Laravel\Mcp\Server;
 use Ranetrace\Laravel\Mcp\RanetraceServer;
 use Ranetrace\Laravel\Mcp\Tools\BulkDeleteErrorsTool;
 use Ranetrace\Laravel\Mcp\Tools\BulkIgnoreErrorsTool;
+use Ranetrace\Laravel\Mcp\Tools\BulkReopenErrorsTool;
 use Ranetrace\Laravel\Mcp\Tools\BulkResolveErrorsTool;
 use Ranetrace\Laravel\Mcp\Tools\BulkRestoreErrorsTool;
 use Ranetrace\Laravel\Mcp\Tools\CreateNotesTool;
@@ -175,6 +176,40 @@ test('registers BulkRestoreErrorsTool', function (): void {
     expect(getServerProperty('tools'))->toContain(BulkRestoreErrorsTool::class);
 });
 
-test('registers all twenty-three tools', function (): void {
-    expect(getServerProperty('tools'))->toHaveCount(23);
+test('registers the full expected tool list', function (): void {
+    // Single source of truth so the count is never embedded in a test name.
+    $expected = [
+        LatestErrorsTool::class,
+        SearchErrorsTool::class,
+        GetErrorTool::class,
+        ErrorStatsTool::class,
+        CreateNoteTool::class,
+        ListNotesTool::class,
+        GetNoteTool::class,
+        UpdateNoteTool::class,
+        DeleteNoteTool::class,
+        CreateNotesTool::class,
+        ResolveErrorTool::class,
+        ReopenErrorTool::class,
+        IgnoreErrorTool::class,
+        UnignoreErrorTool::class,
+        SnoozeErrorTool::class,
+        UnsnoozeErrorTool::class,
+        DeleteErrorTool::class,
+        RestoreErrorTool::class,
+        GetErrorActivityTool::class,
+        BulkResolveErrorsTool::class,
+        BulkReopenErrorsTool::class,
+        BulkIgnoreErrorsTool::class,
+        BulkDeleteErrorsTool::class,
+        BulkRestoreErrorsTool::class,
+    ];
+
+    $actual = getServerProperty('tools');
+
+    expect($actual)->toHaveCount(count($expected));
+
+    foreach ($expected as $tool) {
+        expect($actual)->toContain($tool);
+    }
 });

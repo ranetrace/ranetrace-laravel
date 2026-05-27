@@ -45,6 +45,38 @@ class JavaScriptErrorController extends Controller
         }
     }
 
+    /**
+     * Cap breadcrumb count and per-breadcrumb data size.
+     *
+     * Required breadcrumb fields (timestamp/category/message) are guaranteed
+     * present by the validator; no fallback defaults are applied here.
+     *
+     * @param  array<int, array<string, mixed>>  $breadcrumbs
+     * @return array<int, array<string, mixed>>
+     */
+    protected function sanitizeBreadcrumbs(array $breadcrumbs): array
+    {
+        $maxBreadcrumbs = config('ranetrace.javascript_errors.max_breadcrumbs', 20);
+
+        // Keep the most recent N breadcrumbs (oldest dropped)
+        $breadcrumbs = array_slice($breadcrumbs, -$maxBreadcrumbs);
+
+        return array_map(function (array $breadcrumb): array {
+            $data = DataSanitizer::sanitizeForSerialization($breadcrumb['data'] ?? []);
+
+            if (strlen((string) json_encode($data)) > self::MAX_BREADCRUMB_DATA_BYTES) {
+                $data = ['_truncated' => 'Breadcrumb data exceeded 5KB limit and was removed'];
+            }
+
+            return [
+                'timestamp' => $breadcrumb['timestamp'],
+                'category' => $breadcrumb['category'],
+                'message' => $breadcrumb['message'],
+                'data' => $data,
+            ];
+        }, $breadcrumbs);
+    }
+
     private function process(Request $request): JsonResponse
     {
         if (! config('ranetrace.enabled', true)) {
@@ -156,37 +188,5 @@ class JavaScriptErrorController extends Controller
             'success' => true,
             'message' => 'Error received',
         ], 200);
-    }
-
-    /**
-     * Cap breadcrumb count and per-breadcrumb data size.
-     *
-     * Required breadcrumb fields (timestamp/category/message) are guaranteed
-     * present by the validator; no fallback defaults are applied here.
-     *
-     * @param  array<int, array<string, mixed>>  $breadcrumbs
-     * @return array<int, array<string, mixed>>
-     */
-    protected function sanitizeBreadcrumbs(array $breadcrumbs): array
-    {
-        $maxBreadcrumbs = config('ranetrace.javascript_errors.max_breadcrumbs', 20);
-
-        // Keep the most recent N breadcrumbs (oldest dropped)
-        $breadcrumbs = array_slice($breadcrumbs, -$maxBreadcrumbs);
-
-        return array_map(function (array $breadcrumb): array {
-            $data = DataSanitizer::sanitizeForSerialization($breadcrumb['data'] ?? []);
-
-            if (strlen((string) json_encode($data)) > self::MAX_BREADCRUMB_DATA_BYTES) {
-                $data = ['_truncated' => 'Breadcrumb data exceeded 5KB limit and was removed'];
-            }
-
-            return [
-                'timestamp' => $breadcrumb['timestamp'],
-                'category' => $breadcrumb['category'],
-                'message' => $breadcrumb['message'],
-                'data' => $data,
-            ];
-        }, $breadcrumbs);
     }
 }
