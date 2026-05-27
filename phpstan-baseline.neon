@@ -8,9 +8,3 @@ parameters:
 			identifier: method.deprecated
 			count: 5
 			path: src/Analytics/VisitDataCollector.php
-
-		-
-			message: '#^Property Monolog\\LogRecord\:\:\$channel \(string\) on left side of \?\? is not nullable\.$#'
-			identifier: nullCoalesce.property
-			count: 1
-			path: src/Logging/RanetraceLogHandler.php

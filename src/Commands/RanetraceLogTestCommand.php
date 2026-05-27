@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Ranetrace\Laravel\Commands;
 
-use Exception;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
+use Throwable;
 
 class RanetraceLogTestCommand extends Command
 {
@@ -27,21 +27,7 @@ class RanetraceLogTestCommand extends Command
         }
 
         $this->info('✅ Ranetrace logging is enabled');
-
-        // Check if the ranetrace channel is defined
-        if (! config('logging.channels.ranetrace')) {
-            $this->warn('⚠ Ranetrace logging channel is not defined in config/logging.php');
-            $this->info('Add the ranetrace channel configuration to logging.php channels array:');
-            $this->line("'ranetrace' => [");
-            $this->line("    'driver' => 'ranetrace',");
-            $this->line("    'level' => env('LOG_LEVEL', 'notice'),");
-            $this->line('],');
-            $this->info('Configuration check completed.');
-
-            return;
-        }
-
-        $this->info('✅ Ranetrace logging channel is defined');
+        $this->info('✅ Ranetrace logging channel is auto-registered by the service provider');
 
         // Test Laravel logging integration
         $this->info('1. Testing Laravel Log integration...');
@@ -66,7 +52,7 @@ class RanetraceLogTestCommand extends Command
                     'component' => 'testing',
                 ]);
                 $this->info('   ✓ Stack log sent');
-            } catch (Exception $e) {
+            } catch (Throwable $e) {
                 $this->warn('   ⚠ Stack logging failed: '.$e->getMessage());
             }
         }
@@ -121,25 +107,26 @@ class RanetraceLogTestCommand extends Command
         Log::channel('ranetrace')->critical('Third critical', ['sequence' => 3]);
         $this->info('   ✓ Multiple logs sent');
 
-        $this->info('✅ All test logs have been sent to Ranetrace!');
-        $this->info('Check your Ranetrace dashboard to see the log entries.');
+        $this->newLine();
+        if (config('ranetrace.logging.queue', true)) {
+            $this->info('✅ Test logs have been queued for Ranetrace.');
+            $this->info('They will be sent the next time the ranetrace:work command runs.');
+            $this->info('To send them immediately, run: php artisan ranetrace:work');
+        } else {
+            $this->info('✅ Test logs have been sent to Ranetrace.');
+        }
+        $this->newLine();
+        $this->info('Check your Ranetrace dashboard once the logs have been sent.');
 
         $this->newLine();
-        $this->info('Recommended Laravel logging configuration:');
-        $this->line('Add this to your config/logging.php channels array:');
-        $this->line('');
-        $this->line("'ranetrace' => [");
-        $this->line("    'driver' => 'ranetrace',");
-        $this->line("    'level' => env('LOG_LEVEL', 'notice'),");
-        $this->line('],');
-        $this->line('');
+        $this->info('Add the channel to your log stack to capture all application logs:');
         $this->line("'production' => [");
         $this->line("    'driver' => 'stack',");
         $this->line("    'channels' => array_merge(explode(',', env('LOG_STACK', 'single')), ['ranetrace']),");
         $this->line("    'ignore_exceptions' => false,");
         $this->line('],');
         $this->line('');
-        $this->line('Then set LOG_CHANNEL=production in your .env file');
+        $this->line('Then set LOG_CHANNEL=production in your .env file.');
 
         $this->newLine();
         $this->info('Logging configuration:');
@@ -149,8 +136,8 @@ class RanetraceLogTestCommand extends Command
                 ['Logging Enabled', config('ranetrace.logging.enabled') ? 'Yes' : 'No'],
                 ['Queue Enabled', config('ranetrace.logging.queue') ? 'Yes' : 'No'],
                 ['Queue Name', config('ranetrace.logging.queue_name')],
-                ['Allowed Levels', $this->getFormattedLevels()],
-                ['Excluded Channels', implode(', ', config('ranetrace.logging.excluded_channels', []))],
+                ['Minimum Level', config('ranetrace.logging.level', 'notice')],
+                ['Excluded Channels', implode(', ', config('ranetrace.logging.excluded_channels', [])) ?: '(none)'],
                 ['API Key Set', config('ranetrace.key') ? 'Yes' : 'No'],
             ]
         );
@@ -165,20 +152,5 @@ class RanetraceLogTestCommand extends Command
                 ['Log::error() with stack config', 'Automatic dual logging', '✅ Primary method'],
             ]
         );
-    }
-
-    private function getFormattedLevels(): string
-    {
-        $levels = config('ranetrace.logging.levels');
-
-        if (is_string($levels)) {
-            return $levels;
-        }
-
-        if (is_array($levels)) {
-            return implode(', ', $levels);
-        }
-
-        return 'error, critical, alert, emergency (default)';
     }
 }

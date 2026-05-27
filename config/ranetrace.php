@@ -25,6 +25,7 @@ return [
         'queue' => env('RANETRACE_LOGGING_QUEUE', true),
         'queue_name' => env('RANETRACE_LOGGING_QUEUE_NAME', 'default'),
         'timeout' => env('RANETRACE_LOGGING_TIMEOUT', 10),
+        'level' => env('RANETRACE_LOG_LEVEL', 'notice'),
         'excluded_channels' => [
             // Add channels here that should never be sent to Ranetrace
         ],

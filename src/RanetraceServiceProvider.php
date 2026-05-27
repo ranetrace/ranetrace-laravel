@@ -29,14 +29,7 @@ class RanetraceServiceProvider extends ServiceProvider
             'ranetrace'
         );
 
-        // Auto-register ranetrace_internal log channel
-        // This ensures zero-config setup for internal diagnostics
-        $this->app['config']->set('logging.channels.ranetrace_internal', [
-            'driver' => 'daily',
-            'path' => storage_path('logs/ranetrace-internal.log'),
-            'level' => config('ranetrace.internal_logging.level', 'debug'),
-            'days' => config('ranetrace.internal_logging.days', 14),
-        ]);
+        $this->registerLogChannels();
 
         // Register Ranetrace as singleton
         $this->app->singleton(Ranetrace::class, function () {
@@ -94,6 +87,29 @@ class RanetraceServiceProvider extends ServiceProvider
 
         // Register MCP server
         $this->registerMcpServer();
+    }
+
+    /**
+     * Auto-register the package's log channels so the host application gets
+     * zero-config diagnostics and centralized logging. A user-defined channel
+     * with the same name always wins (we never overwrite).
+     */
+    protected function registerLogChannels(): void
+    {
+        $this->app['config']->set('logging.channels.ranetrace_internal', [
+            'driver' => 'daily',
+            'path' => storage_path('logs/ranetrace-internal.log'),
+            'level' => config('ranetrace.internal_logging.level', 'debug'),
+            'days' => config('ranetrace.internal_logging.days', 14),
+        ]);
+
+        if (config('ranetrace.logging.enabled', false)
+            && ! $this->app['config']->has('logging.channels.ranetrace')) {
+            $this->app['config']->set('logging.channels.ranetrace', [
+                'driver' => 'ranetrace',
+                'level' => config('ranetrace.logging.level', 'notice'),
+            ]);
+        }
     }
 
     protected function registerJavaScriptErrorRoute(): void
