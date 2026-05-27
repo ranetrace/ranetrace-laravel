@@ -25,11 +25,11 @@ class VisitDataCollector
             'device_type' => self::detectDeviceType($userAgent),
             'browser_name' => self::detectBrowser($userAgent),
 
-            'utm_source' => $request->get('utm_source'),
-            'utm_medium' => $request->get('utm_medium'),
-            'utm_campaign' => $request->get('utm_campaign'),
-            'utm_content' => $request->get('utm_content'),
-            'utm_term' => $request->get('utm_term'),
+            'utm_source' => $request->query('utm_source'),
+            'utm_medium' => $request->query('utm_medium'),
+            'utm_campaign' => $request->query('utm_campaign'),
+            'utm_content' => $request->query('utm_content'),
+            'utm_term' => $request->query('utm_term'),
 
             'country_code' => self::resolveCountryFromIp($request->ip()),
 

@@ -54,6 +54,9 @@ return [
             'max_length' => env('RANETRACE_WEBSITE_ANALYTICS_UA_MAX_LENGTH', 1000),
         ],
         'throttle_seconds' => env('RANETRACE_WEBSITE_ANALYTICS_THROTTLE_SECONDS', 30),
+        'extra_bot_user_agents' => [
+            // 'YourCustomMonitor/',
+        ],
         'debug' => [
             'preserve_user_agent' => env('RANETRACE_WEBSITE_ANALYTICS_DEBUG_PRESERVE_UA', false),
         ],

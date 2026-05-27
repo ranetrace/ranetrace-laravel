@@ -27,7 +27,6 @@ class RanetraceAnalyticsTestCommand extends Command
                 ['Queue Name', config('ranetrace.website_analytics.queue_name', 'default')],
                 ['Timeout', config('ranetrace.website_analytics.timeout', 10).' seconds'],
                 ['Throttle', config('ranetrace.website_analytics.throttle_seconds', 30).' seconds'],
-                ['Batch Size', config('ranetrace.website_analytics.batch.size', 100)],
                 ['User Agent Min Length', config('ranetrace.website_analytics.user_agent.min_length', 10)],
                 ['User Agent Max Length', config('ranetrace.website_analytics.user_agent.max_length', 1000)],
                 ['Excluded Paths', count(config('ranetrace.website_analytics.excluded_paths', [])).' path(s)'],
@@ -77,7 +76,7 @@ class RanetraceAnalyticsTestCommand extends Command
                 ['UTM Parameters', 'source, medium, campaign, content, term'],
                 ['Session ID (hashed)', 'SHA-256 hash for privacy'],
                 ['User Agent (hashed)', 'SHA-256 hash for privacy'],
-                ['Human Probability', 'Bot detection score (0.0 - 1.0)'],
+                ['Human Probability', 'Bot detection score (0-100, integer)'],
             ]
         );
 
