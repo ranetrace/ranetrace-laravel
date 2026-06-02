@@ -29,6 +29,44 @@ test('the uniqueness lock spans the full retry envelope', function (): void {
     expect($job->uniqueFor)->toBeGreaterThanOrEqual(1260);
 });
 
+test('the pre-flight size guard trims an over-budget batch and returns the overflow', function (): void {
+    $job = new SendBatchToRanetraceJob('errors');
+
+    // 5 items × ~1MB each ≈ 5MB, over the ~4.5MB budget → some get deferred.
+    $items = array_map(fn (int $i): array => [
+        'id' => "id-{$i}",
+        'data' => ['blob' => str_repeat('a', 1_000_000)],
+        'timestamp' => 0,
+    ], range(1, 5));
+
+    $itemsProp = new ReflectionProperty($job, 'items');
+    $itemsProp->setValue($job, $items);
+
+    $deferred = (new ReflectionMethod($job, 'trimToByteBudget'))->invoke($job);
+    $kept = $itemsProp->getValue($job);
+
+    expect(count($deferred))->toBeGreaterThan(0)
+        ->and(count($kept))->toBeGreaterThanOrEqual(1)
+        ->and(count($kept) + count($deferred))->toBe(5);
+});
+
+test('the pre-flight size guard leaves an under-budget batch intact', function (): void {
+    $job = new SendBatchToRanetraceJob('errors');
+
+    $items = array_map(
+        fn (int $i): array => ['id' => "id-{$i}", 'data' => ['n' => $i], 'timestamp' => 0],
+        range(1, 10)
+    );
+
+    $itemsProp = new ReflectionProperty($job, 'items');
+    $itemsProp->setValue($job, $items);
+
+    $deferred = (new ReflectionMethod($job, 'trimToByteBudget'))->invoke($job);
+
+    expect($deferred)->toBe([])
+        ->and(count($itemsProp->getValue($job)))->toBe(10);
+});
+
 test('a successful batch records the last-batch timestamp for the type', function (): void {
     Http::fake([
         'api.ranetrace.com/*' => Http::response(['success' => true], 200),

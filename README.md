@@ -167,7 +167,7 @@ Then point Laravel at it:
 LOG_CHANNEL=production
 ```
 
-By default the package captures `notice` and above. Tune via `RANETRACE_LOG_LEVEL`.
+By default the package captures `notice` and above. Tune via `RANETRACE_LOGGING_LEVEL`.
 
 Test your setup with:
 

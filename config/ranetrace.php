@@ -6,11 +6,14 @@ return [
     'enabled' => env('RANETRACE_ENABLED', true),
     'key' => env('RANETRACE_KEY'),
 
+    'fingerprint_salt' => env('RANETRACE_FINGERPRINT_SALT'),
+
     'errors' => [
         'enabled' => env('RANETRACE_ERRORS_ENABLED', true),
         'queue' => env('RANETRACE_ERRORS_QUEUE', true),
         'queue_name' => env('RANETRACE_ERRORS_QUEUE_NAME', 'default'),
         'timeout' => env('RANETRACE_ERRORS_TIMEOUT', 10),
+        'capture_user_email' => env('RANETRACE_ERRORS_CAPTURE_USER_EMAIL', false),
     ],
 
     'events' => [
@@ -25,7 +28,7 @@ return [
         'queue' => env('RANETRACE_LOGGING_QUEUE', true),
         'queue_name' => env('RANETRACE_LOGGING_QUEUE_NAME', 'default'),
         'timeout' => env('RANETRACE_LOGGING_TIMEOUT', 10),
-        'level' => env('RANETRACE_LOG_LEVEL', 'notice'),
+        'level' => env('RANETRACE_LOGGING_LEVEL', 'notice'),
         'excluded_channels' => [
             // Add channels here that should never be sent to Ranetrace
         ],
@@ -99,21 +102,27 @@ return [
 
             // Add your own patterns here as needed
         ],
-        'capture_console_errors' => env('RANETRACE_JAVASCRIPT_CAPTURE_CONSOLE_ERRORS', false),
-        'max_breadcrumbs' => env('RANETRACE_JAVASCRIPT_MAX_BREADCRUMBS', 20),
+        'capture_console_errors' => env('RANETRACE_JAVASCRIPT_ERRORS_CAPTURE_CONSOLE_ERRORS', false),
+        'max_breadcrumbs' => env('RANETRACE_JAVASCRIPT_ERRORS_MAX_BREADCRUMBS', 20),
     ],
 
     'batch' => [
         'queue_name' => env('RANETRACE_BATCH_QUEUE_NAME', 'default'),
-        'cache_driver' => env('RANETRACE_BATCH_CACHE_DRIVER', 'redis'),
+        'cache_driver' => env('RANETRACE_BATCH_CACHE_DRIVER', env('CACHE_STORE', env('CACHE_DRIVER', 'file'))),
         'buffer_ttl' => env('RANETRACE_BATCH_BUFFER_TTL', 3600), // 1 hour
         'max_buffer_size' => env('RANETRACE_BATCH_MAX_BUFFER_SIZE', 5000),
     ],
 
+    'scrubbing' => [
+        'extra_keys' => [
+            // 'x_internal_signature',
+        ],
+    ],
+
     'internal_logging' => [
         'enabled' => env('RANETRACE_INTERNAL_LOGGING_ENABLED', true),
-        'level' => env('RANETRACE_INTERNAL_LOG_LEVEL', 'debug'),
-        'days' => env('RANETRACE_INTERNAL_LOG_DAYS', 14),
+        'level' => env('RANETRACE_INTERNAL_LOGGING_LEVEL', 'debug'),
+        'days' => env('RANETRACE_INTERNAL_LOGGING_DAYS', 14),
         'stderr_fallback' => env('RANETRACE_INTERNAL_STDERR_FALLBACK', true),
     ],
 

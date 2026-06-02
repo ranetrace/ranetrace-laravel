@@ -55,6 +55,25 @@ test('it respects excluded paths configuration', function (): void {
     Bus::assertNotDispatched(HandlePageVisitJob::class);
 });
 
+test('it falls back to default excluded paths when the config key is absent', function (): void {
+    Bus::fake();
+    Cache::flush();
+
+    // Simulate a published config that removed the excluded_paths key entirely.
+    $analytics = config('ranetrace.website_analytics');
+    unset($analytics['excluded_paths']);
+    config(['ranetrace.website_analytics' => $analytics]);
+
+    $this->withHeaders([
+        'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+        'Accept' => 'text/html',
+        'Accept-Language' => 'en-US',
+    ])->get('/admin/dashboard');
+
+    // 'admin' is still excluded via TrackPageVisit::DEFAULT_EXCLUDED_PATHS.
+    Bus::assertNotDispatched(HandlePageVisitJob::class);
+});
+
 test('it tracks allowed paths', function (): void {
     Bus::fake();
     Cache::flush();
@@ -123,6 +142,31 @@ test('it throttles duplicate visits', function (): void {
     // Second request within throttle window
     $this->withHeaders($headers)->get('/test-page');
     Bus::assertDispatchedTimes(HandlePageVisitJob::class, 1); // Still just 1
+});
+
+test('it keeps throttling across a minute boundary within the throttle window', function (): void {
+    Bus::fake();
+    Cache::flush();
+    config(['ranetrace.website_analytics.throttle_seconds' => 120]);
+
+    $headers = [
+        'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+        'Accept' => 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Accept-Language' => 'en-US,en;q=0.9',
+    ];
+
+    // Pin to 10 seconds before a minute boundary.
+    $this->travelTo(Illuminate\Support\Carbon::create(2026, 1, 1, 10, 0, 50));
+    $this->withHeaders($headers)->get('/test-page');
+    Bus::assertDispatchedTimes(HandlePageVisitJob::class, 1);
+
+    // 30s later — now in the NEXT minute, but still inside the 120s window.
+    // The old per-minute key bucket would have reset and dispatched again.
+    $this->travelTo(Illuminate\Support\Carbon::create(2026, 1, 1, 10, 1, 20));
+    $this->withHeaders($headers)->get('/test-page');
+    Bus::assertDispatchedTimes(HandlePageVisitJob::class, 1);
+
+    $this->travelBack();
 });
 
 test('it does not track when analytics is disabled', function (): void {
@@ -199,6 +243,24 @@ test('it tracks requests with proper browser headers', function (): void {
         'Accept-Encoding' => 'gzip, deflate, br',
     ])->get('/');
 
+    Bus::assertDispatched(HandlePageVisitJob::class);
+});
+
+test('it ignores a misconfigured request_filter that does not implement RequestFilter', function (): void {
+    Bus::fake();
+    Cache::flush();
+
+    // A class that exists but does NOT implement the RequestFilter contract.
+    config(['ranetrace.website_analytics.request_filter' => stdClass::class]);
+
+    $this->withHeaders([
+        'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+        'Accept' => 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Accept-Language' => 'en-US,en;q=0.9',
+    ])->get('/test-page')->assertStatus(200);
+
+    // The bad filter is skipped (not invoked), so capture proceeds normally —
+    // before the instanceof guard this threw and the visit was never dispatched.
     Bus::assertDispatched(HandlePageVisitJob::class);
 });
 

@@ -9,13 +9,15 @@ use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
 use Laravel\Mcp\Server\Tool;
 use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
+use Ranetrace\Laravel\Mcp\Tools\Concerns\MapsErrorActionResponse;
+use Ranetrace\Laravel\Mcp\Tools\Concerns\NormalizesErrorType;
 use Ranetrace\Laravel\Mcp\Tools\Concerns\NormalizesIds;
 use Ranetrace\Laravel\Services\RanetraceApiClient;
 
 #[IsReadOnly]
 class GetErrorActivityTool extends Tool
 {
-    use NormalizesIds;
+    use MapsErrorActionResponse, NormalizesErrorType, NormalizesIds;
 
     /**
      * The tool's description.
@@ -74,18 +76,6 @@ class GetErrorActivityTool extends Tool
     }
 
     /**
-     * Normalize the error type parameter.
-     */
-    protected function normalizeType(?string $type): string
-    {
-        if ($type === null) {
-            return 'php';
-        }
-
-        return $type === 'js' ? 'javascript' : $type;
-    }
-
-    /**
      * Build the query parameters from the request.
      *
      * @return array<string, int>
@@ -107,20 +97,9 @@ class GetErrorActivityTool extends Tool
         return $params;
     }
 
-    /**
-     * Handle error responses from the API.
-     *
-     * @param  array<string, mixed>  $result
-     */
-    protected function handleErrorResponse(array $result, string $errorId): Response
+    protected function actionFailureMessage(): string
     {
-        $errorMessage = $result['error'] ?? 'Unknown error occurred';
-
-        return match ($result['status']) {
-            404 => Response::error("Error with ID '{$errorId}' not found."),
-            403 => Response::error("Access denied: {$errorMessage}"),
-            default => Response::error("Failed to get activity log: {$errorMessage}"),
-        };
+        return 'Failed to get activity log';
     }
 
     /**

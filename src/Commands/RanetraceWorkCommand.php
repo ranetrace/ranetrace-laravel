@@ -28,6 +28,13 @@ class RanetraceWorkCommand extends Command
 
         $specificType = $this->option('type');
 
+        if ($specificType !== null && ! in_array($specificType, RanetraceBatchBuffer::TYPES, true)) {
+            $this->error("Unknown type: {$specificType}");
+            $this->line('Valid types: '.implode(', ', RanetraceBatchBuffer::TYPES));
+
+            return self::FAILURE;
+        }
+
         $types = $specificType
             ? [$specificType]
             : $buffer->getAvailableTypes();

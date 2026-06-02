@@ -14,12 +14,12 @@ class FingerprintGenerator
      */
     public static function generateSessionIdHash(?Request $request = null): string
     {
-        $request = $request ?: request();
+        $request ??= request();
 
         // Rotate daily, non-persistent session hash
         $raw = $request->ip().'|'.mb_substr($request->userAgent() ?? '', 0, 100).'|'.now()->format('Y-m-d');
 
-        return hash('sha256', $raw);
+        return self::hash($raw);
     }
 
     /**
@@ -27,9 +27,29 @@ class FingerprintGenerator
      */
     public static function generateUserAgentHash(?Request $request = null): string
     {
-        $request = $request ?: request();
+        $request ??= request();
         $userAgent = $request->userAgent();
 
-        return $userAgent ? hash('sha256', $userAgent) : '';
+        return $userAgent ? self::hash($userAgent) : '';
+    }
+
+    /**
+     * HMAC-SHA256 an arbitrary value with the per-install fingerprint salt.
+     * Use to pseudonymise an identifier (e.g. the raw session id) before it
+     * leaves the host.
+     */
+    public static function hash(string $value): string
+    {
+        return hash_hmac('sha256', $value, self::salt());
+    }
+
+    /**
+     * Per-install salt for fingerprint HMACs. Defaults to the application key so
+     * hashes are non-reversible out of the box; set `ranetrace.fingerprint_salt`
+     * to rotate fingerprints independently of APP_KEY.
+     */
+    private static function salt(): string
+    {
+        return (string) (config('ranetrace.fingerprint_salt') ?: config('app.key'));
     }
 }

@@ -38,10 +38,10 @@ try {
 
 Each error report includes:
 - Exception message, type, file, and line number
-- Stack trace (truncated to 5000 chars)
-- Code snippet (5 lines before and after the error line)
-- HTTP request data (URL, method, headers with sensitive values masked)
-- Authenticated user ID and email
+- Stack trace (truncated to 5000 chars; key=value secrets redacted)
+- Code snippet (5 lines before and after the error line; each line length-capped)
+- HTTP request data (URL with sensitive query params redacted, method, headers with non-allowlisted values masked)
+- Authenticated user ID (email only when `ranetrace.errors.capture_user_email` is enabled; off by default)
 - PHP and Laravel versions
 - Environment name
 - Console command details (for CLI errors)

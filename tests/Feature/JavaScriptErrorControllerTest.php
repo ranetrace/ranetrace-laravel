@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Support\Facades\Bus;
+use Ranetrace\Laravel\Jobs\HandleJavaScriptErrorJob;
 
 beforeEach(function (): void {
     Bus::fake();
@@ -185,4 +186,65 @@ test('it limits stack trace length', function (): void {
 
     $response->assertStatus(422);
     $response->assertJsonValidationErrors(['stack']);
+});
+
+test('it hashes the session id instead of sending it raw', function (): void {
+    $this->postJson(route('ranetrace.javascript-errors.store'), [
+        'message' => 'Test error',
+        'url' => 'https://example.com/',
+    ])->assertStatus(200);
+
+    Bus::assertDispatched(HandleJavaScriptErrorJob::class, function ($job): bool {
+        $sessionId = $job->getErrorData()['session_id'];
+
+        return is_string($sessionId)
+            && mb_strlen($sessionId) === 64           // HMAC-SHA256 hex
+            && $sessionId !== session()->getId();  // not the raw id
+    });
+});
+
+test('it scrubs secrets from the stack', function (): void {
+    $this->postJson(route('ranetrace.javascript-errors.store'), [
+        'message' => 'Test error',
+        'url' => 'https://example.com/',
+        'stack' => 'Error at https://api.test/x?token=abc123 in handler',
+    ])->assertStatus(200);
+
+    Bus::assertDispatched(HandleJavaScriptErrorJob::class, function ($job): bool {
+        $stack = $job->getErrorData()['stack'];
+
+        return str_contains($stack, 'token=[REDACTED]') && ! str_contains($stack, 'token=abc123');
+    });
+});
+
+test('it redacts secrets from context and scrubs the url query', function (): void {
+    $this->postJson(route('ranetrace.javascript-errors.store'), [
+        'message' => 'Test error',
+        'url' => 'https://example.com/reset?token=abc&page=2',
+        'context' => ['api_key' => 'sk_live_xxx', 'page' => 'home'],
+    ])->assertStatus(200);
+
+    Bus::assertDispatched(HandleJavaScriptErrorJob::class, function ($job): bool {
+        $data = $job->getErrorData();
+
+        return $data['context']['api_key'] === '[REDACTED]'
+            && $data['context']['page'] === 'home'
+            && $data['url'] === 'https://example.com/reset?token=[REDACTED]&page=2';
+    });
+});
+
+test('it falls back to default ignored errors when the config key is absent', function (): void {
+    // Simulate a published config that removed the ignored_errors key entirely.
+    $jsConfig = config('ranetrace.javascript_errors');
+    unset($jsConfig['ignored_errors']);
+    config(['ranetrace.javascript_errors' => $jsConfig]);
+
+    $response = $this->postJson(route('ranetrace.javascript-errors.store'), [
+        'message' => 'ResizeObserver loop limit exceeded',
+        'url' => 'https://example.com/',
+    ]);
+
+    $response->assertStatus(200);
+    $response->assertJson(['message' => 'Error ignored based on pattern']);
+    Bus::assertNotDispatched(HandleJavaScriptErrorJob::class);
 });

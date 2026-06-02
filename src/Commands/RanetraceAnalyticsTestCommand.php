@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Ranetrace\Laravel\Commands;
 
 use Illuminate\Console\Command;
+use Ranetrace\Laravel\Analytics\FingerprintGenerator;
+use Ranetrace\Laravel\Jobs\HandlePageVisitJob;
 
 class RanetraceAnalyticsTestCommand extends Command
 {
@@ -56,6 +58,35 @@ class RanetraceAnalyticsTestCommand extends Command
         $this->info('✅ Website analytics is enabled and configured!');
         $this->newLine();
 
+        // Dispatch a synthetic page visit so the user can verify the
+        // job → buffer → API path without a browser, mirroring the other
+        // test commands (test-errors/events/logging/javascript-errors).
+        HandlePageVisitJob::dispatch([
+            'url' => 'cli://ranetrace:test-analytics',
+            'path' => '/ranetrace-test-analytics',
+            'timestamp' => now()->toIso8601String(),
+            'referrer' => null,
+            'country_code' => null,
+            'device_type' => 'desktop',
+            'browser_name' => 'Other',
+            'utm_source' => null,
+            'utm_medium' => null,
+            'utm_campaign' => null,
+            'utm_content' => null,
+            'utm_term' => null,
+            'session_id_hash' => FingerprintGenerator::hash('ranetrace:test-analytics'),
+            'user_agent_hash' => FingerprintGenerator::hash('Ranetrace-CLI/Test'),
+            'human_probability_score' => 100,
+            'human_probability_reasons' => ['cli-test'],
+        ]);
+
+        if (config('ranetrace.website_analytics.queue', true)) {
+            $this->info('✅ Test page visit queued for Ranetrace. Run php artisan ranetrace:work to send it.');
+        } else {
+            $this->info('✅ Test page visit sent to Ranetrace.');
+        }
+        $this->newLine();
+
         // How it works
         $this->line('🚀 <fg=cyan>How It Works:</>');
         $this->newLine();
@@ -68,14 +99,14 @@ class RanetraceAnalyticsTestCommand extends Command
         $this->table(
             ['Data Point', 'Description'],
             [
-                ['URL & Path', 'Full URL and path of the visited page'],
+                ['URL & Path', 'Full URL (sensitive query params redacted) and path'],
                 ['Timestamp', 'When the visit occurred (ISO 8601)'],
                 ['Referrer', 'Where the visitor came from'],
                 ['Device Type', 'mobile, tablet, desktop, or console'],
                 ['Browser', 'Chrome, Firefox, Safari, Edge, etc.'],
                 ['UTM Parameters', 'source, medium, campaign, content, term'],
-                ['Session ID (hashed)', 'SHA-256 hash for privacy'],
-                ['User Agent (hashed)', 'SHA-256 hash for privacy'],
+                ['Session ID (hashed)', 'HMAC-SHA256 (salted) for privacy'],
+                ['User Agent (hashed)', 'HMAC-SHA256 (salted) for privacy'],
                 ['Human Probability', 'Bot detection score (0-100, integer)'],
             ]
         );
@@ -125,8 +156,8 @@ class RanetraceAnalyticsTestCommand extends Command
             ['Item', 'How It\'s Handled'],
             [
                 ['IP Address', 'NOT sent to Ranetrace (privacy-first)'],
-                ['User Agent', 'Hashed with SHA-256 (not stored raw)'],
-                ['Session ID', 'Generated from IP + UA + Date (daily rotation, hashed)'],
+                ['User Agent', 'Hashed with HMAC-SHA256, salted (not stored raw)'],
+                ['Session ID', 'HMAC-SHA256 of IP + UA + Date (daily rotation, salted)'],
                 ['Personal Data', 'No personal information is collected'],
             ]
         );

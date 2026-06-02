@@ -10,16 +10,27 @@ use Throwable;
 class DataSanitizer
 {
     /**
+     * Hard recursion ceiling. Bounds deep or circular object/array graphs so a
+     * pathological structure (e.g. an Eloquent model with circular relations
+     * logged in context) cannot recurse to stack exhaustion — which would be an
+     * uncatchable fatal, defeating the capture paths' failure isolation.
+     */
+    private const int MAX_DEPTH = 20;
+
+    /**
      * Sanitize data for serialization by removing closures and non-serializable values
      */
-    public static function sanitizeForSerialization(mixed $data): mixed
+    public static function sanitizeForSerialization(mixed $data, int $depth = 0): mixed
     {
-        if (is_array($data)) {
-            $sanitized = array_map(function ($value) {
-                return self::sanitizeForSerialization($value);
-            }, $data);
+        if ($depth >= self::MAX_DEPTH) {
+            return '[Max depth exceeded]';
+        }
 
-            return $sanitized;
+        if (is_array($data)) {
+            return array_map(
+                fn ($value) => self::sanitizeForSerialization($value, $depth + 1),
+                $data
+            );
         }
 
         if (is_object($data)) {
@@ -31,12 +42,12 @@ class DataSanitizer
             try {
                 // For objects that implement JsonSerializable
                 if (method_exists($data, 'jsonSerialize')) {
-                    return self::sanitizeForSerialization($data->jsonSerialize());
+                    return self::sanitizeForSerialization($data->jsonSerialize(), $depth + 1);
                 }
 
                 // For objects that implement toArray
                 if (method_exists($data, 'toArray')) {
-                    return self::sanitizeForSerialization($data->toArray());
+                    return self::sanitizeForSerialization($data->toArray(), $depth + 1);
                 }
 
                 // For other objects, try to convert to string or return class name

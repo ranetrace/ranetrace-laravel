@@ -8,13 +8,42 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Validator;
+use Ranetrace\Laravel\Analytics\FingerprintGenerator;
 use Ranetrace\Laravel\Jobs\HandleJavaScriptErrorJob;
 use Ranetrace\Laravel\Support\InternalLogger;
 use Ranetrace\Laravel\Utilities\DataSanitizer;
+use Ranetrace\Laravel\Utilities\PayloadSizer;
+use Ranetrace\Laravel\Utilities\SecretScrubber;
 use Throwable;
 
 class JavaScriptErrorController extends Controller
 {
+    /**
+     * Default ignored-error message patterns. Used as the in-code fallback so a
+     * published config that removed the `ignored_errors` key restores these
+     * defaults rather than silently un-filtering noise. Mirrors
+     * config/ranetrace.php → javascript_errors.ignored_errors.
+     *
+     * @var array<int, string>
+     */
+    public const array DEFAULT_IGNORED_ERRORS = [
+        'ResizeObserver loop limit exceeded',
+        'ResizeObserver loop completed with undelivered notifications',
+        'Script error.',
+        'Script error',
+        'Failed to fetch',
+        'NetworkError when attempting to fetch resource',
+        'Network request failed',
+        'Load failed',
+        'Loading chunk',
+        'ChunkLoadError',
+        'cancelled',
+        'canceled',
+        'The operation was aborted',
+        'AbortError',
+        'Illegal invocation',
+    ];
+
     /**
      * Maximum serialized context size (JSON-encoded bytes). Oversize context is
      * replaced with a truncation marker rather than truncated mid-structure.
@@ -62,11 +91,11 @@ class JavaScriptErrorController extends Controller
         $breadcrumbs = array_slice($breadcrumbs, -$maxBreadcrumbs);
 
         return array_map(function (array $breadcrumb): array {
-            $data = DataSanitizer::sanitizeForSerialization($breadcrumb['data'] ?? []);
-
-            if (mb_strlen((string) json_encode($data), '8bit') > self::MAX_BREADCRUMB_DATA_BYTES) {
-                $data = ['_truncated' => 'Breadcrumb data exceeded 5KB limit and was removed'];
-            }
+            $data = PayloadSizer::capBytes(
+                SecretScrubber::scrub(DataSanitizer::sanitizeForSerialization($breadcrumb['data'] ?? [])),
+                self::MAX_BREADCRUMB_DATA_BYTES,
+                'Breadcrumb data exceeded 5KB limit and was removed'
+            );
 
             return [
                 'timestamp' => $breadcrumb['timestamp'],
@@ -124,7 +153,7 @@ class JavaScriptErrorController extends Controller
             ], 422);
         }
 
-        $ignoredErrors = config('ranetrace.javascript_errors.ignored_errors', []);
+        $ignoredErrors = config('ranetrace.javascript_errors.ignored_errors', self::DEFAULT_IGNORED_ERRORS);
         $errorMessage = $request->input('message');
 
         foreach ($ignoredErrors as $pattern) {
@@ -144,27 +173,32 @@ class JavaScriptErrorController extends Controller
             ], 200);
         }
 
-        // Cap context size: oversize objects are replaced with a marker
-        // (truncating mid-structure would yield invalid JSON).
-        $context = DataSanitizer::sanitizeForSerialization($request->input('context', []));
-        if (mb_strlen((string) json_encode($context), '8bit') > self::MAX_CONTEXT_BYTES) {
-            $context = ['_truncated' => 'Context exceeded 50KB limit and was removed'];
-        }
+        // Sanitize, redact secret-keyed values, then cap size (oversize objects
+        // are replaced with a marker — truncating mid-structure yields invalid JSON).
+        $context = PayloadSizer::capBytes(
+            SecretScrubber::scrub(DataSanitizer::sanitizeForSerialization($request->input('context', []))),
+            self::MAX_CONTEXT_BYTES,
+            'Context exceeded 50KB limit and was removed'
+        );
 
         $errorData = [
             'message' => $errorMessage,
-            'stack' => $request->input('stack'),
+            'stack' => $request->input('stack') !== null
+                ? SecretScrubber::scrubString((string) $request->input('stack'))
+                : null,
             'type' => $request->input('type', 'Error'),
             'filename' => $request->input('filename'),
             'line' => $request->input('line'),
             'column' => $request->input('column'),
             'user_agent' => $request->userAgent(),
-            'url' => $request->input('url'),
+            'url' => SecretScrubber::scrubUrl((string) $request->input('url')),
             'timestamp' => $request->input('timestamp', now()->format('c')),
             'environment' => config('app.env'),
             // Contract method on Authenticatable — safe for non-Eloquent user models.
             'user_id' => $request->user()?->getAuthIdentifier(),
-            'session_id' => session()->getId(),
+            // Hashed (not raw) so a leaked payload can't be used to hijack the
+            // session, while still grouping errors within the same session.
+            'session_id' => FingerprintGenerator::hash(session()->getId()),
             'breadcrumbs' => $this->sanitizeBreadcrumbs($request->input('breadcrumbs', [])),
             'context' => $context,
             'browser_info' => [

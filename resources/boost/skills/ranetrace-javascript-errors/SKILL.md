@@ -80,8 +80,8 @@ window.Ranetrace.addBreadcrumb('custom', 'User selected plan', {
     'queue_name' => env('RANETRACE_JAVASCRIPT_ERRORS_QUEUE_NAME', 'default'),
     'timeout' => env('RANETRACE_JAVASCRIPT_ERRORS_TIMEOUT', 10),
     'sample_rate' => env('RANETRACE_JAVASCRIPT_ERRORS_SAMPLE_RATE', 1.0),
-    'capture_console_errors' => env('RANETRACE_JAVASCRIPT_CAPTURE_CONSOLE_ERRORS', false),
-    'max_breadcrumbs' => env('RANETRACE_JAVASCRIPT_MAX_BREADCRUMBS', 20),
+    'capture_console_errors' => env('RANETRACE_JAVASCRIPT_ERRORS_CAPTURE_CONSOLE_ERRORS', false),
+    'max_breadcrumbs' => env('RANETRACE_JAVASCRIPT_ERRORS_MAX_BREADCRUMBS', 20),
     'ignored_errors' => [
         'ResizeObserver loop limit exceeded',
         'ResizeObserver loop completed with undelivered notifications',

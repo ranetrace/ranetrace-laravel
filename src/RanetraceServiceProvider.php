@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Ranetrace\Laravel;
 
+use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\ServiceProvider;
+use Laravel\Mcp\Facades\Mcp;
 use Ranetrace\Laravel\Analytics\Middleware\TrackPageVisit;
 use Ranetrace\Laravel\Commands\RanetraceAnalyticsTestCommand;
 use Ranetrace\Laravel\Commands\RanetraceErrorTestCommand;
@@ -16,6 +18,7 @@ use Ranetrace\Laravel\Commands\RanetraceStatusCommand;
 use Ranetrace\Laravel\Commands\RanetraceTestCommand;
 use Ranetrace\Laravel\Commands\RanetraceWorkCommand;
 use Ranetrace\Laravel\Events\EventTracker;
+use Ranetrace\Laravel\Http\Controllers\JavaScriptErrorController;
 use Ranetrace\Laravel\Logging\RanetraceLogDriver;
 use Ranetrace\Laravel\Mcp\RanetraceServer;
 
@@ -32,14 +35,10 @@ class RanetraceServiceProvider extends ServiceProvider
         $this->registerLogChannels();
 
         // Register Ranetrace as singleton
-        $this->app->singleton(Ranetrace::class, function () {
-            return new Ranetrace;
-        });
+        $this->app->singleton(Ranetrace::class);
 
         // Register EventTracker as singleton
-        $this->app->singleton(EventTracker::class, function () {
-            return new EventTracker;
-        });
+        $this->app->singleton(EventTracker::class);
 
         // Register custom log driver
         $this->app['log']->extend('ranetrace', function ($app, $config) {
@@ -53,7 +52,11 @@ class RanetraceServiceProvider extends ServiceProvider
         if ($this->app->runningInConsole()) {
             $this->publishes([
                 __DIR__.'/../config/ranetrace.php' => config_path('ranetrace.php'),
-            ], 'ranetrace-config');
+            ], 'ranetrace-laravel-config');
+
+            $this->publishes([
+                __DIR__.'/../resources/views' => resource_path('views/vendor/ranetrace'),
+            ], 'ranetrace-laravel-views');
 
             // Register commands
             $this->commands([
@@ -91,8 +94,13 @@ class RanetraceServiceProvider extends ServiceProvider
 
     /**
      * Auto-register the package's log channels so the host application gets
-     * zero-config diagnostics and centralized logging. A user-defined channel
-     * with the same name always wins (we never overwrite).
+     * zero-config diagnostics and centralized logging.
+     *
+     * The user-facing `ranetrace` channel is never overwritten: if the host
+     * defines its own `ranetrace` channel, that definition always wins. The
+     * internal `ranetrace_internal` channel is package-owned and is always
+     * (re)set from `ranetrace.internal_logging.*`, so it cannot be overridden
+     * via `config/logging.php` — tune it through those config keys instead.
      */
     protected function registerLogChannels(): void
     {
@@ -117,21 +125,21 @@ class RanetraceServiceProvider extends ServiceProvider
         $throttle = config('ranetrace.javascript_errors.throttle', '60,1');
 
         $this->app['router']
-            ->post('ranetrace/javascript-errors/store', [Http\Controllers\JavaScriptErrorController::class, 'store'])
+            ->post('ranetrace/javascript-errors/store', [JavaScriptErrorController::class, 'store'])
             ->middleware(['web', "throttle:{$throttle}"])
             ->name('ranetrace.javascript-errors.store');
     }
 
     protected function registerBladeDirectives(): void
     {
-        \Illuminate\Support\Facades\Blade::directive('ranetraceErrorTracking', function () {
+        Blade::directive('ranetraceErrorTracking', function () {
             return "<?php echo view('ranetrace::error-tracker')->render(); ?>";
         });
     }
 
     protected function registerMcpServer(): void
     {
-        if (! class_exists(\Laravel\Mcp\Facades\Mcp::class)) {
+        if (! class_exists(Mcp::class)) {
             return;
         }
 
@@ -143,6 +151,6 @@ class RanetraceServiceProvider extends ServiceProvider
             return;
         }
 
-        \Laravel\Mcp\Facades\Mcp::local('ranetrace', RanetraceServer::class);
+        Mcp::local('ranetrace', RanetraceServer::class);
     }
 }

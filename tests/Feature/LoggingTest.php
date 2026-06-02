@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Log;
+use Monolog\LogRecord;
 use Ranetrace\Laravel\Jobs\HandleLogJob;
 
 beforeEach(function (): void {
@@ -38,6 +39,27 @@ test('it includes environment information', function (): void {
         return isset($job->getLogData()['extra']['environment'])
             && isset($job->getLogData()['extra']['laravel_version'])
             && isset($job->getLogData()['extra']['php_version']);
+    });
+});
+
+test('it preserves environment metadata even when the extra payload is oversized', function (): void {
+    $logger = Log::channel('ranetrace');
+
+    // Inject an over-budget (>10KB) extra payload via a Monolog processor.
+    $logger->getLogger()->pushProcessor(function (LogRecord $record): LogRecord {
+        return $record->with(extra: ['huge' => str_repeat('a', 20_000)]);
+    });
+
+    $logger->error('Test');
+
+    Bus::assertDispatched(HandleLogJob::class, function ($job): bool {
+        $extra = $job->getLogData()['extra'];
+
+        // The oversized user extra is dropped wholesale, but the small,
+        // known-safe environment trio still survives for triage.
+        return isset($extra['_truncated'])
+            && ! isset($extra['huge'])
+            && isset($extra['environment'], $extra['laravel_version'], $extra['php_version']);
     });
 });
 
@@ -99,5 +121,21 @@ test('it includes channel name', function (): void {
 
     Bus::assertDispatched(HandleLogJob::class, function ($job): bool {
         return $job->getLogData()['channel'] === 'ranetrace';
+    });
+});
+
+test('it redacts secrets in context', function (): void {
+    Log::channel('ranetrace')->error('Payment failed', [
+        'api_key' => 'sk_live_secret',
+        'password' => 'hunter2',
+        'order_id' => 42,
+    ]);
+
+    Bus::assertDispatched(HandleLogJob::class, function ($job): bool {
+        $context = $job->getLogData()['context'];
+
+        return $context['api_key'] === '[REDACTED]'
+            && $context['password'] === '[REDACTED]'
+            && $context['order_id'] === 42;
     });
 });

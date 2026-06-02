@@ -35,6 +35,9 @@ class HandleEventJob extends BaseRanetraceJob
         return 'ranetrace.events';
     }
 
+    /**
+     * @return array<int, string>
+     */
     protected function getAllowedKeys(): array
     {
         return [

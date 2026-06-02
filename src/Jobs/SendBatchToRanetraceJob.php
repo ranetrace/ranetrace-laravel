@@ -30,6 +30,15 @@ class SendBatchToRanetraceJob implements ShouldBeUnique, ShouldQueue
     public const string LAST_BATCH_PREFIX = 'ranetrace:last_batch:';
 
     /**
+     * Soft byte budget for one batch request. The API hard-limits requests to
+     * 5MB; we trim to ~4.5MB and re-buffer the rest, leaving headroom for the
+     * JSON envelope so an oversize 413 (whole-batch discard + 15-min pause) is
+     * impossible. Single items are separately bounded by the per-field caps in
+     * Ranetrace / RanetraceLogHandler.
+     */
+    protected const int MAX_BATCH_BYTES = 4_500_000;
+
+    /**
      * Total attempts: 1 initial + 3 retries. Combined with backoff() of
      * 60/300/900s this produces the 21-minute retry window mandated by
      * client-response-handling.md.
@@ -71,6 +80,19 @@ class SendBatchToRanetraceJob implements ShouldBeUnique, ShouldQueue
 
         if (empty($this->items)) {
             return;
+        }
+
+        // Pre-flight size guard: trim the batch to the byte budget and re-buffer
+        // the overflow so an oversize request (413 → whole-batch discard + pause)
+        // is impossible. The remainder drains on the next ranetrace:work run.
+        $deferred = $this->trimToByteBudget();
+        if ($deferred !== []) {
+            $buffer->addItems($this->type, array_map(fn (array $item): array => $item['data'], $deferred));
+            $this->logInfo('Deferred items to keep the batch under the size limit', [
+                'type' => $this->type,
+                'sent' => count($this->items),
+                'deferred' => count($deferred),
+            ]);
         }
 
         // Extract just the data payloads for the API
@@ -348,7 +370,7 @@ class SendBatchToRanetraceJob implements ShouldBeUnique, ShouldQueue
      */
     protected function recordLastBatch(): void
     {
-        $cacheDriver = config('ranetrace.batch.cache_driver', 'redis');
+        $cacheDriver = config('ranetrace.batch.cache_driver', 'file');
 
         Cache::store($cacheDriver)->put(
             self::LAST_BATCH_PREFIX.$this->type,
@@ -363,6 +385,32 @@ class SendBatchToRanetraceJob implements ShouldBeUnique, ShouldQueue
     protected function getMaxBatchSize(): int
     {
         return 1000; // Per API spec
+    }
+
+    /**
+     * Trim items off the tail of $this->items so the serialized batch stays
+     * within MAX_BATCH_BYTES, returning the removed items for re-buffering.
+     * Always keeps at least one item — a single over-budget item can't be split
+     * (per-field caps bound single items).
+     *
+     * @return array<int, array{id: string, data: array, timestamp: int}>
+     */
+    protected function trimToByteBudget(): array
+    {
+        $bytes = 0;
+
+        foreach ($this->items as $index => $item) {
+            $bytes += mb_strlen((string) json_encode($item['data']), '8bit');
+
+            if ($index > 0 && $bytes > self::MAX_BATCH_BYTES) {
+                $deferred = array_slice($this->items, $index);
+                $this->items = array_slice($this->items, 0, $index);
+
+                return $deferred;
+            }
+        }
+
+        return [];
     }
 
     /**

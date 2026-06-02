@@ -1,5 +1,6 @@
 @if(config('ranetrace.javascript_errors.enabled'))
-<script>
+@php($ranetraceNonce = \Illuminate\Support\Facades\Vite::cspNonce())
+<script@if($ranetraceNonce) nonce="{{ $ranetraceNonce }}"@endif>
 /**
  * Ranetrace JavaScript Error Tracking
  * Version: 1.0.0
@@ -22,7 +23,7 @@
         sampleRate: {{ config('ranetrace.javascript_errors.sample_rate', 1.0) }},
         captureConsoleErrors: {{ config('ranetrace.javascript_errors.capture_console_errors') ? 'true' : 'false' }},
         maxBreadcrumbs: {{ config('ranetrace.javascript_errors.max_breadcrumbs', 20) }},
-        ignoredErrors: @json(config('ranetrace.javascript_errors.ignored_errors', [])),
+        ignoredErrors: @json(config('ranetrace.javascript_errors.ignored_errors', \Ranetrace\Laravel\Http\Controllers\JavaScriptErrorController::DEFAULT_IGNORED_ERRORS)),
         csrfToken: '{{ csrf_token() }}',
     };
 

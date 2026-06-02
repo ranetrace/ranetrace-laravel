@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Ranetrace\Laravel\Analytics;
 
 use Illuminate\Http\Request;
+use Ranetrace\Laravel\Utilities\SecretScrubber;
 
 class VisitDataCollector
 {
@@ -14,13 +15,13 @@ class VisitDataCollector
         $url = $request->fullUrl();
 
         return [
-            'url' => $url,
+            'url' => SecretScrubber::scrubUrl($url),
             'path' => parse_url($url, PHP_URL_PATH) ?? '/',
             'ip' => $request->ip(), // Only used internally to resolve geo
             'user_agent' => $userAgent,
-            'user_agent_hash' => hash('sha256', $userAgent),
+            'user_agent_hash' => FingerprintGenerator::generateUserAgentHash($request),
 
-            'referrer' => $request->headers->get('referer'),
+            'referrer' => SecretScrubber::scrubUrl($request->headers->get('referer')),
 
             'device_type' => self::detectDeviceType($userAgent),
             'browser_name' => self::detectBrowser($userAgent),
@@ -104,11 +105,5 @@ class VisitDataCollector
         // Country resolution not implemented yet
         // Future implementation would go here to resolve country from IP address
         return null;
-    }
-
-    protected static function generateSessionIdHash(Request $request): string
-    {
-        // Use the shared fingerprint generator
-        return FingerprintGenerator::generateSessionIdHash($request);
     }
 }

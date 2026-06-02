@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Ranetrace\Laravel\Analytics;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 class HumanProbabilityScorer
 {
@@ -30,14 +31,7 @@ class HumanProbabilityScorer
         // Request behavior
         'has_referer' => 15,             // Request has a referer header
         'valid_referer' => 10,           // Request has a valid/reasonable referer
-        'session_consistency' => 20,     // Session is consistent across requests
         'request_headers' => 15,         // Request has a normal set of headers
-        'browser_fingerprint' => 20,     // Browser fingerprint is consistent
-
-        // Interaction patterns
-        'multiple_pages' => 15,          // Visits multiple pages in a session
-        'natural_timing' => 20,          // Time between requests seems natural
-        'interactive_elements' => 25,    // Interacts with elements on page
 
         // Request frequency
         'request_frequency' => -25,      // Makes too many requests in a short time
@@ -53,9 +47,7 @@ class HumanProbabilityScorer
      */
     public static function score(Request $request): array
     {
-        $instance = new self;
-
-        return $instance->scoreRequest($request);
+        return (new self)->scoreRequest($request);
     }
 
     /**
@@ -63,18 +55,12 @@ class HumanProbabilityScorer
      */
     protected static function classifyScore(int $score): string
     {
-        if ($score >= self::DEFAULT_THRESHOLDS['likely_human']) {
-            return 'likely_human';
-        }
-        if ($score >= self::DEFAULT_THRESHOLDS['possibly_human']) {
-            return 'possibly_human';
-        }
-        if ($score >= self::DEFAULT_THRESHOLDS['likely_bot']) {
-            return 'probably_bot';
-        }
-
-        return 'definitely_bot';
-
+        return match (true) {
+            $score >= self::DEFAULT_THRESHOLDS['likely_human'] => 'likely_human',
+            $score >= self::DEFAULT_THRESHOLDS['possibly_human'] => 'possibly_human',
+            $score >= self::DEFAULT_THRESHOLDS['likely_bot'] => 'probably_bot',
+            default => 'definitely_bot',
+        };
     }
 
     /**
@@ -94,12 +80,7 @@ class HumanProbabilityScorer
         // 3. Request Headers Analysis
         $score = $this->scoreRequestHeaders($request, $score);
 
-        // 4. Session Consistency (if available)
-        if ($request->hasSession()) {
-            $score = $this->scoreSessionConsistency($request, $score);
-        }
-
-        // 5. Request Frequency Analysis
+        // 4. Request Frequency Analysis
         $score = $this->scoreRequestFrequency($request, $score);
 
         // Ensure score is within 0-100 range
@@ -141,19 +122,8 @@ class HumanProbabilityScorer
             $score += self::DEFAULT_WEIGHTS['user_agent_length'];
         }
 
-        // Check for suspicious patterns
-        $suspiciousPatterns = [
-            'suspicious', 'fake', 'test', 'localhost', 'postman',
-            'curl/', 'wget/', 'python-requests', 'empty', 'ruby',
-            'clearly-fake', 'not-a-browser', 'unknown', 'bot', 'crawler',
-            'spider', 'http-client', 'java/', 'php/', 'scripting', 'headless',
-            'phantom', 'selenium', 'webdriver', 'automation',
-            'Go-http-client', 'libwww-perl', 'Apache-HttpClient', 'okhttp',
-            'node-fetch', 'axios/', 'scrapy', 'requests/', 'http_request',
-            'HeadlessChrome', 'Puppeteer', 'Playwright', 'Cypress',
-        ];
-
-        foreach ($suspiciousPatterns as $pattern) {
+        // Check for suspicious patterns (shared with the page-visit middleware)
+        foreach (BotSignals::SUSPICIOUS_USER_AGENT_PATTERNS as $pattern) {
             if (mb_stripos($userAgent, $pattern) !== false) {
                 $this->reasons[] = "User agent contains suspicious term: {$pattern}";
                 $score += self::DEFAULT_WEIGHTS['user_agent_suspicious'];
@@ -278,33 +248,17 @@ class HumanProbabilityScorer
     }
 
     /**
-     * Score based on session consistency
-     */
-    protected function scoreSessionConsistency(Request $request, int $score): int
-    {
-        // If this is a returning visitor with consistent session data
-        if ($request->session()->has('previous_visit')) {
-            $this->reasons[] = 'Request is part of an established session';
-            $score += self::DEFAULT_WEIGHTS['session_consistency'];
-        }
-
-        // Store this visit for future checks
-        $request->session()->put('previous_visit', [
-            'timestamp' => time(),
-            'user_agent' => $request->userAgent(),
-            'ip' => $request->ip(),
-        ]);
-
-        return $score;
-    }
-
-    /**
      * Score based on request frequency (throttling detection)
      */
     protected function scoreRequestFrequency(Request $request, int $score): int
     {
+        // Use the Ranetrace cache store (same as the buffer/pause manager and the
+        // page-visit throttle) so the per-IP frequency counter is shared across
+        // workers — the host's default cache may be `array`, a per-process no-op.
+        $store = Cache::store(config('ranetrace.batch.cache_driver', 'file'));
+
         $cacheKey = 'ranetrace:request_frequency:'.$request->ip();
-        $requestCount = cache()->get($cacheKey, 0);
+        $requestCount = $store->get($cacheKey, 0);
 
         if ($requestCount > 10) {
             $this->reasons[] = 'High request frequency detected';
@@ -312,7 +266,7 @@ class HumanProbabilityScorer
         }
 
         // Increment the request count for this IP
-        cache()->put($cacheKey, $requestCount + 1, now()->addMinutes(1));
+        $store->put($cacheKey, $requestCount + 1, now()->addMinutes(1));
 
         return $score;
     }

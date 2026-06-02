@@ -9,13 +9,14 @@ use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
 use Laravel\Mcp\Server\Tool;
 use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
+use Ranetrace\Laravel\Mcp\Tools\Concerns\MapsErrorActionResponse;
 use Ranetrace\Laravel\Mcp\Tools\Concerns\NormalizesIds;
 use Ranetrace\Laravel\Services\RanetraceApiClient;
 
 #[IsReadOnly]
 class ListNotesTool extends Tool
 {
-    use NormalizesIds;
+    use MapsErrorActionResponse, NormalizesIds;
 
     /**
      * The tool's description.
@@ -96,20 +97,9 @@ class ListNotesTool extends Tool
         return $params;
     }
 
-    /**
-     * Handle error responses from the API.
-     *
-     * @param  array<string, mixed>  $result
-     */
-    protected function handleErrorResponse(array $result, string $errorId): Response
+    protected function actionFailureMessage(): string
     {
-        $errorMessage = $result['error'] ?? 'Unknown error occurred';
-
-        return match ($result['status']) {
-            404 => Response::error("Error with ID '{$errorId}' not found."),
-            403 => Response::error("Access denied: {$errorMessage}"),
-            default => Response::error("Failed to list notes: {$errorMessage}"),
-        };
+        return 'Failed to list notes';
     }
 
     /**

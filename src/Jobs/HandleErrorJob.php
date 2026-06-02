@@ -43,7 +43,7 @@ class HandleErrorJob extends BaseRanetraceJob
             'context',
             'highlight_line',
             'user',
-            'time',
+            'timestamp',
             'url',
             'method',
             'php_version',

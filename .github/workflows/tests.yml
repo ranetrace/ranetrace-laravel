@@ -1,0 +1,53 @@
+name: tests
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.4']
+        laravel: [11, 12, 13]
+        include:
+          - laravel: 11
+            testbench: '^9.0'
+          - laravel: 12
+            testbench: '^10.0'
+          - laravel: 13
+            testbench: '^11.0'
+
+    name: PHP ${{ matrix.php }} - Laravel ${{ matrix.laravel }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: mbstring, dom, curl, libxml, fileinfo, intl
+          coverage: none
+
+      - name: Constrain to Laravel ${{ matrix.laravel }}
+        run: composer require "orchestra/testbench:${{ matrix.testbench }}" --dev --no-update --no-interaction
+
+      - name: Install dependencies
+        run: composer update --prefer-dist --with-all-dependencies --no-interaction --no-scripts
+
+      - name: Lint (Pint)
+        run: vendor/bin/pint --test
+
+      - name: Static analysis (PHPStan)
+        run: vendor/bin/phpstan analyse --no-progress
+
+      - name: Tests (Pest)
+        run: vendor/bin/pest --compact

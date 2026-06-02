@@ -157,7 +157,7 @@ class RanetraceStatusCommand extends Command
             'config' => [
                 'enabled' => config('ranetrace.enabled', true),
                 'api_key_configured' => ! empty(config('ranetrace.key')),
-                'cache_driver' => config('ranetrace.batch.cache_driver', 'redis'),
+                'cache_driver' => config('ranetrace.batch.cache_driver', 'file'),
                 'queue_name' => config('ranetrace.batch.queue_name', 'default'),
             ],
         ];
@@ -397,7 +397,7 @@ class RanetraceStatusCommand extends Command
     protected function getLastBatchTimestamp(string $feature): ?int
     {
         try {
-            $cacheDriver = config('ranetrace.batch.cache_driver', 'redis');
+            $cacheDriver = config('ranetrace.batch.cache_driver', 'file');
             $value = Cache::store($cacheDriver)->get(SendBatchToRanetraceJob::LAST_BATCH_PREFIX.$feature);
 
             return is_int($value) ? $value : null;

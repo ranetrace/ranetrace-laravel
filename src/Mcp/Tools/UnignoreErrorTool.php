@@ -8,12 +8,14 @@ use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
 use Laravel\Mcp\Server\Tool;
+use Ranetrace\Laravel\Mcp\Tools\Concerns\MapsErrorActionResponse;
+use Ranetrace\Laravel\Mcp\Tools\Concerns\NormalizesErrorType;
 use Ranetrace\Laravel\Mcp\Tools\Concerns\NormalizesIds;
 use Ranetrace\Laravel\Services\RanetraceApiClient;
 
 class UnignoreErrorTool extends Tool
 {
-    use NormalizesIds;
+    use MapsErrorActionResponse, NormalizesErrorType, NormalizesIds;
 
     /**
      * The tool's description.
@@ -62,33 +64,9 @@ class UnignoreErrorTool extends Tool
         ];
     }
 
-    /**
-     * Normalize the error type parameter.
-     */
-    protected function normalizeType(?string $type): string
+    protected function actionFailureMessage(): string
     {
-        if ($type === null) {
-            return 'php';
-        }
-
-        return $type === 'js' ? 'javascript' : $type;
-    }
-
-    /**
-     * Handle error responses from the API.
-     *
-     * @param  array<string, mixed>  $result
-     */
-    protected function handleErrorResponse(array $result, string $errorId): Response
-    {
-        $errorMessage = $result['error'] ?? 'Unknown error occurred';
-
-        return match ($result['status']) {
-            404 => Response::error("Error with ID '{$errorId}' not found."),
-            403 => Response::error("Access denied: {$errorMessage}"),
-            422 => Response::error("Validation failed: {$errorMessage}"),
-            default => Response::error("Failed to unignore error: {$errorMessage}"),
-        };
+        return 'Failed to unignore error';
     }
 
     /**

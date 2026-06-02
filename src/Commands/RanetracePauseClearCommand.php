@@ -6,6 +6,7 @@ namespace Ranetrace\Laravel\Commands;
 
 use Carbon\Carbon;
 use Illuminate\Console\Command;
+use Ranetrace\Laravel\Services\RanetraceBatchBuffer;
 use Ranetrace\Laravel\Services\RanetracePauseManager;
 
 class RanetracePauseClearCommand extends Command
@@ -72,7 +73,7 @@ class RanetracePauseClearCommand extends Command
         }
 
         // Clear all features
-        $features = ['errors', 'events', 'logs', 'page_visits', 'javascript_errors'];
+        $features = RanetraceBatchBuffer::TYPES;
         foreach ($features as $feature) {
             if ($pauseManager->getFeaturePause($feature)) {
                 $this->clearFeaturePause($pauseManager, $feature, false);
@@ -140,7 +141,7 @@ class RanetracePauseClearCommand extends Command
     protected function clearFeaturePause(RanetracePauseManager $pauseManager, string $feature, bool $showMessages = true): int
     {
         // Validate feature name
-        $validFeatures = ['errors', 'events', 'logs', 'page_visits', 'javascript_errors'];
+        $validFeatures = RanetraceBatchBuffer::TYPES;
         if (! in_array($feature, $validFeatures, true)) {
             if ($showMessages) {
                 $this->error("Invalid feature: {$feature}");

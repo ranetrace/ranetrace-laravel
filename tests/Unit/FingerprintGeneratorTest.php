@@ -101,3 +101,34 @@ test('user agent hash differs for different user agents', function (): void {
 
     expect($hash1)->not->toBe($hash2);
 });
+
+test('hashes change when the fingerprint salt changes', function (): void {
+    $request = Illuminate\Http\Request::create('/', 'GET');
+    $request->headers->set('User-Agent', 'Test Browser');
+    $request->server->set('REMOTE_ADDR', '127.0.0.1');
+
+    config(['ranetrace.fingerprint_salt' => 'salt-one']);
+    $session1 = FingerprintGenerator::generateSessionIdHash($request);
+    $ua1 = FingerprintGenerator::generateUserAgentHash($request);
+
+    config(['ranetrace.fingerprint_salt' => 'salt-two']);
+    $session2 = FingerprintGenerator::generateSessionIdHash($request);
+    $ua2 = FingerprintGenerator::generateUserAgentHash($request);
+
+    expect($session1)->not->toBe($session2)
+        ->and($ua1)->not->toBe($ua2);
+});
+
+test('it falls back to app.key when no dedicated salt is set', function (): void {
+    $request = Illuminate\Http\Request::create('/', 'GET');
+    $request->headers->set('User-Agent', 'Test Browser');
+    $request->server->set('REMOTE_ADDR', '127.0.0.1');
+
+    config(['ranetrace.fingerprint_salt' => null]);
+    $fallback = FingerprintGenerator::generateUserAgentHash($request);
+
+    config(['ranetrace.fingerprint_salt' => config('app.key')]);
+    $explicit = FingerprintGenerator::generateUserAgentHash($request);
+
+    expect($fallback)->toBe($explicit)->and($fallback)->toHaveLength(64);
+});

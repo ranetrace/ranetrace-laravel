@@ -116,6 +116,19 @@ test('it preserves primitive values', function (): void {
     expect(DataSanitizer::sanitizeForSerialization(null))->toBe(null);
 });
 
+test('it bounds recursion depth instead of overflowing the stack', function (): void {
+    // 30 levels deep — beyond MAX_DEPTH (20). Must terminate with a marker
+    // rather than recursing to a fatal stack exhaustion.
+    $deep = 'leaf';
+    for ($i = 0; $i < 30; $i++) {
+        $deep = ['nested' => $deep];
+    }
+
+    $result = DataSanitizer::sanitizeForSerialization($deep);
+
+    expect(json_encode($result))->toContain('Max depth exceeded');
+});
+
 test('it handles deeply nested structures', function (): void {
     $data = [
         'level1' => [

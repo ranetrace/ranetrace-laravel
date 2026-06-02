@@ -144,3 +144,16 @@ test('it penalizes very long user agents', function (): void {
 
     expect($result['reasons'])->toContain('User agent suspiciously long');
 });
+
+test('it never writes to the host session', function (): void {
+    $session = new Illuminate\Session\Store('test', new Illuminate\Session\ArraySessionHandler(120));
+
+    $request = Illuminate\Http\Request::create('/', 'GET');
+    $request->setLaravelSession($session);
+    $request->headers->set('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/91.0');
+    $request->server->set('REMOTE_ADDR', '127.0.0.1');
+
+    HumanProbabilityScorer::score($request);
+
+    expect($session->all())->toBe([]);
+});

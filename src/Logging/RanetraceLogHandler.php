@@ -9,12 +9,16 @@ use Monolog\LogRecord;
 use Ranetrace\Laravel\Jobs\HandleLogJob;
 use Ranetrace\Laravel\Support\InternalLogger;
 use Ranetrace\Laravel\Utilities\DataSanitizer;
+use Ranetrace\Laravel\Utilities\PayloadSizer;
+use Ranetrace\Laravel\Utilities\SecretScrubber;
 use Throwable;
 
 /**
- * Per-field caps below combine with the batch ceiling to keep a 1000-log
- * batch under the API's 5MB request limit. NOT user-tunable: raising any
- * of these risks 413 batch rejections.
+ * Per-field caps below bound the size of a SINGLE captured log item. They do
+ * NOT by themselves keep a 1000-item batch under the API's 5MB request limit —
+ * worst case is far larger (see logs.md). Batch fit is guaranteed by the
+ * pre-flight size guard in SendBatchToRanetraceJob::trimToByteBudget(). NOT
+ * user-tunable: raising any of these widens per-item size and the 413 risk.
  */
 class RanetraceLogHandler extends AbstractProcessingHandler
 {
@@ -59,21 +63,29 @@ class RanetraceLogHandler extends AbstractProcessingHandler
                 $message = mb_substr($message, 0, self::MAX_MESSAGE_LENGTH - mb_strlen(self::TRUNCATION_SUFFIX)).self::TRUNCATION_SUFFIX;
             }
 
-            // Cap context/extra sizes (replace mid-structure rather than
-            // truncate, since partial JSON is invalid).
-            $context = DataSanitizer::sanitizeForSerialization($record->context);
-            if (mb_strlen((string) json_encode($context), '8bit') > self::MAX_CONTEXT_BYTES) {
-                $context = ['_truncated' => 'Context exceeded 50KB limit and was removed'];
-            }
+            // Sanitize for serialization, redact secrets stored under sensitive
+            // keys, then cap size (replacing mid-structure rather than truncating,
+            // since partial JSON is invalid).
+            $context = PayloadSizer::capBytes(
+                SecretScrubber::scrub(DataSanitizer::sanitizeForSerialization($record->context)),
+                self::MAX_CONTEXT_BYTES,
+                'Context exceeded 50KB limit and was removed'
+            );
 
-            $extra = DataSanitizer::sanitizeForSerialization(array_merge($record->extra, [
+            // Cap only the user-supplied extra, then always attach the small,
+            // known-safe environment trio. This way triage metadata survives
+            // even when the user extra is dropped wholesale for being oversized.
+            $userExtra = PayloadSizer::capBytes(
+                SecretScrubber::scrub(DataSanitizer::sanitizeForSerialization($record->extra)),
+                self::MAX_EXTRA_BYTES,
+                'Extra data exceeded 10KB limit and was removed'
+            );
+
+            $extra = array_merge((array) $userExtra, [
                 'environment' => config('app.env'),
                 'laravel_version' => app()->version(),
                 'php_version' => phpversion(),
-            ]));
-            if (mb_strlen((string) json_encode($extra), '8bit') > self::MAX_EXTRA_BYTES) {
-                $extra = ['_truncated' => 'Extra data exceeded 10KB limit and was removed'];
-            }
+            ]);
 
             $logData = [
                 'level' => mb_strtolower($record->level->name),

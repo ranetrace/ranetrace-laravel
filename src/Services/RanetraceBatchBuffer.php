@@ -27,7 +27,7 @@ class RanetraceBatchBuffer
 
     public function __construct()
     {
-        $this->cacheDriver = config('ranetrace.batch.cache_driver', 'redis');
+        $this->cacheDriver = config('ranetrace.batch.cache_driver', 'file');
         $this->ttl = config('ranetrace.batch.buffer_ttl', 3600);
     }
 

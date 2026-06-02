@@ -75,6 +75,20 @@ test('trackEvent dispatches HandleEventJob for a valid event', function (): void
     Queue::assertPushed(HandleEventJob::class);
 });
 
+test('trackEvent redacts secrets in event properties', function (): void {
+    (new Ranetrace)->trackEvent('checkout_completed', [
+        'api_key' => 'sk_live_x',
+        'order_id' => 'ORD-1',
+    ]);
+
+    Queue::assertPushed(HandleEventJob::class, function ($job): bool {
+        $properties = $job->getEventData()['properties'];
+
+        return $properties['api_key'] === '[REDACTED]'
+            && $properties['order_id'] === 'ORD-1';
+    });
+});
+
 // --- trackEvent(): validation stays loud, the rest is isolated ---
 
 test('trackEvent throws on an invalid event name when validation is enabled', function (): void {
@@ -161,6 +175,14 @@ test('error payload has exactly 18 fields', function (): void {
     expect(count($payload))->toBe(18);
 });
 
+test('error payload uses an ISO 8601 timestamp, not the legacy time field', function (): void {
+    $payload = invokeBuildErrorPayload(new RuntimeException('boom'));
+
+    expect($payload)->toHaveKey('timestamp')
+        ->and($payload)->not->toHaveKey('time')
+        ->and($payload['timestamp'])->toMatch('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2}$/');
+});
+
 test('console_arguments is sent as an array, not a JSON-encoded string', function (): void {
     $payload = invokeBuildErrorPayload(new RuntimeException('boom'));
 
@@ -213,6 +235,119 @@ test('user payload uses getAuthIdentifier() and is null-safe for missing email',
 
     expect($payload['user'])->toBe(['id' => 42, 'email' => null]);
 });
+
+// --- file-path relativization (R4-2) ---
+
+test('relativizePath strips the application base path', function (): void {
+    $ranetrace = new Ranetrace;
+    $method = new ReflectionMethod($ranetrace, 'relativizePath');
+
+    expect($method->invoke($ranetrace, base_path('app/Http/Controllers/UserController.php')))
+        ->toBe('app/Http/Controllers/UserController.php');
+});
+
+test('relativizePath leaves paths outside base_path unchanged', function (): void {
+    $ranetrace = new Ranetrace;
+    $method = new ReflectionMethod($ranetrace, 'relativizePath');
+
+    expect($method->invoke($ranetrace, '/usr/local/share/elsewhere/File.php'))
+        ->toBe('/usr/local/share/elsewhere/File.php');
+});
+
+// --- per-line context cap (R6-2) ---
+
+test('capContextLine truncates an over-long source line and preserves the newline', function (): void {
+    $ranetrace = new Ranetrace;
+    $method = new ReflectionMethod($ranetrace, 'capContextLine');
+
+    $capped = $method->invoke($ranetrace, str_repeat('x', 5000)."\n");
+
+    expect(mb_strlen($capped))->toBeLessThan(5000)
+        ->and($capped)->toEndWith("... (truncated)\n");
+
+    // A short line passes through unchanged.
+    expect($method->invoke($ranetrace, "short line\n"))->toBe("short line\n");
+});
+
+// --- referer scrubbing in headers (R4-4) ---
+
+test('maskAndBoundHeaders scrubs secrets from the referer query string', function (): void {
+    $ranetrace = new Ranetrace;
+    $method = new ReflectionMethod($ranetrace, 'maskAndBoundHeaders');
+
+    $masked = $method->invoke($ranetrace, [
+        'referer' => ['https://example.com/reset?token=abc123&page=2'],
+    ]);
+
+    expect($masked['referer'][0])->toBe('https://example.com/reset?token=[REDACTED]&page=2');
+});
+
+// --- user email is gated (R4-6) ---
+
+test('user email is not captured by default', function (): void {
+    Illuminate\Support\Facades\Auth::shouldReceive('user')->andReturn(makeAuthenticatableWithEmail(7, 'secret@example.com'));
+
+    $payload = invokeBuildErrorPayload(new RuntimeException('boom'));
+
+    expect($payload['user'])->toBe(['id' => 7, 'email' => null]);
+});
+
+test('user email is captured only when explicitly enabled', function (): void {
+    Config::set('ranetrace.errors.capture_user_email', true);
+    Illuminate\Support\Facades\Auth::shouldReceive('user')->andReturn(makeAuthenticatableWithEmail(7, 'secret@example.com'));
+
+    $payload = invokeBuildErrorPayload(new RuntimeException('boom'));
+
+    expect($payload['user'])->toBe(['id' => 7, 'email' => 'secret@example.com']);
+});
+
+/**
+ * Helper: an Authenticatable whose `email` attribute is readable via getAttribute().
+ */
+function makeAuthenticatableWithEmail(int $id, ?string $email): Illuminate\Contracts\Auth\Authenticatable
+{
+    return new class($id, $email) implements Illuminate\Contracts\Auth\Authenticatable
+    {
+        public function __construct(private int $id, private ?string $email) {}
+
+        public function getAttribute(string $key): mixed
+        {
+            return $key === 'email' ? $this->email : null;
+        }
+
+        public function getAuthIdentifierName(): string
+        {
+            return 'id';
+        }
+
+        public function getAuthIdentifier(): int
+        {
+            return $this->id;
+        }
+
+        public function getAuthPassword(): string
+        {
+            return '';
+        }
+
+        public function getAuthPasswordName(): string
+        {
+            return 'password';
+        }
+
+        public function getRememberToken(): string
+        {
+            return '';
+        }
+
+        public function setRememberToken($value): void {}
+
+        public function getRememberTokenName(): string
+        {
+            return 'remember_token';
+        }
+    };
+}
 
 /**
  * Helper: invoke the private buildErrorPayload via reflection.

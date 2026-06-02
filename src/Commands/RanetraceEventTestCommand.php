@@ -141,8 +141,8 @@ class RanetraceEventTestCommand extends Command
         $this->table(
             ['Data Point', 'How It\'s Handled'],
             [
-                ['User Agent', 'Hashed with SHA256'],
-                ['Session ID', 'Generated from IP + User Agent + Date (daily rotation)'],
+                ['User Agent', 'Hashed with HMAC-SHA256 (salted)'],
+                ['Session ID', 'HMAC-SHA256 of IP + User Agent + Date (daily rotation, salted)'],
                 ['IP Address', 'Not sent to Ranetrace (privacy-first)'],
                 ['User ID', 'Only if explicitly provided or user is authenticated'],
             ]

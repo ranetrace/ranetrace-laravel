@@ -131,6 +131,21 @@ test('it includes timestamp in ISO format', function (): void {
     expect($data['timestamp'])->toMatch('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2}$/');
 });
 
+test('it scrubs sensitive query params from url and referrer', function (): void {
+    $request = Illuminate\Http\Request::create('https://example.com/reset?token=abc&utm_source=google', 'GET');
+    $request->headers->set('User-Agent', 'Mozilla/5.0');
+    $request->headers->set('Referer', 'https://example.com/login?api_key=zzz');
+    $request->server->set('REMOTE_ADDR', '127.0.0.1');
+
+    $data = VisitDataCollector::collect($request);
+
+    expect($data['url'])->toContain('token=[REDACTED]')
+        ->and($data['url'])->toContain('utm_source=google')
+        ->and($data['url'])->not->toContain('token=abc')
+        ->and($data['referrer'])->toBe('https://example.com/login?api_key=[REDACTED]')
+        ->and($data['utm_source'])->toBe('google');
+});
+
 test('it hashes user agent', function (): void {
     $request = Illuminate\Http\Request::create('/', 'GET');
     $request->headers->set('User-Agent', 'Test Browser');

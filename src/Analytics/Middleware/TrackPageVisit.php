@@ -8,6 +8,7 @@ use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Jaybizzle\CrawlerDetect\CrawlerDetect;
+use Ranetrace\Laravel\Analytics\BotSignals;
 use Ranetrace\Laravel\Analytics\Contracts\RequestFilter;
 use Ranetrace\Laravel\Analytics\HumanProbabilityScorer;
 use Ranetrace\Laravel\Analytics\VisitDataCollector;
@@ -73,6 +74,19 @@ class TrackPageVisit
     ];
 
     /**
+     * Default first-path-segments excluded from analytics. Used as the in-code
+     * fallback so that a published config which removed the `excluded_paths`
+     * key restores these defaults rather than silently disabling all path
+     * exclusion. Mirrors config/ranetrace.php → website_analytics.excluded_paths.
+     *
+     * @var array<int, string>
+     */
+    protected const array DEFAULT_EXCLUDED_PATHS = [
+        'horizon', 'nova', 'telescope', 'admin', 'filament',
+        'api', 'debugbar', 'storage', 'livewire', '_debugbar',
+    ];
+
+    /**
      * Per-worker cache of the CrawlerDetect instance — the library's internal
      * data structures are non-trivial to construct, and the middleware runs on
      * every request. One instance per worker is plenty.
@@ -111,8 +125,9 @@ class TrackPageVisit
             return;
         }
 
-        $excludedPaths = config('ranetrace.website_analytics.excluded_paths', []);
-        $firstSegment = explode('/', mb_ltrim($request->path(), '/'))[0];
+        $excludedPaths = config('ranetrace.website_analytics.excluded_paths', self::DEFAULT_EXCLUDED_PATHS);
+        // $request->path() is already trimmed of a leading slash.
+        $firstSegment = explode('/', $request->path())[0];
 
         if (in_array($firstSegment, $excludedPaths, true)) {
             return;
@@ -121,10 +136,15 @@ class TrackPageVisit
         $filterClass = config('ranetrace.website_analytics.request_filter');
 
         if ($filterClass && class_exists($filterClass)) {
-            /** @var RequestFilter $filter */
             $filter = app($filterClass);
 
-            if ($filter->shouldSkip($request)) {
+            if (! $filter instanceof RequestFilter) {
+                // A misconfigured filter shouldn't crash capture (and the
+                // try/catch would swallow it anyway). Skip it loudly instead.
+                InternalLogger::warning('Configured request_filter does not implement RequestFilter; ignoring it', [
+                    'filter' => $filterClass,
+                ]);
+            } elseif ($filter->shouldSkip($request)) {
                 return;
             }
         }
@@ -132,20 +152,12 @@ class TrackPageVisit
         $minLength = config('ranetrace.website_analytics.user_agent.min_length', 10);
         $maxLength = config('ranetrace.website_analytics.user_agent.max_length', 1000);
 
-        if (mb_strlen($userAgent) < $minLength || mb_strlen($userAgent) > $maxLength) {
+        $userAgentLength = mb_strlen($userAgent);
+        if ($userAgentLength < $minLength || $userAgentLength > $maxLength) {
             return;
         }
 
-        $suspiciousPatterns = [
-            'suspicious', 'fake', 'test', 'localhost', 'postman',
-            'curl/', 'wget/', 'python-requests', 'empty',
-            'clearly-fake', 'not-a-browser', 'unknown',
-            'Go-http-client', 'libwww-perl', 'Apache-HttpClient',
-            'node-fetch', 'axios/', 'okhttp', 'java/', 'ruby/',
-            'perl/', 'scrapy', 'requests/', 'http_request',
-        ];
-
-        foreach ($suspiciousPatterns as $pattern) {
+        foreach (BotSignals::SUSPICIOUS_USER_AGENT_PATTERNS as $pattern) {
             if (mb_stripos($userAgent, $pattern) !== false) {
                 return;
             }
@@ -190,18 +202,24 @@ class TrackPageVisit
         $visitData['human_probability_score'] = $humanScore['score'];
         $visitData['human_probability_reasons'] = $humanScore['reasons'];
 
-        // Throttle key buckets by IP + path + minute.
+        // Throttle to one capture per IP + path per throttle_seconds window.
+        // Cache::add is atomic (put-if-absent), so concurrent requests can't both
+        // pass a check-then-set race. The key is NOT time-bucketed — the TTL alone
+        // defines the window, so throttle_seconds works for any value (a minute
+        // bucket would silently cap it at ~60s).
         $cacheKey = 'ranetrace:visit:'.md5(
             $request->ip().'|'.
-            $visitData['path'].'|'.
-            now()->format('Y-m-d-H-i')
+            $visitData['path']
         );
 
         $throttleSeconds = config('ranetrace.website_analytics.throttle_seconds', 30);
 
-        if (! Cache::has($cacheKey)) {
-            Cache::put($cacheKey, true, now()->addSeconds($throttleSeconds));
+        // Use the Ranetrace cache store (same as the buffer/pause manager) so the
+        // throttle is consistent and actually shared across workers — the host's
+        // default cache may be `array`, which would make this a per-process no-op.
+        $throttleStore = Cache::store(config('ranetrace.batch.cache_driver', 'file'));
 
+        if ($throttleStore->add($cacheKey, true, now()->addSeconds($throttleSeconds))) {
             if (config('ranetrace.website_analytics.queue', true)) {
                 HandlePageVisitJob::dispatch($visitData);
             } else {

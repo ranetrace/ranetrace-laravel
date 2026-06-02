@@ -14,6 +14,7 @@ use Ranetrace\Laravel\Jobs\HandleErrorJob;
 use Ranetrace\Laravel\Jobs\HandleEventJob;
 use Ranetrace\Laravel\Support\InternalLogger;
 use Ranetrace\Laravel\Utilities\DataSanitizer;
+use Ranetrace\Laravel\Utilities\SecretScrubber;
 use Throwable;
 
 class Ranetrace
@@ -24,9 +25,10 @@ class Ranetrace
     protected const string TRUNCATION_SUFFIX = '... (truncated)';
 
     /**
-     * Per-field caps. These keep each error item small enough that a 1000-item
-     * batch fits comfortably under the API's 5MB request limit. NOT user-tunable:
-     * raising any of these risks 413 batch rejections.
+     * Per-field caps bound the size of a SINGLE error item. The batch as a whole
+     * is kept under the API's 5MB limit by the pre-flight guard in
+     * SendBatchToRanetraceJob::trimToByteBudget(). NOT user-tunable: raising any
+     * of these widens per-item size and the 413 risk.
      */
     protected const int MAX_MESSAGE_LENGTH = 10_000;
 
@@ -37,6 +39,8 @@ class Ranetrace
     protected const int MAX_URL_LENGTH = 2_000;
 
     protected const int MAX_SOURCE_FILE_BYTES = 1_048_576; // 1 MB
+
+    protected const int MAX_CONTEXT_LINE_LENGTH = 2_000;
 
     /**
      * Bounded shape for the `headers` field (now sent as a nested object, not a
@@ -132,10 +136,10 @@ class Ranetrace
 
             $eventData = [
                 'event_name' => $eventName,
-                'properties' => DataSanitizer::sanitizeForSerialization($properties),
+                'properties' => SecretScrubber::scrub(DataSanitizer::sanitizeForSerialization($properties)),
                 'user' => $user,
-                'timestamp' => Carbon::now()->toISOString(),
-                'url' => app()->runningInConsole() ? null : request()->fullUrl(),
+                'timestamp' => Carbon::now()->toIso8601String(),
+                'url' => app()->runningInConsole() ? null : SecretScrubber::scrubUrl(request()->fullUrl()),
                 'user_agent_hash' => FingerprintGenerator::generateUserAgentHash(),
                 'session_id_hash' => FingerprintGenerator::generateSessionIdHash(),
             ];
@@ -187,12 +191,28 @@ class Ranetrace
             }
 
             $bounded[$name] = array_map(
-                fn (mixed $v): string => $this->truncate((string) $v, self::MAX_HEADER_VALUE_LENGTH),
+                fn (mixed $v): string => $this->boundHeaderValue($name, $v),
                 $values
             );
         }
 
         return $bounded;
+    }
+
+    /**
+     * Cast a single header value to string, scrub the Referer's query string
+     * (it can carry reset tokens / signed-URL signatures), and truncate to the
+     * per-value cap.
+     */
+    private function boundHeaderValue(string $name, mixed $value): string
+    {
+        $string = (string) $value;
+
+        if ($name === 'referer') {
+            $string = (string) SecretScrubber::scrubUrl($string);
+        }
+
+        return $this->truncate($string, self::MAX_HEADER_VALUE_LENGTH);
     }
 
     /**
@@ -207,7 +227,7 @@ class Ranetrace
         $argv = array_slice($argv, 0, self::MAX_CONSOLE_ARGV_COUNT);
 
         return array_map(
-            fn (mixed $v): string => $this->truncate((string) $v, self::MAX_CONSOLE_ARGV_LENGTH),
+            fn (mixed $v): string => $this->truncate(SecretScrubber::scrubString((string) $v), self::MAX_CONSOLE_ARGV_LENGTH),
             $argv
         );
     }
@@ -223,6 +243,27 @@ class Ranetrace
         }
 
         return mb_substr($value, 0, $maxLength - mb_strlen(self::TRUNCATION_SUFFIX)).self::TRUNCATION_SUFFIX;
+    }
+
+    /**
+     * Strip the application base path so error payloads carry a relative path
+     * (app/Http/Controllers/Foo.php) instead of the server's absolute layout
+     * (/var/www/app/...). Returns the path unchanged when it is not under
+     * base_path() (e.g. a vendor/stub path on some setups).
+     */
+    private function relativizePath(string $path): string
+    {
+        if ($path === '') {
+            return $path;
+        }
+
+        $base = base_path();
+
+        if ($base !== '' && str_starts_with($path, $base)) {
+            return mb_ltrim(mb_substr($path, mb_strlen($base)), '/\\');
+        }
+
+        return $path;
     }
 
     /**
@@ -245,11 +286,26 @@ class Ranetrace
 
         return [
             'id' => $user->getAuthIdentifier(),
-            // @phpstan-ignore function.alreadyNarrowedType
-            'email' => method_exists($user, 'getAttribute')
-                ? $user->getAttribute('email')
-                : null,
+            'email' => $this->resolveUserEmail($user),
         ];
+    }
+
+    /**
+     * Resolve the user's email for the payload, gated by
+     * `ranetrace.errors.capture_user_email` (off by default — email is PII).
+     * getAttribute() returns null when the column is missing, so a host User
+     * model without an `email` column never breaks error capture.
+     */
+    private function resolveUserEmail(Authenticatable $user): mixed
+    {
+        if (! config('ranetrace.errors.capture_user_email', false)) {
+            return null;
+        }
+
+        // @phpstan-ignore function.alreadyNarrowedType
+        return method_exists($user, 'getAttribute')
+            ? $user->getAttribute('email')
+            : null;
     }
 
     /**
@@ -272,7 +328,7 @@ class Ranetrace
         // If the error occurred via HTTP, gather request data
         if (! $isConsole) {
             $headers = $this->maskAndBoundHeaders($request->headers->all());
-            $url = $this->truncate($request->fullUrl(), self::MAX_URL_LENGTH);
+            $url = $this->truncate((string) SecretScrubber::scrubUrl($request->fullUrl()), self::MAX_URL_LENGTH);
             $method = $request->method();
         }
 
@@ -286,7 +342,13 @@ class Ranetrace
             $lines = file($file);
             if (is_array($lines)) {
                 $startLine = max(0, $line - 6); // 5 lines before the error line
-                $contextLines = array_slice($lines, $startLine, 11, true); // Total 11 lines
+                // Total 11 lines, each capped so one very long (minified/generated)
+                // line can't bloat the payload — keeps the item bounded for the
+                // SendBatchToRanetraceJob size guard.
+                $contextLines = array_map(
+                    fn (string $codeLine): string => $this->capContextLine($codeLine),
+                    array_slice($lines, $startLine, 11, true)
+                );
                 $context = $this->cleanCode(implode('', $contextLines));
                 $highlightLine = $line - $startLine; // Relative line to highlight
             }
@@ -297,21 +359,24 @@ class Ranetrace
         $consoleArguments = null;
 
         if ($isConsole) {
-            if (defined('ARTISAN_BINARY')) {
-                $consoleCommand = implode(' ', $_SERVER['argv'] ?? []);
-            }
-
+            $consoleCommand = defined('ARTISAN_BINARY')
+                ? SecretScrubber::scrubString(implode(' ', $_SERVER['argv'] ?? []))
+                : null;
             $consoleArguments = $this->boundConsoleArgv(request()->server('argv') ?? []);
         }
 
-        // Truncate variable-length string fields to per-field caps
+        // Truncate variable-length string fields to per-field caps. The trace is
+        // scrubbed first: getTraceAsString() can carry key=value secrets (e.g. a
+        // query string passed as an argument).
         $message = $this->truncate($exception->getMessage(), self::MAX_MESSAGE_LENGTH);
-        $trace = $this->truncate($exception->getTraceAsString(), self::MAX_TRACE_LENGTH);
+        $trace = $this->truncate(SecretScrubber::scrubString($exception->getTraceAsString()), self::MAX_TRACE_LENGTH);
 
-        // File paths are truncated from the LEFT (keep the tail), unlike every
-        // other field — the filename + last segments matter more than the
-        // repo root prefix when debugging.
-        if ($file && mb_strlen($file) > self::MAX_FILE_PATH_LENGTH) {
+        // Ship a path relative to the app root rather than the absolute server
+        // path (avoids leaking /var/www/... layout). Falls back to a LEFT-
+        // truncated absolute path (keep the tail) when the file is outside base_path.
+        $file = $this->relativizePath($file);
+
+        if (mb_strlen($file) > self::MAX_FILE_PATH_LENGTH) {
             $file = mb_substr($file, -self::MAX_FILE_PATH_LENGTH);
         }
 
@@ -326,7 +391,7 @@ class Ranetrace
             'context' => $context,
             'highlight_line' => $highlightLine,
             'user' => $this->buildUserPayload($user),
-            'time' => Carbon::now()->toDateTimeString(),
+            'timestamp' => Carbon::now()->toIso8601String(),
             'url' => $url,
             'method' => $method,
             'php_version' => phpversion(),
@@ -335,6 +400,23 @@ class Ranetrace
             'console_command' => $consoleCommand,
             'console_arguments' => $consoleArguments,
         ];
+    }
+
+    /**
+     * Cap a single source-context line to MAX_CONTEXT_LINE_LENGTH, preserving a
+     * trailing newline so the 11-line snippet structure survives. Guards against
+     * a minified/generated line bloating the error payload.
+     */
+    private function capContextLine(string $line): string
+    {
+        $newline = str_ends_with($line, "\n") ? "\n" : '';
+        $content = mb_rtrim($line, "\n");
+
+        if (mb_strlen($content) > self::MAX_CONTEXT_LINE_LENGTH) {
+            $content = mb_substr($content, 0, self::MAX_CONTEXT_LINE_LENGTH).self::TRUNCATION_SUFFIX;
+        }
+
+        return $content.$newline;
     }
 
     private function cleanCode(string $code): string

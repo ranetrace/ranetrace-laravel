@@ -7,6 +7,13 @@ namespace Ranetrace\Laravel\Events;
 use InvalidArgumentException;
 use Ranetrace\Laravel\Facades\Ranetrace;
 
+/**
+ * Stateless helper for composing and dispatching tracked events. Methods are
+ * static by design — the class holds no state and ultimately delegates to
+ * `Ranetrace::trackEvent()`. The `RanetraceEvents` facade fronts it for a
+ * consistent `Ranetrace*`-prefixed API surface (the facade resolves the
+ * container instance and PHP dispatches the static methods on it).
+ */
 class EventTracker
 {
     // Standard event name constants to prevent typos and ensure consistency

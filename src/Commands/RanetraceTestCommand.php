@@ -214,16 +214,17 @@ class RanetraceTestCommand extends Command
             $this->newLine();
         }
 
-        // Additional config details
+        // Additional config details. Note: per-item size caps (message/trace/file/
+        // context) and the 1000-item batch size are fixed internal constants, not
+        // config — so only genuinely configurable settings are shown here.
         if (! empty($config['errors'])) {
             $this->line('⚙️  <fg=cyan>Error Reporting Settings:</>');
             $this->table(
                 ['Setting', 'Value'],
                 [
                     ['Timeout', ($config['errors']['timeout'] ?? 10).' seconds'],
-                    ['Max File Size', number_format($config['errors']['max_file_size'] ?? 1048576).' bytes'],
-                    ['Max Trace Length', number_format($config['errors']['max_trace_length'] ?? 5000).' chars'],
-                    ['Batch Size', $config['errors']['batch']['size'] ?? 50],
+                    ['Queue Name', $config['errors']['queue_name'] ?? 'default'],
+                    ['Capture User Email', ($config['errors']['capture_user_email'] ?? false) ? 'Yes' : 'No'],
                 ]
             );
             $this->newLine();

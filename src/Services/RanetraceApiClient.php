@@ -12,6 +12,12 @@ use Throwable;
 
 class RanetraceApiClient
 {
+    /**
+     * Connection-phase timeout (seconds) for batch sends — fail fast on a dead
+     * or unreachable host rather than tying up the worker for the full timeout.
+     */
+    protected const int CONNECT_TIMEOUT = 5;
+
     protected string $apiUrl = 'https://api.ranetrace.com/v1';
 
     protected int $timeout = 10;
@@ -30,33 +36,7 @@ class RanetraceApiClient
      */
     public function sendErrorBatch(array $errors): array
     {
-        if (empty($this->apiKey)) {
-            return $this->formatErrorResponse('API key not configured');
-        }
-
-        if (empty($errors)) {
-            return $this->formatErrorResponse('Empty batch provided');
-        }
-
-        try {
-            $timeout = config('ranetrace.errors.timeout', 10);
-
-            $response = Http::withToken($this->apiKey)
-                ->withHeaders([
-                    'User-Agent' => 'Ranetrace-Laravel/Errors/1.0',
-                    'Content-Type' => 'application/json',
-                    'Accept' => 'application/json',
-                    'Ranetrace-API-Version' => '1.0',
-                ])
-                ->timeout($timeout)
-                ->post($this->apiUrl.'/errors/store', [
-                    'errors' => $errors,
-                ]);
-
-            return $this->formatResponse($response);
-        } catch (Throwable $e) {
-            return $this->formatErrorResponse($e->getMessage());
-        }
+        return $this->sendBatch('/errors/store', 'errors', 'Ranetrace-Laravel/Errors/1.0', 'ranetrace.errors.timeout', $errors);
     }
 
     /**
@@ -67,33 +47,7 @@ class RanetraceApiClient
      */
     public function sendJavaScriptErrorBatch(array $errors): array
     {
-        if (empty($this->apiKey)) {
-            return $this->formatErrorResponse('API key not configured');
-        }
-
-        if (empty($errors)) {
-            return $this->formatErrorResponse('Empty batch provided');
-        }
-
-        try {
-            $timeout = config('ranetrace.javascript_errors.timeout', 10);
-
-            $response = Http::withToken($this->apiKey)
-                ->withHeaders([
-                    'User-Agent' => 'Ranetrace-Laravel/JavaScriptErrors/1.0',
-                    'Content-Type' => 'application/json',
-                    'Accept' => 'application/json',
-                    'Ranetrace-API-Version' => '1.0',
-                ])
-                ->timeout($timeout)
-                ->post($this->apiUrl.'/javascript-errors/store', [
-                    'javascript_errors' => $errors,
-                ]);
-
-            return $this->formatResponse($response);
-        } catch (Throwable $e) {
-            return $this->formatErrorResponse($e->getMessage());
-        }
+        return $this->sendBatch('/javascript-errors/store', 'javascript_errors', 'Ranetrace-Laravel/JavaScriptErrors/1.0', 'ranetrace.javascript_errors.timeout', $errors);
     }
 
     /**
@@ -104,33 +58,7 @@ class RanetraceApiClient
      */
     public function sendEventBatch(array $events): array
     {
-        if (empty($this->apiKey)) {
-            return $this->formatErrorResponse('API key not configured');
-        }
-
-        if (empty($events)) {
-            return $this->formatErrorResponse('Empty batch provided');
-        }
-
-        try {
-            $timeout = config('ranetrace.events.timeout', 10);
-
-            $response = Http::withToken($this->apiKey)
-                ->withHeaders([
-                    'User-Agent' => 'Ranetrace-Laravel/Events/1.0',
-                    'Content-Type' => 'application/json',
-                    'Accept' => 'application/json',
-                    'Ranetrace-API-Version' => '1.0',
-                ])
-                ->timeout($timeout)
-                ->post($this->apiUrl.'/events/store', [
-                    'events' => $events,
-                ]);
-
-            return $this->formatResponse($response);
-        } catch (Throwable $e) {
-            return $this->formatErrorResponse($e->getMessage());
-        }
+        return $this->sendBatch('/events/store', 'events', 'Ranetrace-Laravel/Events/1.0', 'ranetrace.events.timeout', $events);
     }
 
     /**
@@ -141,33 +69,7 @@ class RanetraceApiClient
      */
     public function sendLogBatch(array $logs): array
     {
-        if (empty($this->apiKey)) {
-            return $this->formatErrorResponse('API key not configured');
-        }
-
-        if (empty($logs)) {
-            return $this->formatErrorResponse('Empty batch provided');
-        }
-
-        try {
-            $timeout = config('ranetrace.logging.timeout', 10);
-
-            $response = Http::withToken($this->apiKey)
-                ->withHeaders([
-                    'User-Agent' => 'Ranetrace-Laravel/Logs/1.0',
-                    'Content-Type' => 'application/json',
-                    'Accept' => 'application/json',
-                    'Ranetrace-API-Version' => '1.0',
-                ])
-                ->timeout($timeout)
-                ->post($this->apiUrl.'/logs/store', [
-                    'logs' => $logs,
-                ]);
-
-            return $this->formatResponse($response);
-        } catch (Throwable $e) {
-            return $this->formatErrorResponse($e->getMessage());
-        }
+        return $this->sendBatch('/logs/store', 'logs', 'Ranetrace-Laravel/Logs/1.0', 'ranetrace.logging.timeout', $logs);
     }
 
     /**
@@ -178,33 +80,7 @@ class RanetraceApiClient
      */
     public function sendPageVisitBatch(array $visits): array
     {
-        if (empty($this->apiKey)) {
-            return $this->formatErrorResponse('API key not configured');
-        }
-
-        if (empty($visits)) {
-            return $this->formatErrorResponse('Empty batch provided');
-        }
-
-        try {
-            $timeout = config('ranetrace.website_analytics.timeout', 10);
-
-            $response = Http::withToken($this->apiKey)
-                ->withHeaders([
-                    'User-Agent' => 'Ranetrace-Laravel/PageVisits/1.0',
-                    'Content-Type' => 'application/json',
-                    'Accept' => 'application/json',
-                    'Ranetrace-API-Version' => '1.0',
-                ])
-                ->timeout($timeout)
-                ->post($this->apiUrl.'/page-visits/store', [
-                    'page_visits' => $visits,
-                ]);
-
-            return $this->formatResponse($response);
-        } catch (Throwable $e) {
-            return $this->formatErrorResponse($e->getMessage());
-        }
+        return $this->sendBatch('/page-visits/store', 'page_visits', 'Ranetrace-Laravel/PageVisits/1.0', 'ranetrace.website_analytics.timeout', $visits);
     }
 
     /**
@@ -226,6 +102,7 @@ class RanetraceApiClient
                     'Accept' => 'application/json',
                     'Ranetrace-API-Version' => '1.0',
                 ])
+                ->connectTimeout(self::CONNECT_TIMEOUT)
                 ->timeout($this->timeout)
                 ->get($this->apiUrl.'/errors', $params)
             );
@@ -254,6 +131,7 @@ class RanetraceApiClient
                     'Accept' => 'application/json',
                     'Ranetrace-API-Version' => '1.0',
                 ])
+                ->connectTimeout(self::CONNECT_TIMEOUT)
                 ->timeout($this->timeout)
                 ->get($this->apiUrl.'/errors/'.$errorId)
             );
@@ -283,6 +161,7 @@ class RanetraceApiClient
                     'Accept' => 'application/json',
                     'Ranetrace-API-Version' => '1.0',
                 ])
+                ->connectTimeout(self::CONNECT_TIMEOUT)
                 ->timeout($this->timeout)
                 ->get($this->apiUrl.'/errors/stats', $params)
             );
@@ -313,6 +192,7 @@ class RanetraceApiClient
                     'Accept' => 'application/json',
                     'Ranetrace-API-Version' => '1.0',
                 ])
+                ->connectTimeout(self::CONNECT_TIMEOUT)
                 ->timeout($this->timeout)
                 ->post($this->apiUrl.'/errors/'.$errorId.'/notes', $data)
             );
@@ -342,6 +222,7 @@ class RanetraceApiClient
                     'Accept' => 'application/json',
                     'Ranetrace-API-Version' => '1.0',
                 ])
+                ->connectTimeout(self::CONNECT_TIMEOUT)
                 ->timeout($this->timeout)
                 ->get($this->apiUrl.'/errors/'.$errorId.'/notes', $params)
             );
@@ -370,6 +251,7 @@ class RanetraceApiClient
                     'Accept' => 'application/json',
                     'Ranetrace-API-Version' => '1.0',
                 ])
+                ->connectTimeout(self::CONNECT_TIMEOUT)
                 ->timeout($this->timeout)
                 ->get($this->apiUrl.'/errors/'.$errorId.'/notes/'.$noteId)
             );
@@ -400,6 +282,7 @@ class RanetraceApiClient
                     'Accept' => 'application/json',
                     'Ranetrace-API-Version' => '1.0',
                 ])
+                ->connectTimeout(self::CONNECT_TIMEOUT)
                 ->timeout($this->timeout)
                 ->put($this->apiUrl.'/errors/'.$errorId.'/notes/'.$noteId, $data)
             );
@@ -428,6 +311,7 @@ class RanetraceApiClient
                     'Accept' => 'application/json',
                     'Ranetrace-API-Version' => '1.0',
                 ])
+                ->connectTimeout(self::CONNECT_TIMEOUT)
                 ->timeout($this->timeout)
                 ->delete($this->apiUrl.'/errors/'.$errorId.'/notes/'.$noteId)
             );
@@ -458,6 +342,7 @@ class RanetraceApiClient
                     'Accept' => 'application/json',
                     'Ranetrace-API-Version' => '1.0',
                 ])
+                ->connectTimeout(self::CONNECT_TIMEOUT)
                 ->timeout($this->timeout)
                 ->post($this->apiUrl.'/errors/'.$errorId.'/notes/bulk', $data)
             );
@@ -528,6 +413,7 @@ class RanetraceApiClient
                     'Accept' => 'application/json',
                     'Ranetrace-API-Version' => '1.0',
                 ])
+                ->connectTimeout(self::CONNECT_TIMEOUT)
                 ->timeout($this->timeout)
                 ->post($this->apiUrl.'/errors/'.$errorId.'/snooze', [...$data, 'type' => $type])
             );
@@ -567,6 +453,7 @@ class RanetraceApiClient
                     'Accept' => 'application/json',
                     'Ranetrace-API-Version' => '1.0',
                 ])
+                ->connectTimeout(self::CONNECT_TIMEOUT)
                 ->timeout($this->timeout)
                 ->delete($this->apiUrl.'/errors/'.$errorId, ['type' => $type])
             );
@@ -598,6 +485,7 @@ class RanetraceApiClient
                     'Accept' => 'application/json',
                     'Ranetrace-API-Version' => '1.0',
                 ])
+                ->connectTimeout(self::CONNECT_TIMEOUT)
                 ->timeout($this->timeout)
                 ->get($this->apiUrl.'/errors/'.$errorId.'/activity', $queryParams)
             );
@@ -690,6 +578,7 @@ class RanetraceApiClient
                     'Accept' => 'application/json',
                     'Ranetrace-API-Version' => '1.0',
                 ])
+                ->connectTimeout(self::CONNECT_TIMEOUT)
                 ->timeout($this->timeout)
                 ->get($this->apiUrl.'/errors/search', $params)
             );
@@ -740,6 +629,7 @@ class RanetraceApiClient
                     'Accept' => 'application/json',
                     'Ranetrace-API-Version' => '1.0',
                 ])
+                ->connectTimeout(self::CONNECT_TIMEOUT)
                 ->timeout($this->timeout)
                 ->post($this->apiUrl.'/errors/'.$errorId.'/'.$action, ['type' => $type])
             );
@@ -770,6 +660,7 @@ class RanetraceApiClient
                     'Accept' => 'application/json',
                     'Ranetrace-API-Version' => '1.0',
                 ])
+                ->connectTimeout(self::CONNECT_TIMEOUT)
                 ->timeout($this->timeout)
                 ->post($this->apiUrl.'/errors/bulk/'.$action, [
                     'error_ids' => $errorIds,
@@ -840,9 +731,43 @@ class RanetraceApiClient
     }
 
     /**
-     * Format API response for consistent handling.
+     * Send one batch to a feature store endpoint. Shared by all five feature
+     * batch methods — they differ only in path, wrapper key, User-Agent and timeout.
      *
-     * @param  Response  $response
+     * @param  array<int, array>  $items
+     * @return array<string, mixed>
+     */
+    protected function sendBatch(string $path, string $wrapperKey, string $userAgent, string $timeoutConfigKey, array $items): array
+    {
+        if (empty($this->apiKey)) {
+            return $this->formatErrorResponse('API key not configured');
+        }
+
+        if (empty($items)) {
+            return $this->formatErrorResponse('Empty batch provided');
+        }
+
+        try {
+            $response = Http::withToken($this->apiKey)
+                ->withHeaders([
+                    'User-Agent' => $userAgent,
+                    'Content-Type' => 'application/json',
+                    'Accept' => 'application/json',
+                    'Ranetrace-API-Version' => '1.0',
+                ])
+                ->connectTimeout(self::CONNECT_TIMEOUT)
+                ->timeout((int) config($timeoutConfigKey, 10))
+                ->post($this->apiUrl.$path, [$wrapperKey => $items]);
+
+            return $this->formatResponse($response);
+        } catch (Throwable $e) {
+            return $this->formatErrorResponse($e->getMessage());
+        }
+    }
+
+    /**
+     * Format an API response into the package's standard result shape.
+     *
      * @return array<string, mixed>
      */
     protected function formatResponse($response): array

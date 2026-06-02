@@ -9,12 +9,14 @@ use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
 use Laravel\Mcp\Server\Tool;
+use Ranetrace\Laravel\Mcp\Tools\Concerns\MapsErrorActionResponse;
+use Ranetrace\Laravel\Mcp\Tools\Concerns\NormalizesErrorType;
 use Ranetrace\Laravel\Mcp\Tools\Concerns\NormalizesIds;
 use Ranetrace\Laravel\Services\RanetraceApiClient;
 
 class SnoozeErrorTool extends Tool
 {
-    use NormalizesIds;
+    use MapsErrorActionResponse, NormalizesErrorType, NormalizesIds;
 
     protected const VALID_DURATIONS = ['1h', '8h', '24h', '7d', '30d'];
 
@@ -94,18 +96,6 @@ class SnoozeErrorTool extends Tool
     }
 
     /**
-     * Normalize the error type parameter.
-     */
-    protected function normalizeType(?string $type): string
-    {
-        if ($type === null) {
-            return 'php';
-        }
-
-        return $type === 'js' ? 'javascript' : $type;
-    }
-
-    /**
      * Validate the "until" parameter.
      */
     protected function validateUntil(string $until): ?string
@@ -131,21 +121,9 @@ class SnoozeErrorTool extends Tool
         return null;
     }
 
-    /**
-     * Handle error responses from the API.
-     *
-     * @param  array<string, mixed>  $result
-     */
-    protected function handleErrorResponse(array $result, string $errorId): Response
+    protected function actionFailureMessage(): string
     {
-        $errorMessage = $result['error'] ?? 'Unknown error occurred';
-
-        return match ($result['status']) {
-            404 => Response::error("Error with ID '{$errorId}' not found."),
-            403 => Response::error("Access denied: {$errorMessage}"),
-            422 => Response::error("Validation failed: {$errorMessage}"),
-            default => Response::error("Failed to snooze error: {$errorMessage}"),
-        };
+        return 'Failed to snooze error';
     }
 
     /**

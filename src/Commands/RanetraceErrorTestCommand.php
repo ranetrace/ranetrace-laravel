@@ -87,10 +87,10 @@ class RanetraceErrorTestCommand extends Command
                 ['Exception Message', 'The error message'],
                 ['Exception Type', 'The exception class name'],
                 ['File & Line', 'Where the error occurred'],
-                ['Stack Trace', 'Full execution path (truncated if too long)'],
-                ['Code Context', '11 lines around the error (5 before, error, 5 after)'],
-                ['Request Info', 'URL, method, headers (sensitive data masked)'],
-                ['User Info', 'Authenticated user ID and email (if available)'],
+                ['Stack Trace', 'Full execution path (truncated if too long; key=value secrets redacted)'],
+                ['Code Context', '11 lines around the error (5 before, error, 5 after; each line length-capped)'],
+                ['Request Info', 'URL, method, headers (sensitive query params + non-allowlisted headers masked)'],
+                ['User Info', 'Authenticated user ID (email only if capture_user_email is enabled)'],
                 ['Environment', 'Application environment (production, local, etc.)'],
                 ['Versions', 'PHP and Laravel versions'],
             ]
@@ -101,10 +101,10 @@ class RanetraceErrorTestCommand extends Command
         $this->table(
             ['Setting', 'Value'],
             [
-                ['Errors Enabled', config('ranetrace.errors.enabled') ? 'Yes' : 'No'],
-                ['Queue Enabled', config('ranetrace.errors.queue') ? 'Yes' : 'No'],
-                ['Queue Name', config('ranetrace.errors.queue_name')],
-                ['Timeout', config('ranetrace.errors.timeout').' seconds'],
+                ['Queue Enabled', config('ranetrace.errors.queue', true) ? 'Yes' : 'No'],
+                ['Queue Name', config('ranetrace.errors.queue_name', 'default')],
+                ['Timeout', config('ranetrace.errors.timeout', 10).' seconds'],
+                ['Capture User Email', config('ranetrace.errors.capture_user_email', false) ? 'Yes' : 'No'],
                 ['API Key Set', config('ranetrace.key') ? 'Yes' : 'No'],
             ]
         );
@@ -116,8 +116,8 @@ class RanetraceErrorTestCommand extends Command
             [
                 ['Request Headers', 'Only an allowlist of safe headers (accept, user-agent, referer, host, ...) is sent; every other header is masked with ***'],
                 ['Code Context', 'Only included if file is readable and under size limit'],
-                ['Stack Trace', 'Truncated if exceeds max length'],
-                ['User Data', 'Only ID and email (no passwords or sensitive data)'],
+                ['Stack Trace', 'Truncated if exceeds max length; key=value secrets redacted'],
+                ['User Data', 'User ID always; email only when capture_user_email is enabled (off by default)'],
             ]
         );
 
