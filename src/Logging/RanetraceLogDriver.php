@@ -16,9 +16,10 @@ class RanetraceLogDriver
     {
         $logger = new Logger($config['channel'] ?? 'ranetrace');
 
-        // Add the Ranetrace handler
+        // Fall back to the configured package level rather than 'debug' so the
+        // in-code default matches config/ranetrace.php.
         $logger->pushHandler(new RanetraceLogHandler(
-            $config['level'] ?? 'debug',
+            $config['level'] ?? config('ranetrace.logging.level', 'notice'),
             $config['bubble'] ?? true
         ));
 

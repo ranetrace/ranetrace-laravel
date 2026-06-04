@@ -57,8 +57,9 @@ class RanetraceLogHandler extends AbstractProcessingHandler
                 return;
             }
 
-            // Truncate message to stay within API per-item limits
-            $message = $record->message;
+            // Scrub key=value secrets BEFORE truncation, so a secret can't
+            // survive by being split across the length boundary.
+            $message = SecretScrubber::scrubString($record->message);
             if (mb_strlen($message) > self::MAX_MESSAGE_LENGTH) {
                 $message = mb_substr($message, 0, self::MAX_MESSAGE_LENGTH - mb_strlen(self::TRUNCATION_SUFFIX)).self::TRUNCATION_SUFFIX;
             }

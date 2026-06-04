@@ -139,3 +139,51 @@ test('it redacts secrets in context', function (): void {
             && $context['order_id'] === 42;
     });
 });
+
+test('it redacts key=value secrets in the message', function (): void {
+    Log::channel('ranetrace')->error('Auth failed for token=sk_live_abc123 retrying');
+
+    Bus::assertDispatched(HandleLogJob::class, function ($job): bool {
+        $message = $job->getLogData()['message'];
+
+        return str_contains($message, '[REDACTED]')
+            && ! str_contains($message, 'sk_live_abc123');
+    });
+});
+
+test('it truncates an over-long message', function (): void {
+    Log::channel('ranetrace')->error(str_repeat('a', 60_000));
+
+    Bus::assertDispatched(HandleLogJob::class, function ($job): bool {
+        $message = $job->getLogData()['message'];
+
+        return mb_strlen($message) <= 50_000
+            && str_ends_with($message, '... (truncated)');
+    });
+});
+
+test('it caps oversized context wholesale rather than shipping it', function (): void {
+    Log::channel('ranetrace')->error('Test', ['blob' => str_repeat('a', 60_000)]);
+
+    Bus::assertDispatched(HandleLogJob::class, function ($job): bool {
+        $context = $job->getLogData()['context'];
+
+        return isset($context['_truncated']) && ! isset($context['blob']);
+    });
+});
+
+test('it respects the global ranetrace.enabled flag', function (): void {
+    config(['ranetrace.enabled' => false]);
+
+    Log::channel('ranetrace')->error('Test');
+
+    Bus::assertNotDispatched(HandleLogJob::class);
+});
+
+test('it still dispatches when the queue is disabled', function (): void {
+    config(['ranetrace.logging.queue' => false]);
+
+    Log::channel('ranetrace')->error('Test');
+
+    Bus::assertDispatched(HandleLogJob::class);
+});

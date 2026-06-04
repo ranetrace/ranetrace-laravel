@@ -1,6 +1,6 @@
 ---
 name: ranetrace-logging
-description: Send application logs to Ranetrace by configuring the centralized logging channel and integrating with Laravel's logging stack.
+description: Send application logs to Ranetrace via the auto-registered logging channel, and integrate it with Laravel's logging stack.
 ---
 
 # Ranetrace Centralized Logging
@@ -17,35 +17,44 @@ Use this skill when setting up centralized logging to Ranetrace, configuring the
 RANETRACE_LOGGING_ENABLED=true
 ```
 
-### 2. Add the channel to `config/logging.php`
+That is all the wiring required. When logging is enabled the package
+**auto-registers** a `ranetrace` log channel into your application's
+`logging.channels` config at boot — you do **not** need to edit
+`config/logging.php` to add a channel definition. The auto-registered channel is
+equivalent to:
 
 ```php
-'channels' => [
-    // ... existing channels
-
-    'ranetrace' => [
-        'driver' => 'ranetrace',
-        'level' => 'error',  // Minimum log level to send
-    ],
+'ranetrace' => [
+    'driver' => 'ranetrace',
+    'level' => 'notice', // from RANETRACE_LOGGING_LEVEL
 ],
 ```
 
-### 3. Use the channel
+If you have already defined your own `ranetrace` channel, that definition always
+wins (see *Overriding the channel* below).
+
+### 2. Route logs to the channel
+
+Send logs to the channel directly:
 
 ```php
 use Illuminate\Support\Facades\Log;
 
-// Use directly
 Log::channel('ranetrace')->error('Payment processing failed', [
     'order_id' => $orderId,
     'error' => $exception->getMessage(),
 ]);
+```
 
-// Or add to a stack channel
+Or capture **all** application logs by adding `ranetrace` to your default stack:
+
+```php
+// config/logging.php
 'channels' => [
     'stack' => [
         'driver' => 'stack',
         'channels' => ['daily', 'ranetrace'],
+        'ignore_exceptions' => false,
     ],
 ],
 ```
@@ -59,44 +68,67 @@ Log::channel('ranetrace')->error('Payment processing failed', [
     'queue' => env('RANETRACE_LOGGING_QUEUE', true),
     'queue_name' => env('RANETRACE_LOGGING_QUEUE_NAME', 'default'),
     'timeout' => env('RANETRACE_LOGGING_TIMEOUT', 10),
+    'level' => env('RANETRACE_LOGGING_LEVEL', 'notice'),
     'excluded_channels' => [
-        // Channels that should never be forwarded to Ranetrace
+        // Record channels that should never be forwarded to Ranetrace
     ],
 ],
 ```
 
-## Preventing Infinite Loops
+- `level` — minimum level the auto-registered channel captures (default `notice`).
+- `excluded_channels` — record channel names to skip (matched against
+  `$record->channel`). Use it to drop noisy or sensitive channels.
 
-When adding the Ranetrace channel to a stack, add the stack's name to `excluded_channels` to prevent log entries from recursively forwarding:
+## Overriding the channel
+
+The channel is auto-registered only when you have not defined one yourself. To
+customize it — e.g. a different minimum level — define `ranetrace` in
+`config/logging.php` and your definition wins:
 
 ```php
-'logging' => [
-    'excluded_channels' => [
-        'ranetrace',           // Prevent self-referencing
-        'ranetrace_internal',  // Reserved for Ranetrace diagnostics
+'channels' => [
+    'ranetrace' => [
+        'driver' => 'ranetrace',
+        'level' => 'warning',
     ],
 ],
 ```
 
-The channel name `ranetrace_internal` is reserved by Ranetrace for its own internal diagnostics and should never be used in application code.
+## Self-logging is handled for you
 
-## What Gets Sent
+Ranetrace writes its own diagnostics to a separate, package-owned
+`ranetrace_internal` channel — never back through the `ranetrace` channel — so
+capturing logs cannot create a feedback loop. You do **not** need to add anything
+to `excluded_channels` to prevent self-referencing. (`ranetrace_internal` is
+reserved for Ranetrace; do not use it in application code.)
+
+## What gets sent
 
 Each log entry includes:
+
 - Log level (emergency, alert, critical, error, warning, notice, info, debug)
-- Message (truncated to 50,000 characters)
-- Context data (truncated to 50KB)
+- Message (secrets redacted, then truncated to 50,000 characters)
+- Context data (secrets redacted, then capped at 50KB)
 - Channel name
 - ISO 8601 timestamp
 - Extra metadata: environment, Laravel version, PHP version
 
-## Log Driver Details
+Values stored under sensitive keys (`password`, `token`, `api_key`, `secret`,
+`authorization`, …) — and `key=value` secrets written into the message string —
+are redacted to `[REDACTED]` before the entry is sent. Extend the sensitive-key
+list via `ranetrace.scrubbing.extra_keys`. Scrubbing is defense-in-depth; avoid
+deliberately logging secrets regardless.
+
+## Log driver details
 
 The `ranetrace` driver uses a custom Monolog handler (`RanetraceLogHandler`) that:
+
 - Respects the `level` config to filter which log levels are sent
 - Supports the `bubble` config for Monolog handler chaining
 - Sanitizes context data to handle non-serializable objects (closures, resources)
-- Dispatches logs via queue by default for zero-impact on request performance
+- Is failure-isolated — it never throws back into your `Log::*()` call
+- Dispatches logs to the queue by default, so transmission to the API happens off
+  the request path
 
 ## Testing
 
