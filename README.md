@@ -6,7 +6,7 @@
 Ranetrace is an all-in-one tool for **Error Tracking**, **Website Analytics**, and **Website Monitoring** for Laravel applications.
 
 - Alerts you about errors and provides the context you need to fix them
-- Privacy-first, fully server-side website analytics — no cookies, no fingerprinting, no intrusive scripts
+- Privacy-first, fully server-side website analytics — no cookies and no client-side scripts; visitors are identified only by salted, one-way hashes (never raw identifiers, never across sites)
 - Monitors uptime, performance, SSL certificates, domain and DNS status, Lighthouse scores, and broken links
 
 Check out the [Ranetrace website](https://ranetrace.com) for more information.

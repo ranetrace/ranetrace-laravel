@@ -9,13 +9,11 @@ use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
 use Laravel\Mcp\Server\Tool;
 use Ranetrace\Laravel\Mcp\Tools\Concerns\HasBulkErrorLimits;
-use Ranetrace\Laravel\Mcp\Tools\Concerns\NormalizesIds;
 use Ranetrace\Laravel\Services\RanetraceApiClient;
 
 class BulkRestoreErrorsTool extends Tool
 {
     use HasBulkErrorLimits;
-    use NormalizesIds;
 
     /**
      * The tool's description.

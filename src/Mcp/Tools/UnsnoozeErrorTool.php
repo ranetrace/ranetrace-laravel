@@ -10,12 +10,11 @@ use Laravel\Mcp\Response;
 use Laravel\Mcp\Server\Tool;
 use Ranetrace\Laravel\Mcp\Tools\Concerns\MapsErrorActionResponse;
 use Ranetrace\Laravel\Mcp\Tools\Concerns\NormalizesErrorType;
-use Ranetrace\Laravel\Mcp\Tools\Concerns\NormalizesIds;
 use Ranetrace\Laravel\Services\RanetraceApiClient;
 
 class UnsnoozeErrorTool extends Tool
 {
-    use MapsErrorActionResponse, NormalizesErrorType, NormalizesIds;
+    use MapsErrorActionResponse, NormalizesErrorType;
 
     /**
      * The tool's description.

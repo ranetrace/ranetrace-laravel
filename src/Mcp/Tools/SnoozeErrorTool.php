@@ -11,12 +11,11 @@ use Laravel\Mcp\Response;
 use Laravel\Mcp\Server\Tool;
 use Ranetrace\Laravel\Mcp\Tools\Concerns\MapsErrorActionResponse;
 use Ranetrace\Laravel\Mcp\Tools\Concerns\NormalizesErrorType;
-use Ranetrace\Laravel\Mcp\Tools\Concerns\NormalizesIds;
 use Ranetrace\Laravel\Services\RanetraceApiClient;
 
 class SnoozeErrorTool extends Tool
 {
-    use MapsErrorActionResponse, NormalizesErrorType, NormalizesIds;
+    use MapsErrorActionResponse, NormalizesErrorType;
 
     protected const VALID_DURATIONS = ['1h', '8h', '24h', '7d', '30d'];
 

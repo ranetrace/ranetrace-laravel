@@ -11,13 +11,12 @@ use Laravel\Mcp\Server\Tool;
 use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 use Ranetrace\Laravel\Mcp\Tools\Concerns\MapsErrorActionResponse;
 use Ranetrace\Laravel\Mcp\Tools\Concerns\NormalizesErrorType;
-use Ranetrace\Laravel\Mcp\Tools\Concerns\NormalizesIds;
 use Ranetrace\Laravel\Services\RanetraceApiClient;
 
 #[IsReadOnly]
 class GetErrorActivityTool extends Tool
 {
-    use MapsErrorActionResponse, NormalizesErrorType, NormalizesIds;
+    use MapsErrorActionResponse, NormalizesErrorType;
 
     /**
      * The tool's description.
