@@ -286,7 +286,15 @@ class SendBatchToRanetraceJob implements ShouldBeUnique, ShouldQueue
      */
     protected function handle429Response(RanetraceBatchBuffer $buffer, RanetracePauseManager $pauseManager, array $headers): void
     {
-        $retryAfter = (int) ($headers['retry-after'] ?? 60);
+        // Honor Retry-After when present; fall back to 60s when it is absent,
+        // empty, or non-numeric. formatResponse() stores this key as '' (not
+        // null) when the header is missing, so a bare `?? 60` would evaluate to
+        // (int) '' === 0 — a zero-second pause that defeats the rate-limit
+        // backoff and lets the worker keep hammering the API every run.
+        $retryAfter = (int) ($headers['retry-after'] ?? 0);
+        if ($retryAfter < 1) {
+            $retryAfter = 60;
+        }
 
         $this->logWarning('Rate limit exceeded', [
             'type' => $this->type,

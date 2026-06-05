@@ -142,39 +142,6 @@ class RanetraceBatchBuffer
     }
 
     /**
-     * Clear specific items from the buffer by their IDs.
-     *
-     * @param  array<int, string>  $ids
-     *
-     * @throws InvalidArgumentException
-     */
-    public function clearItems(string $type, array $ids): void
-    {
-        $cacheKey = $this->getCacheKey($type);
-
-        $clearItemsResult = Cache::store($this->cacheDriver)->lock($cacheKey.':lock', 10)->get(function () use ($cacheKey, $ids) {
-            $buffer = Cache::store($this->cacheDriver)->get($cacheKey, []);
-
-            // Filter out items with matching IDs
-            $idsFlipped = array_flip($ids);
-            $buffer = array_values(array_filter($buffer, function ($item) use ($idsFlipped) {
-                return ! isset($idsFlipped[$item['id']]);
-            }));
-
-            if (empty($buffer)) {
-                Cache::store($this->cacheDriver)->forget($cacheKey);
-            } else {
-                Cache::store($this->cacheDriver)->put($cacheKey, $buffer, $this->ttl);
-            }
-        });
-
-        if ($clearItemsResult === false) {
-            // This means the lock could not be acquired; log a warning
-            InternalLogger::warning('Could not acquire cache lock to clear items from buffer', ['type' => $type, 'ids' => $ids]);
-        }
-    }
-
-    /**
      * Get the count of items in the buffer for a specific type.
      */
     public function count(string $type): int

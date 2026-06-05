@@ -42,26 +42,6 @@ test('it can retrieve items from the buffer and atomically removes them', functi
     expect($buffer->count('events'))->toBe(1);
 });
 
-test('it can clear specific items by id', function (): void {
-    $buffer = new RanetraceBatchBuffer;
-
-    $buffer->addItem('events', ['event_name' => 'event1']);
-    $buffer->addItem('events', ['event_name' => 'event2']);
-    $buffer->addItem('events', ['event_name' => 'event3']);
-
-    // First, peek at the items without removing them by reading from cache directly
-    $cacheKey = 'ranetrace:buffer:events';
-    $items = Cache::store('array')->get($cacheKey, []);
-    $idsToRemove = [$items[0]['id'], $items[2]['id']];
-
-    $buffer->clearItems('events', $idsToRemove);
-
-    expect($buffer->count('events'))->toBe(1);
-
-    $remaining = $buffer->getItems('events', 10);
-    expect($remaining[0]['data']['event_name'])->toBe('event2');
-});
-
 test('it can count items in the buffer', function (): void {
     $buffer = new RanetraceBatchBuffer;
 

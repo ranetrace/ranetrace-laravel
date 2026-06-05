@@ -25,3 +25,4 @@ composer.lock
 .mcp.json
 CLAUDE.md
 /bin/
+/management
