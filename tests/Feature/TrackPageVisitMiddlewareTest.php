@@ -264,6 +264,50 @@ test('it ignores a misconfigured request_filter that does not implement RequestF
     Bus::assertDispatched(HandlePageVisitJob::class);
 });
 
+test('the middleware never lets a capture failure 500 the request (failure isolation)', function (): void {
+    Bus::fake();
+    Cache::flush();
+
+    // A valid RequestFilter whose shouldSkip() throws mid-capture, simulating an
+    // unexpected fault inside captureVisit().
+    config(['ranetrace.website_analytics.request_filter' => ThrowingRequestFilterFixture::class]);
+
+    $response = $this->withHeaders([
+        'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+        'Accept' => 'text/html',
+        'Accept-Language' => 'en-US',
+    ])->get('/test-page');
+
+    // The throw is swallowed by the middleware's try/catch; the user still gets
+    // their page (no 500) and nothing is dispatched.
+    $response->assertStatus(200);
+    Bus::assertNotDispatched(HandlePageVisitJob::class);
+});
+
+test('the buffered visit payload strips the raw ip and user agent (T4)', function (): void {
+    Bus::fake();
+    Cache::flush();
+
+    $this->withHeaders([
+        'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+        'Accept' => 'text/html',
+        'Accept-Language' => 'en-US',
+    ])->get('/');
+
+    Bus::assertDispatched(HandlePageVisitJob::class, function ($job): bool {
+        $raw = $job->getVisitData();
+
+        // handle() buffers filterPayload($visitData); replicate that to inspect
+        // exactly what reaches the buffer/API.
+        $filterPayload = new ReflectionMethod($job, 'filterPayload');
+        $buffered = $filterPayload->invoke($job, $raw);
+
+        return array_key_exists('ip', $raw)                 // collected internally
+            && ! array_key_exists('ip', $buffered)          // but never buffered/sent
+            && ! array_key_exists('user_agent', $buffered); // only user_agent_hash ships
+    });
+});
+
 test('it filters AI bot user agents', function (): void {
     Bus::fake();
 
@@ -296,3 +340,15 @@ test('it filters headless browser user agents', function (): void {
 
     Bus::assertNotDispatched(HandlePageVisitJob::class);
 });
+
+/**
+ * A valid RequestFilter whose shouldSkip() always throws — used to prove the
+ * middleware's failure isolation (a fault mid-capture must not 500 the request).
+ */
+class ThrowingRequestFilterFixture implements Ranetrace\Laravel\Analytics\Contracts\RequestFilter
+{
+    public function shouldSkip(Illuminate\Http\Request $request): bool
+    {
+        throw new RuntimeException('request_filter exploded mid-capture');
+    }
+}

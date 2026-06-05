@@ -13,7 +13,7 @@ Use this skill when setting up website analytics, configuring bot detection, exc
 
 The `TrackPageVisit` middleware is auto-registered on the `web` middleware group when both `RANETRACE_ENABLED` and `RANETRACE_WEBSITE_ANALYTICS_ENABLED` are `true`. No manual middleware registration is needed.
 
-Analytics is privacy-first: no cookies, no fingerprinting, no intrusive scripts. User agents are hashed and session IDs rotate daily.
+Analytics is privacy-first: no cookies and no client-side scripts. Visitors are identified only by **salted, one-way HMAC hashes** — a user-agent hash and a daily-rotating session-id hash (IP + user agent + date, keyed by a per-install salt) — never raw identifiers, and never across sites. The raw IP and user agent are used transiently on the server and are not sent (unless `debug.preserve_user_agent` is enabled for local debugging).
 
 ## Configuration
 
