@@ -11,20 +11,20 @@ Use this skill when working with error tracking, exception reporting, error inve
 
 ## Reporting Errors
 
-Errors are reported via the `Ranetrace` facade. Automatic exception reporting is typically set up in the application's exception handler:
+Capturing unhandled exceptions is **required wiring — it is NOT automatic.** Register Ranetrace on Laravel's exception handler in `bootstrap/app.php` with the package's one-liner:
 
 ```php
+use Illuminate\Foundation\Configuration\Exceptions;
 use Ranetrace\Laravel\Facades\Ranetrace;
 
-// In bootstrap/app.php or exception handler
 ->withExceptions(function (Exceptions $exceptions) {
-    $exceptions->report(function (Throwable $e) {
-        Ranetrace::report($e);
-    });
+    Ranetrace::handles($exceptions);
 })
 ```
 
-Manual reporting:
+`Ranetrace::handles()` registers a `reportable` callback and preserves Laravel's own default error logging. Without this line, unhandled exceptions are **not** captured (manual `Ranetrace::report()` calls still work).
+
+Manual reporting, for in-flow capture:
 
 ```php
 try {
@@ -37,10 +37,10 @@ try {
 ## What Gets Captured
 
 Each error report includes:
-- Exception message, type, file, and line number
+- Exception message (key=value secrets redacted), type, file, and line number
 - Stack trace (truncated to 5000 chars; key=value secrets redacted)
 - Code snippet (5 lines before and after the error line; each line length-capped)
-- HTTP request data (URL with sensitive query params redacted, method, headers with non-allowlisted values masked)
+- HTTP request data (URL with sensitive query params redacted, method, allowlisted headers only — the client IP / `x-forwarded-for` is masked, not captured)
 - Authenticated user ID (email only when `ranetrace.errors.capture_user_email` is enabled; off by default)
 - PHP and Laravel versions
 - Environment name

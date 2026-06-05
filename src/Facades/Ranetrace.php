@@ -17,12 +17,12 @@ class Ranetrace extends Facade
 {
     public static function handles(Exceptions $exceptions): void
     {
-        $exceptions->reportable(static function (Throwable $exception): \Ranetrace\Laravel\Ranetrace {
-            $ranetrace = app(\Ranetrace\Laravel\Ranetrace::class);
+        $exceptions->reportable(static function (Throwable $exception): bool {
+            app(\Ranetrace\Laravel\Ranetrace::class)->report($exception);
 
-            $ranetrace->report($exception);
-
-            return $ranetrace;
+            // Additive capture: returning non-false lets Laravel's default
+            // logging stack continue (returning false would suppress it).
+            return true;
         });
     }
 

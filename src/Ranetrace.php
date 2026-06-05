@@ -63,6 +63,11 @@ class Ranetrace
      * header is masked, so a header carrying a secret that we did not
      * anticipate is masked by default rather than leaked.
      *
+     * `x-forwarded-for` is deliberately NOT listed: it carries the client IP
+     * chain (PII), and the package's posture is that no IP leaves the host (the
+     * analytics path strips it too). It is masked like any other non-allowlisted
+     * header.
+     *
      * @var array<int, string>
      */
     protected const array SAFE_HEADERS = [
@@ -78,7 +83,6 @@ class Ranetrace
         'referer',
         'user-agent',
         'x-requested-with',
-        'x-forwarded-for',
         'x-forwarded-proto',
         'x-forwarded-host',
     ];
@@ -89,9 +93,8 @@ class Ranetrace
             return;
         }
 
-        // Ranetrace must never throw from its capture path — losing a single
+        // Ranetrace must never throw from its capture path. Losing a single
         // error event is acceptable, breaking the host application is not.
-        // See specs/.../client-internal-error-handling.md (Core Rule).
         try {
             $data = $this->buildErrorPayload($exception);
 
@@ -365,10 +368,11 @@ class Ranetrace
             $consoleArguments = $this->boundConsoleArgv(request()->server('argv') ?? []);
         }
 
-        // Truncate variable-length string fields to per-field caps. The trace is
-        // scrubbed first: getTraceAsString() can carry key=value secrets (e.g. a
-        // query string passed as an argument).
-        $message = $this->truncate($exception->getMessage(), self::MAX_MESSAGE_LENGTH);
+        // Truncate variable-length string fields to per-field caps. Both the
+        // message and trace are secret-scrubbed first: an exception message can
+        // embed key=value secrets (DB/PDO connection strings, "invalid
+        // api_key=…"), and getTraceAsString() can carry them in arg values.
+        $message = $this->truncate(SecretScrubber::scrubString($exception->getMessage()), self::MAX_MESSAGE_LENGTH);
         $trace = $this->truncate(SecretScrubber::scrubString($exception->getTraceAsString()), self::MAX_TRACE_LENGTH);
 
         // Ship a path relative to the app root rather than the absolute server

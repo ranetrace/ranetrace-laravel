@@ -51,6 +51,30 @@ test('report never throws', function (): void {
         ->not->toThrow(Throwable::class);
 });
 
+// --- handles(): reporting is additive, never stops the host's own logging (R2-5) ---
+
+test('handles() reporting is additive and does not stop the host default logging', function (): void {
+    $handler = new Illuminate\Foundation\Exceptions\Handler(app());
+    $exceptions = new Illuminate\Foundation\Configuration\Exceptions($handler);
+
+    // Wire Ranetrace exactly as bootstrap/app.php does. (Leading backslash: the
+    // file aliases the concrete Ranetrace class via `use`, so the facade must be
+    // fully qualified.)
+    \Ranetrace\Laravel\Facades\Ranetrace::handles($exceptions);
+
+    // A sentinel reportable registered AFTER Ranetrace's. Laravel stops the
+    // report loop only when a callback returns false, so this runs ONLY if
+    // Ranetrace's callback did not stop propagation — i.e. host logging survives.
+    $sentinelRan = false;
+    $handler->reportable(function (Throwable $e) use (&$sentinelRan): void {
+        $sentinelRan = true;
+    });
+
+    $handler->report(new RuntimeException('boom'));
+
+    expect($sentinelRan)->toBeTrue();
+});
+
 // --- trackEvent(): capture gating ---
 
 test('trackEvent does nothing when the package is disabled', function (): void {
@@ -190,6 +214,13 @@ test('console_arguments is sent as an array, not a JSON-encoded string', functio
     expect($payload['console_arguments'])->toBeArray();
 });
 
+test('error payload redacts key=value secrets in the exception message', function (): void {
+    $payload = invokeBuildErrorPayload(new RuntimeException('DB auth failed password=hunter2 for the worker'));
+
+    expect($payload['message'])->toContain('[REDACTED]')
+        ->and($payload['message'])->not->toContain('hunter2');
+});
+
 test('user payload uses getAuthIdentifier() and is null-safe for missing email', function (): void {
     $ranetrace = new Ranetrace;
 
@@ -280,6 +311,22 @@ test('maskAndBoundHeaders scrubs secrets from the referer query string', functio
     ]);
 
     expect($masked['referer'][0])->toBe('https://example.com/reset?token=[REDACTED]&page=2');
+});
+
+// --- client IP is not captured (R2-2) ---
+
+test('maskAndBoundHeaders masks the client IP x-forwarded-for header', function (): void {
+    $ranetrace = new Ranetrace;
+    $method = new ReflectionMethod($ranetrace, 'maskAndBoundHeaders');
+
+    $masked = $method->invoke($ranetrace, [
+        'x-forwarded-for' => ['203.0.113.7, 198.51.100.2'],
+        'x-forwarded-proto' => ['https'],
+    ]);
+
+    // The client IP chain is masked; the (non-PII) proto header stays plaintext.
+    expect($masked['x-forwarded-for'])->toBe(['***'])
+        ->and($masked['x-forwarded-proto'])->toBe(['https']);
 });
 
 // --- user email is gated (R4-6) ---
