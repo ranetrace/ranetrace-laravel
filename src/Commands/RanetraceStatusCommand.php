@@ -77,7 +77,7 @@ class RanetraceStatusCommand extends Command
                     'paused' => $pauseManager->isFeaturePaused($feature),
                     'paused_until' => $pauseData['paused_until'],
                     'reason' => $pauseData['reason'],
-                    'time_remaining_seconds' => max(0, Carbon::now()->diffInSeconds(Carbon::parse($pauseData['paused_until']), false)),
+                    'time_remaining_seconds' => $this->remainingSecondsUntil($pauseData['paused_until']),
                 ] : null;
             } catch (Throwable) {
                 $featurePauses[$feature] = null;
@@ -140,7 +140,7 @@ class RanetraceStatusCommand extends Command
                     'paused' => $isGloballyPaused,
                     'paused_until' => $globalPause['paused_until'],
                     'reason' => $globalPause['reason'],
-                    'time_remaining_seconds' => max(0, Carbon::now()->diffInSeconds(Carbon::parse($globalPause['paused_until']), false)),
+                    'time_remaining_seconds' => $this->remainingSecondsUntil($globalPause['paused_until']),
                 ] : null,
                 'features' => $featurePauses,
             ],
@@ -370,6 +370,17 @@ class RanetraceStatusCommand extends Command
         $empty = $barWidth - $filled;
 
         return str_repeat('█', $filled).str_repeat('░', $empty);
+    }
+
+    /**
+     * Whole seconds remaining until a pause's ISO-8601 expiry timestamp, floored
+     * at 0. Carbon 3's diffInSeconds() returns a float, so the result is cast to
+     * int — both formatDuration() and the JSON `time_remaining_seconds` field
+     * require an integer (a float would TypeError under strict_types).
+     */
+    protected function remainingSecondsUntil(string $until): int
+    {
+        return (int) max(0, round(Carbon::now()->diffInSeconds(Carbon::parse($until), false)));
     }
 
     /**

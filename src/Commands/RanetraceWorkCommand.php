@@ -8,6 +8,8 @@ use Illuminate\Console\Command;
 use Ranetrace\Laravel\Jobs\SendBatchToRanetraceJob;
 use Ranetrace\Laravel\Services\RanetraceBatchBuffer;
 use Ranetrace\Laravel\Services\RanetracePauseManager;
+use Ranetrace\Laravel\Support\InternalLogger;
+use Throwable;
 
 class RanetraceWorkCommand extends Command
 {
@@ -18,14 +20,6 @@ class RanetraceWorkCommand extends Command
 
     public function handle(RanetraceBatchBuffer $buffer, RanetracePauseManager $pauseManager): int
     {
-        // Check global pause first
-        if ($pauseManager->isGloballyPaused()) {
-            $pauseData = $pauseManager->getGlobalPause();
-            $this->warn('Ranetrace is globally paused until '.$pauseData['paused_until'].' (reason: '.$pauseData['reason'].')');
-
-            return self::SUCCESS;
-        }
-
         $specificType = $this->option('type');
 
         if ($specificType !== null && ! in_array($specificType, RanetraceBatchBuffer::TYPES, true)) {
@@ -33,6 +27,35 @@ class RanetraceWorkCommand extends Command
             $this->line('Valid types: '.implode(', ', RanetraceBatchBuffer::TYPES));
 
             return self::FAILURE;
+        }
+
+        // Pause/buffer state lives in the cache and dispatch hits the queue. If
+        // either backend is down, fail cleanly (log + non-zero exit) instead of
+        // throwing an uncaught exception on every scheduled run — there is nothing
+        // to drain anyway, and ranetrace:status remains the diagnostic.
+        try {
+            return $this->dispatchBatches($buffer, $pauseManager, $specificType);
+        } catch (Throwable $e) {
+            InternalLogger::error('ranetrace:work failed to read buffer/pause state or dispatch', [
+                'exception' => $e->getMessage(),
+            ]);
+            $this->error('Ranetrace: ranetrace:work could not run — is the cache/queue backend available? See the ranetrace_internal log.');
+
+            return self::FAILURE;
+        }
+    }
+
+    /**
+     * Dispatch one batch job per drainable, non-paused feature type.
+     */
+    protected function dispatchBatches(RanetraceBatchBuffer $buffer, RanetracePauseManager $pauseManager, ?string $specificType): int
+    {
+        // Check global pause first
+        if ($pauseManager->isGloballyPaused()) {
+            $pauseData = $pauseManager->getGlobalPause();
+            $this->warn('Ranetrace is globally paused until '.$pauseData['paused_until'].' (reason: '.$pauseData['reason'].')');
+
+            return self::SUCCESS;
         }
 
         $types = $specificType
