@@ -17,31 +17,31 @@ use Ranetrace\Laravel\Facades\Ranetrace;
 class EventTracker
 {
     // Standard event name constants to prevent typos and ensure consistency
-    public const PRODUCT_ADDED_TO_CART = 'product_added_to_cart';
+    public const string PRODUCT_ADDED_TO_CART = 'product_added_to_cart';
 
-    public const PRODUCT_REMOVED_FROM_CART = 'product_removed_from_cart';
+    public const string PRODUCT_REMOVED_FROM_CART = 'product_removed_from_cart';
 
-    public const CART_VIEWED = 'cart_viewed';
+    public const string CART_VIEWED = 'cart_viewed';
 
-    public const CHECKOUT_STARTED = 'checkout_started';
+    public const string CHECKOUT_STARTED = 'checkout_started';
 
-    public const CHECKOUT_COMPLETED = 'checkout_completed';
+    public const string CHECKOUT_COMPLETED = 'checkout_completed';
 
-    public const SALE = 'sale';
+    public const string SALE = 'sale';
 
-    public const USER_REGISTERED = 'user_registered';
+    public const string USER_REGISTERED = 'user_registered';
 
-    public const USER_LOGGED_IN = 'user_logged_in';
+    public const string USER_LOGGED_IN = 'user_logged_in';
 
-    public const USER_LOGGED_OUT = 'user_logged_out';
+    public const string USER_LOGGED_OUT = 'user_logged_out';
 
-    public const PAGE_VIEW = 'page_view';
+    public const string PAGE_VIEW = 'page_view';
 
-    public const SEARCH = 'search';
+    public const string SEARCH = 'search';
 
-    public const NEWSLETTER_SIGNUP = 'newsletter_signup';
+    public const string NEWSLETTER_SIGNUP = 'newsletter_signup';
 
-    public const CONTACT_FORM_SUBMITTED = 'contact_form_submitted';
+    public const string CONTACT_FORM_SUBMITTED = 'contact_form_submitted';
 
     /**
      * Validate an event name to ensure it follows naming conventions

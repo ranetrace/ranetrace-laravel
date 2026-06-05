@@ -11,7 +11,7 @@ Use this skill when implementing custom event tracking for analytics, e-commerce
 
 ## Facades
 
-- `Ranetrace::trackEvent(string $eventName, array $properties = [], ?int $userId = null)` — low-level tracking
+- `Ranetrace::trackEvent(string $eventName, array $properties = [], int|string|null $userId = null, bool $validate = true)` — low-level tracking (`$userId` accepts int or string for UUID models; `$validate: false` skips snake_case name validation)
 - `RanetraceEvents` — convenience methods with built-in validation
 
 ## Standard Event Constants
