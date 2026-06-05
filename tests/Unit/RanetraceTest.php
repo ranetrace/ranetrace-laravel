@@ -113,6 +113,20 @@ test('trackEvent redacts secrets in event properties', function (): void {
     });
 });
 
+test('trackEvent scrubs secrets inside URL values in event properties', function (): void {
+    // `return_url` is not a sensitive key name, so only scrubDeep's URL-value
+    // pass catches the token carried inside the URL's query string.
+    (new Ranetrace)->trackEvent('checkout_completed', [
+        'return_url' => 'https://shop.test/back?token=sk_live_x&ref=cart',
+    ]);
+
+    Queue::assertPushed(HandleEventJob::class, function ($job): bool {
+        $properties = $job->getEventData()['properties'];
+
+        return $properties['return_url'] === 'https://shop.test/back?token=[REDACTED]&ref=cart';
+    });
+});
+
 // --- trackEvent(): validation stays loud, the rest is isolated ---
 
 test('trackEvent throws on an invalid event name when validation is enabled', function (): void {

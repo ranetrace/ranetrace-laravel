@@ -140,6 +140,20 @@ test('it redacts secrets in context', function (): void {
     });
 });
 
+test('it scrubs secrets inside URL values in context', function (): void {
+    // The key `endpoint` is NOT sensitive, so key-based scrubbing leaves it
+    // alone; only scrubDeep's URL-value pass redacts the inner api_key param.
+    Log::channel('ranetrace')->error('Webhook dispatched', [
+        'endpoint' => 'https://api.test/hook?api_key=sk_live_x&page=2',
+    ]);
+
+    Bus::assertDispatched(HandleLogJob::class, function ($job): bool {
+        $context = $job->getLogData()['context'];
+
+        return $context['endpoint'] === 'https://api.test/hook?api_key=[REDACTED]&page=2';
+    });
+});
+
 test('it redacts key=value secrets in the message', function (): void {
     Log::channel('ranetrace')->error('Auth failed for token=sk_live_abc123 retrying');
 

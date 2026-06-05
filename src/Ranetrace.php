@@ -139,7 +139,7 @@ class Ranetrace
 
             $eventData = [
                 'event_name' => $eventName,
-                'properties' => SecretScrubber::scrub(DataSanitizer::sanitizeForSerialization($properties)),
+                'properties' => SecretScrubber::scrubDeep(DataSanitizer::sanitizeForSerialization($properties)),
                 'user' => $user,
                 'timestamp' => Carbon::now()->toIso8601String(),
                 'url' => app()->runningInConsole() ? null : SecretScrubber::scrubUrl(request()->fullUrl()),

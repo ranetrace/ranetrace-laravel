@@ -64,11 +64,12 @@ class RanetraceLogHandler extends AbstractProcessingHandler
                 $message = mb_substr($message, 0, self::MAX_MESSAGE_LENGTH - mb_strlen(self::TRUNCATION_SUFFIX)).self::TRUNCATION_SUFFIX;
             }
 
-            // Sanitize for serialization, redact secrets stored under sensitive
-            // keys, then cap size (replacing mid-structure rather than truncating,
-            // since partial JSON is invalid).
+            // Sanitize for serialization, redact secrets (by sensitive key name,
+            // plus tokens inside URL-shaped string values), then cap size
+            // (replacing mid-structure rather than truncating, since partial
+            // JSON is invalid).
             $context = PayloadSizer::capBytes(
-                SecretScrubber::scrub(DataSanitizer::sanitizeForSerialization($record->context)),
+                SecretScrubber::scrubDeep(DataSanitizer::sanitizeForSerialization($record->context)),
                 self::MAX_CONTEXT_BYTES,
                 'Context exceeded 50KB limit and was removed'
             );
@@ -77,7 +78,7 @@ class RanetraceLogHandler extends AbstractProcessingHandler
             // known-safe environment trio. This way triage metadata survives
             // even when the user extra is dropped wholesale for being oversized.
             $userExtra = PayloadSizer::capBytes(
-                SecretScrubber::scrub(DataSanitizer::sanitizeForSerialization($record->extra)),
+                SecretScrubber::scrubDeep(DataSanitizer::sanitizeForSerialization($record->extra)),
                 self::MAX_EXTRA_BYTES,
                 'Extra data exceeded 10KB limit and was removed'
             );
