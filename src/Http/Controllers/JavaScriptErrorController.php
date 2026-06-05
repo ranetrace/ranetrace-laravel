@@ -92,7 +92,7 @@ class JavaScriptErrorController extends Controller
 
         return array_map(function (array $breadcrumb): array {
             $data = PayloadSizer::capBytes(
-                SecretScrubber::scrub(DataSanitizer::sanitizeForSerialization($breadcrumb['data'] ?? [])),
+                SecretScrubber::scrubDeep(DataSanitizer::sanitizeForSerialization($breadcrumb['data'] ?? [])),
                 self::MAX_BREADCRUMB_DATA_BYTES,
                 'Breadcrumb data exceeded 5KB limit and was removed'
             );
@@ -143,6 +143,14 @@ class JavaScriptErrorController extends Controller
             'breadcrumbs.*.message' => 'required|string|max:500',
             'breadcrumbs.*.data' => 'nullable|array',
             'context' => 'nullable|array',
+            'browser_info' => 'nullable|array',
+            'browser_info.screen_width' => 'nullable|numeric',
+            'browser_info.screen_height' => 'nullable|numeric',
+            'browser_info.viewport_width' => 'nullable|numeric',
+            'browser_info.viewport_height' => 'nullable|numeric',
+            'browser_info.device_memory' => 'nullable|numeric',
+            'browser_info.hardware_concurrency' => 'nullable|numeric',
+            'browser_info.connection_type' => 'nullable|string|max:50',
         ]);
 
         if ($validator->fails()) {
@@ -176,7 +184,7 @@ class JavaScriptErrorController extends Controller
         // Sanitize, redact secret-keyed values, then cap size (oversize objects
         // are replaced with a marker — truncating mid-structure yields invalid JSON).
         $context = PayloadSizer::capBytes(
-            SecretScrubber::scrub(DataSanitizer::sanitizeForSerialization($request->input('context', []))),
+            SecretScrubber::scrubDeep(DataSanitizer::sanitizeForSerialization($request->input('context', []))),
             self::MAX_CONTEXT_BYTES,
             'Context exceeded 50KB limit and was removed'
         );

@@ -248,3 +248,46 @@ test('it falls back to default ignored errors when the config key is absent', fu
     $response->assertJson(['message' => 'Error ignored based on pattern']);
     Bus::assertNotDispatched(HandleJavaScriptErrorJob::class);
 });
+
+test('it rejects an oversized browser_info connection_type', function (): void {
+    $response = $this->postJson(route('ranetrace.javascript-errors.store'), [
+        'message' => 'Test error',
+        'url' => 'https://example.com/',
+        'browser_info' => ['connection_type' => str_repeat('a', 100)], // exceeds max:50
+    ]);
+
+    $response->assertStatus(422);
+    $response->assertJsonValidationErrors(['browser_info.connection_type']);
+});
+
+test('it rejects a non-numeric browser_info dimension', function (): void {
+    $response = $this->postJson(route('ranetrace.javascript-errors.store'), [
+        'message' => 'Test error',
+        'url' => 'https://example.com/',
+        'browser_info' => ['screen_width' => 'not-a-number'],
+    ]);
+
+    $response->assertStatus(422);
+    $response->assertJsonValidationErrors(['browser_info.screen_width']);
+});
+
+test('it scrubs sensitive query params inside URL-valued breadcrumb and context data (T10)', function (): void {
+    $this->postJson(route('ranetrace.javascript-errors.store'), [
+        'message' => 'Test error',
+        'url' => 'https://example.com/',
+        'context' => ['endpoint' => 'https://api.test/x?token=abc123&page=2'],
+        'breadcrumbs' => [[
+            'timestamp' => now()->toISOString(),
+            'category' => 'http',
+            'message' => 'fetch',
+            'data' => ['request_url' => 'https://api.test/y?api_key=sk_live_zzz'],
+        ]],
+    ])->assertStatus(200);
+
+    Bus::assertDispatched(HandleJavaScriptErrorJob::class, function ($job): bool {
+        $data = $job->getErrorData();
+
+        return $data['context']['endpoint'] === 'https://api.test/x?token=[REDACTED]&page=2'
+            && $data['breadcrumbs'][0]['data']['request_url'] === 'https://api.test/y?api_key=[REDACTED]';
+    });
+});

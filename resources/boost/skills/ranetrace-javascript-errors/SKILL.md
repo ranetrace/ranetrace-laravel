@@ -111,7 +111,7 @@ window.Ranetrace.addBreadcrumb('custom', 'User selected plan', {
 
 ## Endpoint & Throttling
 
-Errors are sent to `POST /ranetrace/js-errors`, which is rate-limited to 60 requests per minute per IP. The route is auto-registered with `web` middleware when JS error tracking is enabled.
+Errors are sent to `POST /ranetrace/javascript-errors/store` (route name `ranetrace.javascript-errors.store`). The route is auto-registered when JS error tracking is enabled, with `web` middleware (CSRF — the injected script sends the host page's `X-CSRF-TOKEN`) plus `throttle`. The default rate limit is `60,1` (60 requests/minute), keyed by the authenticated user's id when present, otherwise the client IP — tune via `RANETRACE_JAVASCRIPT_ERRORS_THROTTLE` (Laravel `requests,minutes` format).
 
 Client-side deduplication prevents the same error (same message + file + line + column) from being sent more than once per page session.
 

@@ -53,6 +53,21 @@ class SecretScrubber
     }
 
     /**
+     * Like {@see scrub()} (key-based redaction), but ALSO scrubs sensitive
+     * query-string params inside URL-shaped string VALUES — catching a secret
+     * in an innocuously-keyed URL (e.g. a breadcrumb `data.endpoint` of
+     * `https://api/x?token=…`) that key-based scrubbing alone would miss.
+     *
+     * Intended for free-form, untrusted breadcrumb/context data. Composes with
+     * the `mixed` return of {@see DataSanitizer::sanitizeForSerialization()},
+     * which has already bounded the recursion depth.
+     */
+    public static function scrubDeep(mixed $data): mixed
+    {
+        return self::scrubUrlValues(self::scrub($data));
+    }
+
+    /**
      * Redact sensitive query-string parameters within a URL, preserving the
      * scheme, host, path and fragment. Non-sensitive params keep their exact
      * encoding; the URL is returned untouched when it has no query string or no
@@ -156,6 +171,28 @@ class SecretScrubber
 
             if (is_array($value)) {
                 $data[$key] = self::scrubArray($value, $fragments);
+            }
+        }
+
+        return $data;
+    }
+
+    /**
+     * Recursively apply {@see scrubUrl()} to every string value that looks like
+     * an absolute http(s) URL, leaving all other values untouched. Operates on
+     * the already-depth-bounded output of {@see DataSanitizer}.
+     */
+    private static function scrubUrlValues(mixed $data): mixed
+    {
+        if (is_string($data)) {
+            return str_starts_with($data, 'http://') || str_starts_with($data, 'https://')
+                ? (self::scrubUrl($data) ?? $data)
+                : $data;
+        }
+
+        if (is_array($data)) {
+            foreach ($data as $key => $value) {
+                $data[$key] = self::scrubUrlValues($value);
             }
         }
 
