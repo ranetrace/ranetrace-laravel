@@ -33,6 +33,7 @@ test('restores multiple errors successfully', function (): void {
         ]);
 
     $response = $this->tool->handle(new Request([
+        'type' => 'php',
         'error_ids' => ['123', '124'],
     ]));
 
@@ -56,6 +57,7 @@ test('normalizes error IDs by stripping err_ prefix', function (): void {
         ]);
 
     $this->tool->handle(new Request([
+        'type' => 'php',
         'error_ids' => ['err_123', 'err_124'],
     ]));
 });
@@ -71,6 +73,7 @@ test('passes javascript type correctly', function (): void {
         ]);
 
     $this->tool->handle(new Request([
+        'type' => 'php',
         'error_ids' => ['123'],
         'type' => 'javascript',
     ]));
@@ -87,6 +90,7 @@ test('normalizes js type to javascript', function (): void {
         ]);
 
     $this->tool->handle(new Request([
+        'type' => 'php',
         'error_ids' => ['123'],
         'type' => 'js',
     ]));
@@ -96,6 +100,7 @@ test('returns error when error_ids is not an array', function (): void {
     $this->mockClient->shouldNotReceive('bulkRestoreErrors');
 
     $response = $this->tool->handle(new Request([
+        'type' => 'php',
         'error_ids' => '123',
     ]));
 
@@ -106,6 +111,7 @@ test('returns error when error_ids is empty', function (): void {
     $this->mockClient->shouldNotReceive('bulkRestoreErrors');
 
     $response = $this->tool->handle(new Request([
+        'type' => 'php',
         'error_ids' => [],
     ]));
 
@@ -117,6 +123,7 @@ test('returns error when error_ids exceeds 50 limit', function (): void {
 
     $errorIds = array_map(fn ($i) => (string) $i, range(1, 51));
     $response = $this->tool->handle(new Request([
+        'type' => 'php',
         'error_ids' => $errorIds,
     ]));
 
@@ -134,6 +141,7 @@ test('accepts exactly 50 error IDs', function (): void {
 
     $errorIds = array_map(fn ($i) => (string) $i, range(1, 50));
     $response = $this->tool->handle(new Request([
+        'type' => 'php',
         'error_ids' => $errorIds,
     ]));
 
@@ -144,6 +152,7 @@ test('returns error for invalid error ID in array', function (): void {
     $this->mockClient->shouldNotReceive('bulkRestoreErrors');
 
     $response = $this->tool->handle(new Request([
+        'type' => 'php',
         'error_ids' => ['123', '', '125'],
     ]));
 
@@ -154,6 +163,7 @@ test('returns error for non-string error ID in array', function (): void {
     $this->mockClient->shouldNotReceive('bulkRestoreErrors');
 
     $response = $this->tool->handle(new Request([
+        'type' => 'php',
         'error_ids' => ['123', 456, '789'],
     ]));
 
@@ -170,6 +180,7 @@ test('returns error for 404 status', function (): void {
         ]);
 
     $response = $this->tool->handle(new Request([
+        'type' => 'php',
         'error_ids' => ['123'],
     ]));
 
@@ -186,6 +197,7 @@ test('returns error for 403 status', function (): void {
         ]);
 
     $response = $this->tool->handle(new Request([
+        'type' => 'php',
         'error_ids' => ['123'],
     ]));
 
@@ -202,6 +214,7 @@ test('returns error for 422 validation status', function (): void {
         ]);
 
     $response = $this->tool->handle(new Request([
+        'type' => 'php',
         'error_ids' => ['123'],
     ]));
 
@@ -218,6 +231,7 @@ test('returns generic error for other failures', function (): void {
         ]);
 
     $response = $this->tool->handle(new Request([
+        'type' => 'php',
         'error_ids' => ['123'],
     ]));
 
@@ -245,6 +259,7 @@ test('handles missing response data gracefully', function (): void {
         ]);
 
     $response = $this->tool->handle(new Request([
+        'type' => 'php',
         'error_ids' => ['123'],
     ]));
     $text = (string) $response->content();
@@ -271,6 +286,7 @@ test('formats multiple restored errors correctly', function (): void {
         ]);
 
     $response = $this->tool->handle(new Request([
+        'type' => 'php',
         'error_ids' => ['1', '2', '3'],
     ]));
     $text = (string) $response->content();
@@ -291,5 +307,5 @@ test('defaults to php type when not specified', function (): void {
             'data' => ['restored_count' => 1, 'errors' => []],
         ]);
 
-    $this->tool->handle(new Request(['error_ids' => ['123']]));
+    $this->tool->handle(new Request(['type' => 'php', 'error_ids' => ['123']]));
 });

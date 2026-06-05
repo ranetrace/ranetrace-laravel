@@ -31,17 +31,13 @@ class BulkDeleteErrorsTool extends Tool
      */
     public function handle(Request $request): Response
     {
-        $errorIds = $request->get('error_ids');
-        $type = $this->normalizeType($request->get('type'));
+        $context = $this->resolveBulkErrorContext($request->get('error_ids'), $request->get('type'));
 
-        $validationError = $this->validateErrorIds($errorIds);
-        if ($validationError !== null) {
-            return Response::error($validationError);
+        if (! $context['ok']) {
+            return Response::error($context['error']);
         }
 
-        $normalizedIds = array_map(fn ($id) => $this->normalizeErrorId($id), $errorIds);
-
-        $result = $this->client->bulkDeleteErrors($normalizedIds, $type);
+        $result = $this->client->bulkDeleteErrors($context['ids'], $context['type']);
 
         if (! $result['success']) {
             return $this->handleErrorResponse($result);
@@ -62,8 +58,9 @@ class BulkDeleteErrorsTool extends Tool
                 ->description('Array of error IDs to delete (max 50). IDs can include err_ prefix.')
                 ->required(),
             'type' => $schema->string()
-                ->description('The error type: "php" (default), "javascript", or "js".')
-                ->enum(['php', 'javascript', 'js']),
+                ->description('REQUIRED. The error type — "php" or "javascript" (or "js"). Must match the id prefixes; all ids in one call must be the same type.')
+                ->enum(['php', 'javascript', 'js'])
+                ->required(),
         ];
     }
 

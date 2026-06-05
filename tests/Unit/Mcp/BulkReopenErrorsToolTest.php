@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
-use Ranetrace\Laravel\Mcp\Tools\BulkIgnoreErrorsTool;
+use Ranetrace\Laravel\Mcp\Tools\BulkReopenErrorsTool;
 use Ranetrace\Laravel\Services\RanetraceApiClient;
 
 beforeEach(function (): void {
@@ -13,169 +13,122 @@ beforeEach(function (): void {
     }
 
     $this->mockClient = Mockery::mock(RanetraceApiClient::class);
-    $this->tool = new BulkIgnoreErrorsTool($this->mockClient);
+    $this->tool = new BulkReopenErrorsTool($this->mockClient);
 });
 
-test('ignores multiple errors successfully', function (): void {
-    $this->mockClient->shouldReceive('bulkIgnoreErrors')
+test('reopens multiple errors successfully', function (): void {
+    $this->mockClient->shouldReceive('bulkReopenErrors')
         ->once()
         ->with(['123', '124'], 'php')
         ->andReturn([
             'success' => true,
             'status' => 200,
             'data' => [
-                'ignored_count' => 2,
+                'reopened_count' => 2,
                 'errors' => [
-                    ['id' => 'err_123', 'state' => 'ignored'],
-                    ['id' => 'err_124', 'state' => 'ignored'],
+                    ['id' => 'err_123', 'state' => 'open'],
+                    ['id' => 'err_124', 'state' => 'open'],
                 ],
             ],
         ]);
 
     $response = $this->tool->handle(new Request([
-        'type' => 'php',
         'error_ids' => ['123', '124'],
+        'type' => 'php',
     ]));
 
     expect($response)->toBeInstanceOf(Response::class);
     expect((string) $response->content())
-        ->toContain('Bulk Ignore Completed')
-        ->toContain('Ignored Count:** 2')
-        ->toContain('err_123')
-        ->toContain('ignored');
+        ->toContain('Bulk Reopen Completed')
+        ->toContain('Reopened Count:** 2')
+        ->toContain('err_123');
 });
 
 test('normalizes error IDs by stripping err_ prefix', function (): void {
-    $this->mockClient->shouldReceive('bulkIgnoreErrors')
+    $this->mockClient->shouldReceive('bulkReopenErrors')
         ->once()
         ->with(['123', '124'], 'php')
         ->andReturn([
             'success' => true,
             'status' => 200,
-            'data' => ['ignored_count' => 2, 'errors' => []],
+            'data' => ['reopened_count' => 2, 'errors' => []],
         ]);
 
     $this->tool->handle(new Request([
-        'type' => 'php',
         'error_ids' => ['err_123', 'err_124'],
+        'type' => 'php',
     ]));
 });
 
-test('passes javascript type correctly', function (): void {
-    $this->mockClient->shouldReceive('bulkIgnoreErrors')
+test('passes javascript type and strips jserr_ prefix', function (): void {
+    $this->mockClient->shouldReceive('bulkReopenErrors')
         ->once()
         ->with(['123'], 'javascript')
         ->andReturn([
             'success' => true,
             'status' => 200,
-            'data' => ['ignored_count' => 1, 'errors' => []],
+            'data' => ['reopened_count' => 1, 'errors' => []],
         ]);
 
     $this->tool->handle(new Request([
-        'type' => 'php',
-        'error_ids' => ['123'],
-        'type' => 'javascript',
-    ]));
-});
-
-test('normalizes js type to javascript', function (): void {
-    $this->mockClient->shouldReceive('bulkIgnoreErrors')
-        ->once()
-        ->with(['123'], 'javascript')
-        ->andReturn([
-            'success' => true,
-            'status' => 200,
-            'data' => ['ignored_count' => 1, 'errors' => []],
-        ]);
-
-    $this->tool->handle(new Request([
-        'type' => 'php',
-        'error_ids' => ['123'],
+        'error_ids' => ['jserr_123'],
         'type' => 'js',
     ]));
 });
 
 test('returns error when error_ids is not an array', function (): void {
-    $this->mockClient->shouldNotReceive('bulkIgnoreErrors');
+    $this->mockClient->shouldNotReceive('bulkReopenErrors');
 
     $response = $this->tool->handle(new Request([
-        'type' => 'php',
         'error_ids' => '123',
+        'type' => 'php',
     ]));
 
     expect((string) $response->content())->toContain('must be an array');
 });
 
 test('returns error when error_ids is empty', function (): void {
-    $this->mockClient->shouldNotReceive('bulkIgnoreErrors');
+    $this->mockClient->shouldNotReceive('bulkReopenErrors');
 
     $response = $this->tool->handle(new Request([
-        'type' => 'php',
         'error_ids' => [],
+        'type' => 'php',
     ]));
 
     expect((string) $response->content())->toContain('At least one error ID is required');
 });
 
 test('returns error when error_ids exceeds 50 limit', function (): void {
-    $this->mockClient->shouldNotReceive('bulkIgnoreErrors');
+    $this->mockClient->shouldNotReceive('bulkReopenErrors');
 
     $errorIds = array_map(fn ($i) => (string) $i, range(1, 51));
     $response = $this->tool->handle(new Request([
-        'type' => 'php',
         'error_ids' => $errorIds,
+        'type' => 'php',
     ]));
 
     expect((string) $response->content())->toContain('Maximum 50 errors');
 });
 
-test('returns error for invalid error ID in array', function (): void {
-    $this->mockClient->shouldNotReceive('bulkIgnoreErrors');
-
-    $response = $this->tool->handle(new Request([
-        'type' => 'php',
-        'error_ids' => ['123', '', '125'],
-    ]));
-
-    expect((string) $response->content())->toContain('Invalid error ID at index 1');
-});
-
 test('returns error for 404 status', function (): void {
-    $this->mockClient->shouldReceive('bulkIgnoreErrors')
+    $this->mockClient->shouldReceive('bulkReopenErrors')
         ->once()
         ->andReturn([
             'success' => false,
             'status' => 404,
-            'error' => 'Error 123 not found',
+            'error' => 'Error 999 not found',
         ]);
 
     $response = $this->tool->handle(new Request([
+        'error_ids' => ['123', '999'],
         'type' => 'php',
-        'error_ids' => ['123'],
     ]));
 
     expect((string) $response->content())->toContain('One or more errors not found');
 });
 
-test('returns error for 403 status', function (): void {
-    $this->mockClient->shouldReceive('bulkIgnoreErrors')
-        ->once()
-        ->andReturn([
-            'success' => false,
-            'status' => 403,
-            'error' => 'Access denied',
-        ]);
-
-    $response = $this->tool->handle(new Request([
-        'type' => 'php',
-        'error_ids' => ['123'],
-    ]));
-
-    expect((string) $response->content())->toContain('Access denied');
-});
-
 test('returns generic error for other failures', function (): void {
-    $this->mockClient->shouldReceive('bulkIgnoreErrors')
+    $this->mockClient->shouldReceive('bulkReopenErrors')
         ->once()
         ->andReturn([
             'success' => false,
@@ -184,19 +137,43 @@ test('returns generic error for other failures', function (): void {
         ]);
 
     $response = $this->tool->handle(new Request([
-        'type' => 'php',
         'error_ids' => ['123'],
+        'type' => 'php',
     ]));
 
     expect((string) $response->content())
-        ->toContain('Failed to bulk ignore errors')
+        ->toContain('Failed to bulk reopen errors')
         ->toContain('Internal server error');
+});
+
+test('requires an explicit type for bulk operations', function (): void {
+    $this->mockClient->shouldNotReceive('bulkReopenErrors');
+
+    $response = $this->tool->handle(new Request([
+        'error_ids' => ['123'],
+    ]));
+
+    expect((string) $response->content())->toContain('"type" parameter is required');
+});
+
+test('rejects mixing php and javascript ids in one bulk call', function (): void {
+    $this->mockClient->shouldNotReceive('bulkReopenErrors');
+
+    $response = $this->tool->handle(new Request([
+        'error_ids' => ['err_1', 'jserr_2'],
+        'type' => 'php',
+    ]));
+
+    expect((string) $response->content())
+        ->toContain("implies type 'javascript'")
+        ->toContain('must match the single type');
 });
 
 test('has correct description property', function (): void {
     $reflection = new ReflectionProperty($this->tool, 'description');
     $description = $reflection->getValue($this->tool);
 
-    expect($description)->toContain('Ignore multiple errors');
+    expect($description)->toContain('Reopen multiple');
     expect($description)->toContain('Maximum 50');
+    expect($description)->toContain('atomic');
 });

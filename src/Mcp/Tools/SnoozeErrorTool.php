@@ -34,14 +34,16 @@ class SnoozeErrorTool extends Tool
      */
     public function handle(Request $request): Response
     {
-        $errorId = $this->normalizeErrorId($request->get('error_id'));
-        $type = $this->normalizeType($request->get('type'));
+        $context = $this->resolveErrorContext($request->get('error_id'), $request->get('type'));
+
+        if (! $context['ok']) {
+            return Response::error($context['error']);
+        }
+
+        $errorId = $context['id'];
+        $type = $context['type'];
         $duration = $request->get('duration');
         $until = $request->get('until');
-
-        if (empty($errorId)) {
-            return Response::error('Error ID is required.');
-        }
 
         if (empty($duration) && empty($until)) {
             return Response::error('Either "duration" or "until" is required.');
@@ -90,8 +92,9 @@ class SnoozeErrorTool extends Tool
             'until' => $schema->string()
                 ->description('ISO 8601 datetime to snooze until (must be in the future).'),
             'type' => $schema->string()
-                ->description('The error type: "php" (default), "javascript", or "js".')
-                ->enum(['php', 'javascript', 'js']),
+                ->description('REQUIRED. The error type — "php" or "javascript" (or "js"). Must match the err_/jserr_ id prefix.')
+                ->enum(['php', 'javascript', 'js'])
+                ->required(),
         ];
     }
 

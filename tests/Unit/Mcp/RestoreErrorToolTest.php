@@ -41,6 +41,7 @@ test('restores error successfully', function (): void {
         ]);
 
     $response = $this->tool->handle(new Request([
+        'type' => 'php',
         'error_id' => '123',
     ]));
 
@@ -63,6 +64,7 @@ test('normalizes error ID by stripping err_ prefix', function (): void {
         ]);
 
     $this->tool->handle(new Request([
+        'type' => 'php',
         'error_id' => 'err_123',
     ]));
 });
@@ -102,7 +104,7 @@ test('normalizes js type to javascript', function (): void {
 test('returns error when error_id is missing', function (): void {
     $this->mockClient->shouldNotReceive('restoreError');
 
-    $response = $this->tool->handle(new Request([]));
+    $response = $this->tool->handle(new Request(['type' => 'php']));
 
     expect((string) $response->content())->toContain('Error ID is required');
 });
@@ -111,6 +113,7 @@ test('returns error when error_id is empty', function (): void {
     $this->mockClient->shouldNotReceive('restoreError');
 
     $response = $this->tool->handle(new Request([
+        'type' => 'php',
         'error_id' => '',
     ]));
 
@@ -127,6 +130,7 @@ test('returns error for 404 status', function (): void {
         ]);
 
     $response = $this->tool->handle(new Request([
+        'type' => 'php',
         'error_id' => '999',
     ]));
 
@@ -143,6 +147,7 @@ test('returns error for 403 status', function (): void {
         ]);
 
     $response = $this->tool->handle(new Request([
+        'type' => 'php',
         'error_id' => '123',
     ]));
 
@@ -159,6 +164,7 @@ test('returns error for 422 validation status', function (): void {
         ]);
 
     $response = $this->tool->handle(new Request([
+        'type' => 'php',
         'error_id' => '123',
     ]));
 
@@ -175,6 +181,7 @@ test('returns generic error for other failures', function (): void {
         ]);
 
     $response = $this->tool->handle(new Request([
+        'type' => 'php',
         'error_id' => '123',
     ]));
 
@@ -206,7 +213,7 @@ test('formats response with all error state fields', function (): void {
             ],
         ]);
 
-    $response = $this->tool->handle(new Request(['error_id' => '456']));
+    $response = $this->tool->handle(new Request(['type' => 'php', 'error_id' => '456']));
     $text = (string) $response->content();
 
     expect($text)
@@ -229,7 +236,7 @@ test('handles missing fields with defaults', function (): void {
             'data' => [],
         ]);
 
-    $response = $this->tool->handle(new Request(['error_id' => '123']));
+    $response = $this->tool->handle(new Request(['type' => 'php', 'error_id' => '123']));
     $text = (string) $response->content();
 
     expect($text)
@@ -257,5 +264,5 @@ test('defaults to php type when not specified', function (): void {
             'data' => ['error' => [], 'activity' => []],
         ]);
 
-    $this->tool->handle(new Request(['error_id' => '123']));
+    $this->tool->handle(new Request(['type' => 'php', 'error_id' => '123']));
 });

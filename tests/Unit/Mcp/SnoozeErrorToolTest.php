@@ -40,6 +40,7 @@ test('snoozes error with duration successfully', function (): void {
         ]);
 
     $response = $this->tool->handle(new Request([
+        'type' => 'php',
         'error_id' => '123',
         'duration' => '24h',
     ]));
@@ -71,6 +72,7 @@ test('snoozes error with until datetime successfully', function (): void {
         ]);
 
     $response = $this->tool->handle(new Request([
+        'type' => 'php',
         'error_id' => '123',
         'until' => $futureDate,
     ]));
@@ -91,6 +93,7 @@ test('until takes precedence over duration when both provided', function (): voi
         ]);
 
     $this->tool->handle(new Request([
+        'type' => 'php',
         'error_id' => '123',
         'duration' => '24h',
         'until' => $futureDate,
@@ -108,6 +111,7 @@ test('normalizes error ID by stripping err_ prefix', function (): void {
         ]);
 
     $this->tool->handle(new Request([
+        'type' => 'php',
         'error_id' => 'err_123',
         'duration' => '1h',
     ]));
@@ -124,6 +128,7 @@ test('passes javascript type correctly', function (): void {
         ]);
 
     $this->tool->handle(new Request([
+        'type' => 'php',
         'error_id' => '123',
         'duration' => '1h',
         'type' => 'javascript',
@@ -141,6 +146,7 @@ test('normalizes js type to javascript', function (): void {
         ]);
 
     $this->tool->handle(new Request([
+        'type' => 'php',
         'error_id' => '123',
         'duration' => '1h',
         'type' => 'js',
@@ -151,6 +157,7 @@ test('returns error when error_id is missing', function (): void {
     $this->mockClient->shouldNotReceive('snoozeError');
 
     $response = $this->tool->handle(new Request([
+        'type' => 'php',
         'duration' => '24h',
     ]));
 
@@ -161,6 +168,7 @@ test('returns error when error_id is empty', function (): void {
     $this->mockClient->shouldNotReceive('snoozeError');
 
     $response = $this->tool->handle(new Request([
+        'type' => 'php',
         'error_id' => '',
         'duration' => '24h',
     ]));
@@ -172,6 +180,7 @@ test('returns error when neither duration nor until is provided', function (): v
     $this->mockClient->shouldNotReceive('snoozeError');
 
     $response = $this->tool->handle(new Request([
+        'type' => 'php',
         'error_id' => '123',
     ]));
 
@@ -182,6 +191,7 @@ test('returns error for invalid duration', function (): void {
     $this->mockClient->shouldNotReceive('snoozeError');
 
     $response = $this->tool->handle(new Request([
+        'type' => 'php',
         'error_id' => '123',
         'duration' => '999h',
     ]));
@@ -201,6 +211,7 @@ test('accepts all valid durations', function (string $duration): void {
         ]);
 
     $response = $this->tool->handle(new Request([
+        'type' => 'php',
         'error_id' => '123',
         'duration' => $duration,
     ]));
@@ -212,6 +223,7 @@ test('returns error for invalid datetime format', function (): void {
     $this->mockClient->shouldNotReceive('snoozeError');
 
     $response = $this->tool->handle(new Request([
+        'type' => 'php',
         'error_id' => '123',
         'until' => 'not-a-date',
     ]));
@@ -223,6 +235,7 @@ test('returns error for past datetime', function (): void {
     $this->mockClient->shouldNotReceive('snoozeError');
 
     $response = $this->tool->handle(new Request([
+        'type' => 'php',
         'error_id' => '123',
         'until' => '2020-01-01T00:00:00+00:00',
     ]));
@@ -240,6 +253,7 @@ test('accepts valid ISO 8601 datetime formats', function (string $datetime): voi
         ]);
 
     $response = $this->tool->handle(new Request([
+        'type' => 'php',
         'error_id' => '123',
         'until' => $datetime,
     ]));
@@ -261,6 +275,7 @@ test('returns error for 404 status', function (): void {
         ]);
 
     $response = $this->tool->handle(new Request([
+        'type' => 'php',
         'error_id' => '999',
         'duration' => '24h',
     ]));
@@ -278,6 +293,7 @@ test('returns error for 403 status', function (): void {
         ]);
 
     $response = $this->tool->handle(new Request([
+        'type' => 'php',
         'error_id' => '123',
         'duration' => '24h',
     ]));
@@ -295,6 +311,7 @@ test('returns error for 422 validation status', function (): void {
         ]);
 
     $response = $this->tool->handle(new Request([
+        'type' => 'php',
         'error_id' => '123',
         'duration' => '24h',
     ]));
@@ -312,6 +329,7 @@ test('returns generic error for other failures', function (): void {
         ]);
 
     $response = $this->tool->handle(new Request([
+        'type' => 'php',
         'error_id' => '123',
         'duration' => '24h',
     ]));

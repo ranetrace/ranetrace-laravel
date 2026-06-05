@@ -9,11 +9,14 @@ use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
 use Laravel\Mcp\Server\Tool;
 use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
+use Ranetrace\Laravel\Mcp\Tools\Concerns\NormalizesIds;
 use Ranetrace\Laravel\Services\RanetraceApiClient;
 
 #[IsReadOnly]
 class GetErrorTool extends Tool
 {
+    use NormalizesIds;
+
     /**
      * The tool's description.
      */
@@ -30,8 +33,16 @@ class GetErrorTool extends Tool
     {
         $errorId = $request->get('error_id');
 
-        if (empty($errorId)) {
+        if ($errorId === null || $errorId === '') {
             return Response::error('Error ID is required.');
+        }
+
+        // get-error queries the PHP error store only (the backend GET endpoint is
+        // PHP-only and strips an err_ prefix itself). A jserr_ (JavaScript) id
+        // would otherwise collide with a same-numbered PHP error and silently
+        // return the wrong one, so reject it with a clear pointer instead.
+        if ($this->errorTypeFromPrefix($errorId) === 'javascript') {
+            return Response::error('get-error retrieves PHP errors only. For a JavaScript error, use search-errors (type: "javascript") or get-error-activity.');
         }
 
         $result = $this->client->getError($errorId);
@@ -64,7 +75,7 @@ class GetErrorTool extends Tool
     {
         return [
             'error_id' => $schema->string()
-                ->description('The unique identifier of the error to retrieve.')
+                ->description('The PHP error ID (with or without err_ prefix). JavaScript (jserr_) errors are not available here.')
                 ->required(),
         ];
     }

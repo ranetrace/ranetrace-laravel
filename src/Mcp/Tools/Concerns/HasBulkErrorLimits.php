@@ -14,6 +14,8 @@ use Laravel\Mcp\Response;
  */
 trait HasBulkErrorLimits
 {
+    use NormalizesErrorType;
+
     protected const int MAX_BULK_ERRORS = 50;
 
     /**
@@ -27,19 +29,6 @@ trait HasBulkErrorLimits
      * "reopened". Used in the limit-exceeded validation message.
      */
     abstract protected function bulkActionPastVerb(): string;
-
-    /**
-     * Normalize the error type parameter. Accepts the "js" alias for
-     * "javascript"; null defaults to "php".
-     */
-    protected function normalizeType(?string $type): string
-    {
-        if ($type === null) {
-            return 'php';
-        }
-
-        return $type === 'js' ? 'javascript' : $type;
-    }
 
     /**
      * Validate the error IDs array. Returns the first error message found, or
@@ -68,6 +57,40 @@ trait HasBulkErrorLimits
         }
 
         return null;
+    }
+
+    /**
+     * Validate a bulk request: id-array structure, a required `type`, and that
+     * every id's prefix matches that single type (php and js errors can't be
+     * mixed in one call — they live in separate tables). Returns the stripped
+     * ids + canonical type on success, or a user-facing error message.
+     *
+     * @return array{ok: bool, error: ?string, ids: array<int, string>, type: ?string}
+     */
+    protected function resolveBulkErrorContext(mixed $rawIds, ?string $rawType): array
+    {
+        $structureError = $this->validateErrorIds($rawIds);
+        if ($structureError !== null) {
+            return ['ok' => false, 'error' => $structureError, 'ids' => [], 'type' => null];
+        }
+
+        if ($rawType === null || $rawType === '') {
+            return ['ok' => false, 'error' => 'The "type" parameter is required: "php" or "javascript" (use "js" for javascript).', 'ids' => [], 'type' => null];
+        }
+
+        $type = $this->normalizeType($rawType);
+
+        /** @var array<int, string> $rawIds (validateErrorIds guaranteed a non-empty string array) */
+        $ids = [];
+        foreach ($rawIds as $rawId) {
+            $prefixType = $this->errorTypeFromPrefix($rawId);
+            if ($prefixType !== null && $prefixType !== $type) {
+                return ['ok' => false, 'error' => "Error ID '{$rawId}' implies type '{$prefixType}', but type '{$type}' was given. All ids in one bulk call must match the single type.", 'ids' => [], 'type' => null];
+            }
+            $ids[] = (string) $this->normalizeErrorId($rawId);
+        }
+
+        return ['ok' => true, 'error' => null, 'ids' => $ids, 'type' => $type];
     }
 
     /**

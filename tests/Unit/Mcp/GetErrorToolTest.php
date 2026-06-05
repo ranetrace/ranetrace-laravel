@@ -332,3 +332,27 @@ test('handles data directly without error wrapper', function (): void {
         ->toContain('err-direct')
         ->toContain('Direct error data');
 });
+
+test('passes the id through unchanged (the backend GET endpoint strips err_ itself)', function (): void {
+    $this->mockClient->shouldReceive('getError')
+        ->once()
+        ->with('err_123')
+        ->andReturn([
+            'success' => true,
+            'status' => 200,
+            'data' => ['error' => ['id' => 'err_123', 'message' => 'x']],
+        ]);
+
+    $this->tool->handle(new Request(['error_id' => 'err_123']));
+});
+
+test('rejects a JavaScript (jserr_) id since get-error is PHP-only', function (): void {
+    // get-error must not strip jserr_ and silently fetch a colliding PHP error.
+    $this->mockClient->shouldNotReceive('getError');
+
+    $response = $this->tool->handle(new Request(['error_id' => 'jserr_456']));
+
+    expect((string) $response->content())
+        ->toContain('PHP errors only')
+        ->toContain('search-errors');
+});

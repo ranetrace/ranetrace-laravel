@@ -48,6 +48,7 @@ test('gets error activity successfully and returns formatted output', function (
         ]);
 
     $response = $this->tool->handle(new Request([
+        'type' => 'php',
         'error_id' => '123',
     ]));
 
@@ -74,6 +75,7 @@ test('handles empty activity list', function (): void {
         ]);
 
     $response = $this->tool->handle(new Request([
+        'type' => 'php',
         'error_id' => '123',
     ]));
 
@@ -93,6 +95,7 @@ test('normalizes error ID by stripping err_ prefix', function (): void {
         ]);
 
     $this->tool->handle(new Request([
+        'type' => 'php',
         'error_id' => 'err_123',
     ]));
 });
@@ -140,6 +143,7 @@ test('passes limit parameter correctly', function (): void {
         ]);
 
     $this->tool->handle(new Request([
+        'type' => 'php',
         'error_id' => '123',
         'limit' => 10,
     ]));
@@ -156,6 +160,7 @@ test('passes offset parameter correctly', function (): void {
         ]);
 
     $this->tool->handle(new Request([
+        'type' => 'php',
         'error_id' => '123',
         'offset' => 5,
     ]));
@@ -172,6 +177,7 @@ test('clamps limit parameter to valid range', function (): void {
         ]);
 
     $this->tool->handle(new Request([
+        'type' => 'php',
         'error_id' => '123',
         'limit' => 200,
     ]));
@@ -188,6 +194,7 @@ test('ensures minimum limit is 1', function (): void {
         ]);
 
     $this->tool->handle(new Request([
+        'type' => 'php',
         'error_id' => '123',
         'limit' => -5,
     ]));
@@ -204,6 +211,7 @@ test('ensures minimum offset is 0', function (): void {
         ]);
 
     $this->tool->handle(new Request([
+        'type' => 'php',
         'error_id' => '123',
         'offset' => -5,
     ]));
@@ -212,7 +220,7 @@ test('ensures minimum offset is 0', function (): void {
 test('returns error when error_id is missing', function (): void {
     $this->mockClient->shouldNotReceive('getErrorActivity');
 
-    $response = $this->tool->handle(new Request([]));
+    $response = $this->tool->handle(new Request(['type' => 'php']));
 
     expect((string) $response->content())->toContain('Error ID is required');
 });
@@ -221,6 +229,7 @@ test('returns error when error_id is empty', function (): void {
     $this->mockClient->shouldNotReceive('getErrorActivity');
 
     $response = $this->tool->handle(new Request([
+        'type' => 'php',
         'error_id' => '',
     ]));
 
@@ -237,6 +246,7 @@ test('returns error for 404 status', function (): void {
         ]);
 
     $response = $this->tool->handle(new Request([
+        'type' => 'php',
         'error_id' => '999',
     ]));
 
@@ -253,6 +263,7 @@ test('returns error for 403 status', function (): void {
         ]);
 
     $response = $this->tool->handle(new Request([
+        'type' => 'php',
         'error_id' => '123',
     ]));
 
@@ -269,6 +280,7 @@ test('returns generic error for other failures', function (): void {
         ]);
 
     $response = $this->tool->handle(new Request([
+        'type' => 'php',
         'error_id' => '123',
     ]));
 

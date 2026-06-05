@@ -31,12 +31,14 @@ class UnsnoozeErrorTool extends Tool
      */
     public function handle(Request $request): Response
     {
-        $errorId = $this->normalizeErrorId($request->get('error_id'));
-        $type = $this->normalizeType($request->get('type'));
+        $context = $this->resolveErrorContext($request->get('error_id'), $request->get('type'));
 
-        if (empty($errorId)) {
-            return Response::error('Error ID is required.');
+        if (! $context['ok']) {
+            return Response::error($context['error']);
         }
+
+        $errorId = $context['id'];
+        $type = $context['type'];
 
         $result = $this->client->unsnoozeError($errorId, $type);
 
@@ -59,8 +61,9 @@ class UnsnoozeErrorTool extends Tool
                 ->description('The error ID (with or without err_ prefix).')
                 ->required(),
             'type' => $schema->string()
-                ->description('The error type: "php" (default), "javascript", or "js".')
-                ->enum(['php', 'javascript', 'js']),
+                ->description('REQUIRED. The error type — "php" or "javascript" (or "js"). Must match the err_/jserr_ id prefix.')
+                ->enum(['php', 'javascript', 'js'])
+                ->required(),
         ];
     }
 
