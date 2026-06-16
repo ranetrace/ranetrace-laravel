@@ -93,6 +93,15 @@ class Ranetrace
             return;
         }
 
+        // Never capture an exception that Ranetrace itself threw. The host wires
+        // report() into its exception handler, and Laravel's queue worker routes
+        // EVERY job exception through that handler — so without this guard a
+        // transport failure or internal bug in the package would be reported as
+        // one of the customer's application errors and loop back into Ranetrace.
+        if ($this->isInternalException($exception)) {
+            return;
+        }
+
         // Ranetrace must never throw from its capture path. Losing a single
         // error event is acceptable, breaking the host application is not.
         try {
@@ -158,6 +167,19 @@ class Ranetrace
                 'exception' => $e->getMessage(),
             ]);
         }
+    }
+
+    /**
+     * Whether the exception was thrown from inside this package — i.e. it is one
+     * of Ranetrace's own operational failures rather than a host application
+     * error. Detection is by throw-site file only (getFile()), deliberately NOT
+     * by walking the stack trace: the analytics middleware sits in every web
+     * request's call stack, so a trace-based check would misclassify ordinary
+     * host exceptions as internal and silently stop capturing them.
+     */
+    private function isInternalException(Throwable $exception): bool
+    {
+        return str_starts_with($exception->getFile(), __DIR__.DIRECTORY_SEPARATOR);
     }
 
     /**

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Queue;
+use Ranetrace\Laravel\Events\EventTracker;
 use Ranetrace\Laravel\Jobs\HandleErrorJob;
 use Ranetrace\Laravel\Jobs\HandleEventJob;
 use Ranetrace\Laravel\Ranetrace;
@@ -40,6 +41,37 @@ test('report does nothing when no API key is configured', function (): void {
 
 test('report dispatches HandleErrorJob when enabled and configured', function (): void {
     (new Ranetrace)->report(new RuntimeException('boom'));
+
+    Queue::assertPushed(HandleErrorJob::class);
+});
+
+// --- report(): self-origin guard (never capture Ranetrace's own internal errors) ---
+
+test('report ignores an exception thrown from inside the package', function (): void {
+    // An exception whose throw-site is a package file represents one of
+    // Ranetrace's own failures, not a host application error. Capturing it would
+    // report the package's internals as the customer's bug and — via the
+    // reportable() hook on a queued job exception — loop back into Ranetrace.
+    try {
+        EventTracker::ensureValidEventName('Invalid Name With Spaces');
+        $internal = null;
+    } catch (Throwable $e) {
+        // $e->getFile() is .../src/Events/EventTracker.php
+        $internal = $e;
+    }
+
+    expect($internal)->toBeInstanceOf(Throwable::class);
+
+    (new Ranetrace)->report($internal);
+
+    Queue::assertNothingPushed();
+});
+
+test('report still captures an exception thrown from host application code', function (): void {
+    // Instantiated here (a stand-in for host code) — its throw-site is outside
+    // the package, so it is captured as a normal application error. Guards the
+    // self-origin check against ever becoming too broad.
+    (new Ranetrace)->report(new RuntimeException('host app boom'));
 
     Queue::assertPushed(HandleErrorJob::class);
 });

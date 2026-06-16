@@ -160,7 +160,7 @@ test('empty buffer does not make api calls', function (): void {
     Http::assertNothingSent();
 });
 
-test('failed batch items are re-added to buffer for retry', function (): void {
+test('a failed batch re-buffers items and retries WITHOUT throwing into the host app', function (): void {
     // Override the Http fake from beforeEach with a failing response
     Http::swap(new Illuminate\Http\Client\Factory);
     Http::fake([
@@ -179,22 +179,38 @@ test('failed batch items are re-added to buffer for retry', function (): void {
 
     expect($buffer->count('events'))->toBe(3);
 
-    // Try to process batch (will fail and re-add to buffer)
+    $pauseManager = app(RanetracePauseManager::class);
     $batchJob = new SendBatchToRanetraceJob('events', 10);
 
-    $exceptionThrown = false;
-    try {
-        $batchJob->handle(
-            app(RanetraceApiClient::class),
-            $buffer,
-            app(RanetracePauseManager::class)
-        );
-    } catch (Throwable $e) {
-        $exceptionThrown = true;
-    }
+    // A queued job that throws is reported through the host's exception
+    // handler (logs/failed_jobs/error tracker). On a transient failure the job
+    // must retry via release() instead — so handle() must NOT throw.
+    $batchJob->handle(app(RanetraceApiClient::class), $buffer, $pauseManager);
 
-    expect($exceptionThrown)->toBeTrue('Exception should be thrown when API fails');
+    // Items are back in the buffer, and (since attempts remain) the feature is
+    // released for retry, not paused.
+    expect($buffer->count('events'))->toBe(3)
+        ->and($pauseManager->isFeaturePaused('events'))->toBeFalse();
+});
 
-    // Items should be back in buffer for retry
-    expect($buffer->count('events'))->toBe(3);
+test('a transient failure that exhausts every retry gives up by pausing the feature, still WITHOUT throwing', function (): void {
+    Http::swap(new Illuminate\Http\Client\Factory);
+    Http::fake([
+        '*' => Http::response(['message' => 'Server error'], 500),
+    ]);
+
+    $buffer = app(RanetraceBatchBuffer::class);
+    $buffer->addItem('events', ['event_name' => 'event1']);
+
+    $pauseManager = app(RanetracePauseManager::class);
+
+    // Simulate the final attempt of the retry envelope (attempts() == tries).
+    $batchJob = Mockery::mock(SendBatchToRanetraceJob::class.'[attempts]', ['events', 10]);
+    $batchJob->shouldReceive('attempts')->andReturn(4);
+
+    $batchJob->handle(app(RanetraceApiClient::class), $buffer, $pauseManager);
+
+    // Items preserved for a later drain, feature paused, nothing thrown.
+    expect($buffer->count('events'))->toBe(1)
+        ->and($pauseManager->isFeaturePaused('events'))->toBeTrue();
 });

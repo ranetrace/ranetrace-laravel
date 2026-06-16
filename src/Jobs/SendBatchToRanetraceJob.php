@@ -16,7 +16,6 @@ use Ranetrace\Laravel\Services\RanetraceApiClient;
 use Ranetrace\Laravel\Services\RanetraceBatchBuffer;
 use Ranetrace\Laravel\Services\RanetracePauseManager;
 use Ranetrace\Laravel\Support\InternalLogger;
-use RuntimeException;
 use Throwable;
 
 class SendBatchToRanetraceJob implements ShouldBeUnique, ShouldQueue
@@ -114,6 +113,11 @@ class SendBatchToRanetraceJob implements ShouldBeUnique, ShouldQueue
 
     /**
      * Handle job failure after all retries exhausted.
+     *
+     * The controlled failure paths (network, 5xx, unexpected status) retry via
+     * release() and give up gracefully without throwing, so they never reach
+     * here. This only fires for an unexpected exception (e.g. an unknown batch
+     * type) — log it internally and pause the feature for 15 minutes.
      */
     public function failed(Throwable $exception): void
     {
@@ -122,9 +126,8 @@ class SendBatchToRanetraceJob implements ShouldBeUnique, ShouldQueue
             'exception' => $exception->getMessage(),
         ]);
 
-        // Set feature pause for 15 minutes after final retry
         $pauseManager = app(RanetracePauseManager::class);
-        $pauseManager->setFeaturePause($this->type, 900, '500');
+        $pauseManager->setFeaturePause($this->type, 900, 'exception');
     }
 
     /**
@@ -145,7 +148,10 @@ class SendBatchToRanetraceJob implements ShouldBeUnique, ShouldQueue
         $status = $result['status'] ?? 0;
         $data = $result['data'] ?? [];
 
-        // Network-level errors (status 0)
+        // Network-level errors (status 0). The transport failure (e.g. a cURL
+        // timeout) was already caught inside the API client; retry it WITHOUT
+        // throwing so the raw cURL message never escapes into the host
+        // application (see retryWithBackoffOrPause()).
         if ($status === 0) {
             $this->logError('Network error during batch send', [
                 'type' => $this->type,
@@ -153,10 +159,9 @@ class SendBatchToRanetraceJob implements ShouldBeUnique, ShouldQueue
                 'items_count' => count($this->items),
             ]);
 
-            // Re-add all items and rethrow to trigger retry
-            $this->reAddAllItemsToBuffer($buffer);
+            $this->retryWithBackoffOrPause($buffer, $pauseManager, 'network');
 
-            throw new RuntimeException($result['error'] ?? 'Network error');
+            return;
         }
 
         // Handle based on HTTP status code
@@ -167,8 +172,8 @@ class SendBatchToRanetraceJob implements ShouldBeUnique, ShouldQueue
             413 => $this->handle413Response($pauseManager, $data),
             422 => $this->handle422Response($pauseManager, $data),
             429 => $this->handle429Response($buffer, $pauseManager, $result['headers'] ?? []),
-            500 => $this->handle500Response($buffer),
-            default => $this->handleUnknownResponse($status, $buffer),
+            500 => $this->handle500Response($buffer, $pauseManager),
+            default => $this->handleUnknownResponse($status, $buffer, $pauseManager),
         };
     }
 
@@ -311,7 +316,7 @@ class SendBatchToRanetraceJob implements ShouldBeUnique, ShouldQueue
     /**
      * Handle 500 Internal Server Error response.
      */
-    protected function handle500Response(RanetraceBatchBuffer $buffer): void
+    protected function handle500Response(RanetraceBatchBuffer $buffer, RanetracePauseManager $pauseManager): void
     {
         $this->logError('Server error during batch processing', [
             'type' => $this->type,
@@ -319,16 +324,13 @@ class SendBatchToRanetraceJob implements ShouldBeUnique, ShouldQueue
             'attempt' => $this->attempts(),
         ]);
 
-        // Re-add all items and rethrow to trigger retry
-        $this->reAddAllItemsToBuffer($buffer);
-
-        throw new RuntimeException('Server returned 500 error');
+        $this->retryWithBackoffOrPause($buffer, $pauseManager, '500');
     }
 
     /**
      * Handle unknown status code response.
      */
-    protected function handleUnknownResponse(int $status, RanetraceBatchBuffer $buffer): void
+    protected function handleUnknownResponse(int $status, RanetraceBatchBuffer $buffer, RanetracePauseManager $pauseManager): void
     {
         $this->logError('Unexpected API response status', [
             'type' => $this->type,
@@ -336,10 +338,45 @@ class SendBatchToRanetraceJob implements ShouldBeUnique, ShouldQueue
             'items_count' => count($this->items),
         ]);
 
-        // Re-add all items and rethrow to trigger retry
+        $this->retryWithBackoffOrPause($buffer, $pauseManager, (string) $status);
+    }
+
+    /**
+     * Retry a transient send failure (network, 5xx, or an unexpected status)
+     * with backoff, or — once the retry envelope is exhausted — give up by
+     * pausing the feature for 15 minutes.
+     *
+     * Retries are driven by release(), NOT by throwing. An exception that
+     * escapes a queued job is reported through the HOST application's exception
+     * handler — its logs, its failed_jobs table, and any error tracker — and is
+     * additionally re-captured by Ranetrace's own reportable() hook, leaking an
+     * internal transport failure into the customer's application. release()
+     * re-queues the job with the same backoff schedule but surfaces nothing.
+     */
+    protected function retryWithBackoffOrPause(RanetraceBatchBuffer $buffer, RanetracePauseManager $pauseManager, string $reason): void
+    {
         $this->reAddAllItemsToBuffer($buffer);
 
-        throw new RuntimeException("Unexpected status code: {$status}");
+        $backoff = $this->backoff();
+
+        // attempts() is 1-based. While attempts remain, re-queue for the next
+        // one; the delay mirrors the backoff() schedule (60/300/900s).
+        if ($this->attempts() < $this->tries) {
+            $this->release($backoff[$this->attempts() - 1] ?? (int) end($backoff));
+
+            return;
+        }
+
+        // Retry envelope exhausted — pause the feature so the worker stops
+        // hammering a degraded endpoint. The items stay buffered and drain on a
+        // later run once the pause lifts. Return without throwing.
+        $this->logError('Batch send abandoned after exhausting retries', [
+            'type' => $this->type,
+            'reason' => $reason,
+            'attempts' => $this->attempts(),
+        ]);
+
+        $pauseManager->setFeaturePause($this->type, 900, $reason);
     }
 
     /**
