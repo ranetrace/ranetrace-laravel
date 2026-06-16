@@ -6,9 +6,9 @@ parameters:
         - src
     level: 5
     # Some inline @phpstan-ignore hints are version-conditional: larastan narrows
-    # the host framework's stubs differently across Laravel 11/12/13, so an ignore
+    # the host framework's stubs differently across Laravel 12/13, so an ignore
     # that matches on one version is unmatched on another. Don't fail the build on
-    # an unmatched ignore (the CI matrix runs all three versions).
+    # an unmatched ignore (the CI matrix runs both versions).
     reportUnmatchedIgnoredErrors: false
     ignoreErrors:
         # Cache::store() is typed as the Repository contract, which does not

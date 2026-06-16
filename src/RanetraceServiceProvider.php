@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Ranetrace\Laravel;
 
+use Illuminate\Contracts\Auth\Access\Gate;
+use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\ServiceProvider;
 use Laravel\Mcp\Facades\Mcp;
@@ -18,7 +20,9 @@ use Ranetrace\Laravel\Commands\RanetraceStatusCommand;
 use Ranetrace\Laravel\Commands\RanetraceTestCommand;
 use Ranetrace\Laravel\Commands\RanetraceWorkCommand;
 use Ranetrace\Laravel\Events\EventTracker;
+use Ranetrace\Laravel\Http\Controllers\AssetController;
 use Ranetrace\Laravel\Http\Controllers\JavaScriptErrorController;
+use Ranetrace\Laravel\Http\Middleware\Authorize;
 use Ranetrace\Laravel\Logging\RanetraceLogDriver;
 use Ranetrace\Laravel\Mcp\RanetraceServer;
 
@@ -90,6 +94,81 @@ class RanetraceServiceProvider extends ServiceProvider
 
         // Register MCP server
         $this->registerMcpServer();
+
+        // Register the in-app diagnostics dashboard
+        $this->registerDashboard();
+    }
+
+    /**
+     * Register the diagnostics dashboard route group + its authorization gate.
+     *
+     * Gated on `ranetrace.dashboard.enabled` independently of the master
+     * `ranetrace.enabled` capture switch, so an admin can still open the
+     * dashboard to see *why* capture is disabled or misconfigured. Disabling it
+     * removes the routes entirely (zero attack surface).
+     */
+    protected function registerDashboard(): void
+    {
+        if (! config('ranetrace.dashboard.enabled', true)) {
+            return;
+        }
+
+        $this->registerDashboardGate();
+
+        // Data routes — behind the gate.
+        $this->app['router']->group($this->dashboardRouteConfiguration(), function (): void {
+            $this->loadRoutesFrom(__DIR__.'/../routes/dashboard.php');
+        });
+
+        // Asset routes — same path/domain but NOT gated (no secrets; keeps the
+        // page CSP-clean). Long-cached, content-hash busted by the shell.
+        $this->app['router']->group([
+            'domain' => config('ranetrace.dashboard.domain'),
+            'prefix' => config('ranetrace.dashboard.path', 'ranetrace'),
+        ], function ($router): void {
+            $router->get('ranetrace.css', [AssetController::class, 'css'])->name('ranetrace.assets.css');
+            $router->get('ranetrace.js', [AssetController::class, 'js'])->name('ranetrace.assets.js');
+        });
+    }
+
+    /**
+     * Define the default `viewRanetrace` gate (local-only) unless the host has
+     * already defined one.
+     *
+     * Mirrors Pulse: registered after the Gate resolves so a host override in
+     * AppServiceProvider::boot() always wins regardless of provider boot order.
+     * The closure takes a nullable user and explicitly denies in every
+     * non-local environment — it must never fall through to allow.
+     */
+    protected function registerDashboardGate(): void
+    {
+        $this->callAfterResolving(Gate::class, function (Gate $gate): void {
+            if (! $gate->has('viewRanetrace')) {
+                $gate->define(
+                    'viewRanetrace',
+                    fn (?Authenticatable $user = null): bool => $this->app->environment('local')
+                );
+            }
+        });
+    }
+
+    /**
+     * Build the dashboard route group configuration from config, always
+     * appending the package's own Authorize middleware (never trusting the
+     * host's `web` group to include it).
+     *
+     * @return array<string, mixed>
+     */
+    protected function dashboardRouteConfiguration(): array
+    {
+        return [
+            'domain' => config('ranetrace.dashboard.domain'),
+            'prefix' => config('ranetrace.dashboard.path', 'ranetrace'),
+            'middleware' => array_merge(
+                (array) config('ranetrace.dashboard.middleware', ['web']),
+                [Authorize::class]
+            ),
+        ];
     }
 
     /**

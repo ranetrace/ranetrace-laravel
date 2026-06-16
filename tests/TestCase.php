@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Ranetrace\Laravel\Tests;
 
 use Orchestra\Testbench\TestCase as Orchestra;
@@ -8,6 +10,16 @@ use Ranetrace\Laravel\RanetraceServiceProvider;
 
 class TestCase extends Orchestra
 {
+    /**
+     * Per-test config overrides applied last in getEnvironmentSetUp(), so they
+     * win over the defaults below. Set these then call reloadApplication() to
+     * exercise behavior that the service provider decides at boot time (e.g.
+     * which routes it registers based on config).
+     *
+     * @var array<string, mixed>
+     */
+    public array $configOverrides = [];
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -52,6 +64,11 @@ class TestCase extends Orchestra
         $app['config']->set('ranetrace.javascript_errors.sample_rate', 1.0);
         $app['config']->set('ranetrace.website_analytics.enabled', true);
         $app['config']->set('ranetrace.website_analytics.queue', 'default');
+
+        // Apply per-test overrides last so they take precedence.
+        foreach ($this->configOverrides as $key => $value) {
+            $app['config']->set($key, $value);
+        }
     }
 
     protected function defineRoutes($router): void

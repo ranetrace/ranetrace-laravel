@@ -129,4 +129,27 @@ return [
     'mcp' => [
         'enabled' => env('RANETRACE_MCP_ENABLED', true),
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Diagnostics Dashboard
+    |--------------------------------------------------------------------------
+    |
+    | In-app health/diagnostics surface for this Ranetrace installation, in the
+    | spirit of Horizon/Pulse. Registered independently of the master `enabled`
+    | switch above so an admin can still open it to see *why* capture is off.
+    |
+    | Access is guarded solely by the `viewRanetrace` gate, which defaults to
+    | local-only (see RanetraceServiceProvider). Define the gate in your
+    | AppServiceProvider::boot() to grant access in other environments.
+    |
+    */
+    'dashboard' => [
+        'enabled' => env('RANETRACE_DASHBOARD_ENABLED', true),
+        'path' => env('RANETRACE_DASHBOARD_PATH', 'ranetrace'),
+        'domain' => env('RANETRACE_DASHBOARD_DOMAIN'), // null = current domain
+        'middleware' => ['web'], // Authorize is always appended in code
+        'refresh' => env('RANETRACE_DASHBOARD_REFRESH', 10), // auto-refresh seconds (0 = off)
+        'hosted_url' => env('RANETRACE_DASHBOARD_HOSTED_URL', 'https://ranetrace.com'), // link out to captured data
+    ],
 ];

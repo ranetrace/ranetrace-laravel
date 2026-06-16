@@ -24,34 +24,28 @@ class RanetracePauseClearCommand extends Command
         $feature = $this->option('feature');
         $all = $this->option('all');
 
-        // Validation: at least one option must be provided
-        if (! $global && ! $feature && ! $all) {
-            $this->error('You must specify at least one option: --global, --feature, or --all');
-            $this->newLine();
-            $this->line('Examples:');
-            $this->line('  php artisan ranetrace:pause-clear --global');
-            $this->line('  php artisan ranetrace:pause-clear --feature=errors');
-            $this->line('  php artisan ranetrace:pause-clear --all');
-
-            return self::FAILURE;
-        }
-
-        // Clear all pauses
+        // Dispatch to the requested clear, in priority order.
         if ($all) {
             return $this->clearAllPauses($pauseManager);
         }
 
-        // Clear global pause
         if ($global) {
             return $this->clearGlobalPause($pauseManager);
         }
 
-        // Clear feature pause
         if ($feature) {
             return $this->clearFeaturePause($pauseManager, $feature);
         }
 
-        return self::SUCCESS;
+        // No option provided.
+        $this->error('You must specify at least one option: --global, --feature, or --all');
+        $this->newLine();
+        $this->line('Examples:');
+        $this->line('  php artisan ranetrace:pause-clear --global');
+        $this->line('  php artisan ranetrace:pause-clear --feature=errors');
+        $this->line('  php artisan ranetrace:pause-clear --all');
+
+        return self::FAILURE;
     }
 
     /**

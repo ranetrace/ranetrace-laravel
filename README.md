@@ -36,7 +36,7 @@ php artisan vendor:publish --tag="ranetrace-laravel-config"
 Captured items (errors, events, logs, page visits, JS errors) are buffered locally and sent to Ranetrace in batches by the `ranetrace:work` artisan command. Add it to your scheduler:
 
 ```php
-// In your scheduler (routes/console.php on Laravel 11+, or app/Console/Kernel.php on Laravel 10)
+// In your scheduler (routes/console.php)
 Schedule::command('ranetrace:work')
     ->everyMinute()
     ->withoutOverlapping()
@@ -189,13 +189,47 @@ See the [Ranetrace website](https://ranetrace.com) for dashboard setup and confi
 
 ## Health Check
 
-At any time, see what the package is doing:
+The package gives you two ways to see what it's doing locally: a CLI command and an in-app dashboard. Both read the same underlying diagnostics, so they can never disagree.
+
+### Status command
+
+At any time, from the terminal:
 
 ```bash
 php artisan ranetrace:status
 ```
 
-Reports overall health, configured features, buffer sizes, pause states (if the API has rate-limited you), and recent failed jobs — both as formatted output and via `--json` for monitoring integrations.
+Reports overall health, configured features, buffer sizes, pause states (if the API has rate-limited you), and recent failed jobs — both as formatted output and via `--json` for monitoring integrations. When the dashboard is enabled, it also prints a one-line link to it.
+
+### Diagnostics dashboard
+
+An in-app health page at `/ranetrace`, in the spirit of Laravel Horizon and Pulse. It shows whether *your* installation is correctly wired up and data is flowing: a configuration snapshot, misconfiguration checks (missing API key, volatile cache driver, stalled worker, near-capacity buffers, and more), pipeline buffers, pauses, failed jobs, a tail of the internal log, and the routes/middleware the package actually registered. It links out to the hosted Ranetrace dashboard for the captured data itself.
+
+It is read-only, makes no outbound calls, and degrades gracefully — a failing cache or database renders a degraded panel rather than throwing into your app.
+
+**Access is local-only by default.** Exactly like Horizon, Pulse, and Telescope, the dashboard is not reachable outside the `local` environment until you explicitly grant access. Define the `viewRanetrace` gate in `app/Providers/AppServiceProvider.php`:
+
+```php
+use Illuminate\Support\Facades\Gate;
+
+Gate::define('viewRanetrace', function ($user) {
+    return in_array($user->email, [
+        'admin@example.com',
+    ]);
+});
+```
+
+The dashboard is configurable in `config/ranetrace.php`, all overridable via `.env`:
+
+```env
+RANETRACE_DASHBOARD_ENABLED=true            # set false to remove the routes entirely
+RANETRACE_DASHBOARD_PATH=ranetrace          # the URL path
+RANETRACE_DASHBOARD_REFRESH=10              # auto-refresh interval in seconds (0 = off)
+RANETRACE_DASHBOARD_DOMAIN=                 # optional: serve on a dedicated domain
+RANETRACE_DASHBOARD_HOSTED_URL=https://ranetrace.com  # "View captured data" link target
+```
+
+The page auto-refreshes its panels every `RANETRACE_DASHBOARD_REFRESH` seconds without a full reload. It is registered independently of the master `RANETRACE_ENABLED` switch, so if capture is disabled or misconfigured you can still open the dashboard to see why.
 
 ## Testing
 

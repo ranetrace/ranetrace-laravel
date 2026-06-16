@@ -1,6 +1,6 @@
 @if(config('ranetrace.javascript_errors.enabled'))
 @php($ranetraceNonce = \Illuminate\Support\Facades\Vite::cspNonce())
-<script@if($ranetraceNonce) nonce="{{ $ranetraceNonce }}"@endif>
+<script @if($ranetraceNonce) nonce="{{ $ranetraceNonce }}" @endif>
 /**
  * Ranetrace JavaScript Error Tracking
  * Version: 1.0.0

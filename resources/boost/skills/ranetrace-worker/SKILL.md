@@ -25,21 +25,13 @@ php artisan ranetrace:work --type=javascript_errors
 
 ## Scheduling
 
-The command must be scheduled in the application's `routes/console.php` or `app/Console/Kernel.php`. A one-minute interval is recommended:
+The command must be scheduled in the application's `routes/console.php`. A one-minute interval is recommended:
 
 ```php
-// routes/console.php (Laravel 11+)
+// routes/console.php
 use Illuminate\Support\Facades\Schedule;
 
 Schedule::command('ranetrace:work')->everyMinute()->withoutOverlapping()->runInBackground();
-```
-
-```php
-// app/Console/Kernel.php (Laravel 10 and earlier)
-protected function schedule(Schedule $schedule): void
-{
-    $schedule->command('ranetrace:work')->everyMinute()->withoutOverlapping()->runInBackground();
-}
 ```
 
 A queue worker must also be running to process the dispatched batch jobs. [Laravel Horizon](https://laravel.com/docs/horizon) is recommended for managing queue workers in production:
