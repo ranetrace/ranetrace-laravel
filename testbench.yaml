@@ -1,3 +1,6 @@
+providers:
+  - Ranetrace\Laravel\RanetraceServiceProvider
+
 env:
   CACHE_STORE: array
   CACHE_DRIVER: array
