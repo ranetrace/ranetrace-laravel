@@ -9,6 +9,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Ranetrace\Laravel\Services\RanetraceBatchBuffer;
 use Ranetrace\Laravel\Support\InternalLogger;
 use Throwable;
 
@@ -18,6 +19,20 @@ use Throwable;
 abstract class BaseRanetraceJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+    /**
+     * Seconds to wait before re-attempting a capture job that could not acquire
+     * the buffer lock, giving the contended lock time to clear.
+     */
+    protected const int BUFFER_RETRY_DELAY = 5;
+
+    /**
+     * Total attempts for a capture job. Lets bufferOrRelease() re-queue an item
+     * a couple of times when the buffer lock is briefly contended, instead of
+     * dropping it on the first miss. Bounded so a permanently stuck lock cannot
+     * loop a job forever.
+     */
+    public int $tries = 3;
 
     /**
      * Get the config path for this job type.
@@ -41,6 +56,31 @@ abstract class BaseRanetraceJob implements ShouldQueue
             'job_class' => static::class,
             'exception' => $exception->getMessage(),
         ]);
+    }
+
+    /**
+     * Buffer a captured item, re-queuing this job if the buffer lock could not
+     * be acquired within its wait window.
+     *
+     * The buffer already blocks briefly for the lock, so a miss here is rare
+     * (effectively only a stuck/crashed holder). Re-queuing rather than dropping
+     * keeps a captured item from being lost to transient contention. The attempt
+     * cap ($tries) bounds the retries so a permanently stuck lock cannot loop the
+     * job forever — at which point the item is dropped, matching the package's
+     * "lose data before crashing the host" contract. release() never throws into
+     * the host (and is a no-op for inline/sync dispatch).
+     *
+     * @param  array<string, mixed>  $payload
+     */
+    protected function bufferOrRelease(RanetraceBatchBuffer $buffer, string $type, array $payload): void
+    {
+        if ($buffer->addItem($type, $payload)) {
+            return;
+        }
+
+        if ($this->attempts() < $this->tries) {
+            $this->release(self::BUFFER_RETRY_DELAY);
+        }
     }
 
     /**

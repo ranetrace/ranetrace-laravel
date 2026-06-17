@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Ranetrace\Laravel\Services;
 
+use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use Psr\SimpleCache\InvalidArgumentException;
@@ -25,18 +26,29 @@ class RanetraceBatchBuffer
 
     protected int $ttl;
 
+    /**
+     * Seconds to block waiting for a buffer's cache lock before giving up.
+     * The critical sections are sub-millisecond, so a short wait lets concurrent
+     * writers serialize instead of dropping their item on the first collision.
+     */
+    protected float $lockWait;
+
     public function __construct()
     {
         $this->cacheDriver = config('ranetrace.batch.cache_driver', 'file');
         $this->ttl = config('ranetrace.batch.buffer_ttl', 3600);
+        $this->lockWait = (float) config('ranetrace.batch.lock_wait', 1);
     }
 
     /**
      * Add a single item to the buffer for a specific type.
+     *
+     * @return bool True when the item was buffered, false when the cache lock
+     *              could not be acquired within the wait window (item not added).
      */
-    public function addItem(string $type, array $data): void
+    public function addItem(string $type, array $data): bool
     {
-        $this->addItems($type, [$data]);
+        return $this->addItems($type, [$data]);
     }
 
     /**
@@ -45,50 +57,60 @@ class RanetraceBatchBuffer
      * a failed batch is re-buffered with one get/put instead of N.
      *
      * @param  array<int, array>  $dataItems
+     * @return bool True when the items were buffered, false when the cache lock
+     *              could not be acquired within the wait window (items not added).
      */
-    public function addItems(string $type, array $dataItems): void
+    public function addItems(string $type, array $dataItems): bool
     {
         if (empty($dataItems)) {
-            return;
+            return true;
         }
 
         $cacheKey = $this->getCacheKey($type);
 
-        // Use cache lock to ensure thread-safety
-        $addItemsResult = Cache::store($this->cacheDriver)->lock($cacheKey.':lock', 10)->get(function () use ($type, $cacheKey, $dataItems) {
-            $buffer = Cache::store($this->cacheDriver)->get($cacheKey, []);
+        // Block briefly for the lock so concurrent writers serialize instead of
+        // dropping their item on the first collision. The wait is short (see
+        // $lockWait) because the critical section below is sub-millisecond.
+        try {
+            Cache::store($this->cacheDriver)->lock($cacheKey.':lock', 10)->block($this->lockWait, function () use ($type, $cacheKey, $dataItems) {
+                $buffer = Cache::store($this->cacheDriver)->get($cacheKey, []);
 
-            foreach ($dataItems as $data) {
-                $buffer[] = [
-                    'id' => (string) Str::uuid(),
-                    'data' => $data,
-                    'timestamp' => now()->timestamp,
-                ];
-            }
+                foreach ($dataItems as $data) {
+                    $buffer[] = [
+                        'id' => (string) Str::uuid(),
+                        'data' => $data,
+                        'timestamp' => now()->timestamp,
+                    ];
+                }
 
-            // Check max buffer size
-            $maxSize = $this->getMaxBufferSize();
-            if (count($buffer) > $maxSize) {
-                $dropped = count($buffer) - $maxSize;
+                // Check max buffer size
+                $maxSize = $this->getMaxBufferSize();
+                if (count($buffer) > $maxSize) {
+                    $dropped = count($buffer) - $maxSize;
 
-                // Keep only the most recent items (FIFO — oldest dropped first)
-                $buffer = array_slice($buffer, -$maxSize);
+                    // Keep only the most recent items (FIFO — oldest dropped first)
+                    $buffer = array_slice($buffer, -$maxSize);
 
-                // Buffer overflow drops data by design — log it so the loss is
-                // visible, but only once per overflow cycle (see logOverflowOnce).
-                $this->logOverflowOnce($type, $dropped, $maxSize);
-            }
+                    // Buffer overflow drops data by design — log it so the loss is
+                    // visible, but only once per overflow cycle (see logOverflowOnce).
+                    $this->logOverflowOnce($type, $dropped, $maxSize);
+                }
 
-            Cache::store($this->cacheDriver)->put($cacheKey, $buffer, $this->ttl);
-        });
-
-        if ($addItemsResult === false) {
-            // This means the lock could not be acquired; log a warning
+                Cache::store($this->cacheDriver)->put($cacheKey, $buffer, $this->ttl);
+            });
+        } catch (LockTimeoutException) {
+            // Lock not acquired within the wait window. Callers re-queue rather
+            // than drop (see BaseRanetraceJob::bufferOrRelease) — log so the rare
+            // contention is still visible.
             InternalLogger::warning('Could not acquire cache lock to add items to buffer', [
                 'type' => $type,
                 'count' => count($dataItems),
             ]);
+
+            return false;
         }
+
+        return true;
     }
 
     /**
@@ -103,39 +125,38 @@ class RanetraceBatchBuffer
     {
         $cacheKey = $this->getCacheKey($type);
 
-        $itemsToProcess = Cache::store($this->cacheDriver)->lock($cacheKey.':lock', 10)->get(function () use ($cacheKey, $limit) {
-            $buffer = Cache::store($this->cacheDriver)->get($cacheKey, []);
+        try {
+            $itemsToProcess = Cache::store($this->cacheDriver)->lock($cacheKey.':lock', 10)->block($this->lockWait, function () use ($cacheKey, $limit) {
+                $buffer = Cache::store($this->cacheDriver)->get($cacheKey, []);
 
-            // Get items to process
-            $itemsToProcess = array_slice($buffer, 0, $limit);
+                // Get items to process
+                $itemsToProcess = array_slice($buffer, 0, $limit);
 
-            // Remove these items from the buffer atomically
-            $buffer = array_slice($buffer, $limit);
+                // Remove these items from the buffer atomically
+                $buffer = array_slice($buffer, $limit);
 
-            // A drain that brings the buffer below capacity ends the overflow
-            // cycle — clear the flag so the next overflow is logged again.
-            if (count($buffer) < $this->getMaxBufferSize()) {
-                Cache::store($this->cacheDriver)->forget($cacheKey.':overflow');
-            }
+                // A drain that brings the buffer below capacity ends the overflow
+                // cycle — clear the flag so the next overflow is logged again.
+                if (count($buffer) < $this->getMaxBufferSize()) {
+                    Cache::store($this->cacheDriver)->forget($cacheKey.':overflow');
+                }
 
-            // Update cache
-            if (empty($buffer)) {
-                Cache::store($this->cacheDriver)->forget($cacheKey);
-            } else {
-                Cache::store($this->cacheDriver)->put($cacheKey, $buffer, $this->ttl);
-            }
+                // Update cache
+                if (empty($buffer)) {
+                    Cache::store($this->cacheDriver)->forget($cacheKey);
+                } else {
+                    Cache::store($this->cacheDriver)->put($cacheKey, $buffer, $this->ttl);
+                }
 
-            return $itemsToProcess;
-        });
-
-        if ($itemsToProcess === false) {
-            // This means the lock could not be acquired; return empty array
-            // Can happen sometimes in high concurrency scenarios, but should not happen often
-
-            // Log to internal logger for monitoring
+                return $itemsToProcess;
+            });
+        } catch (LockTimeoutException) {
+            // Lock not acquired within the wait window. Harmless for a drain —
+            // the items stay buffered and the next ranetrace:work run picks them
+            // up. Log for monitoring and return nothing this cycle.
             InternalLogger::warning('Could not acquire cache lock to get items from buffer', ['type' => $type]);
 
-            $itemsToProcess = [];
+            return [];
         }
 
         return $itemsToProcess;

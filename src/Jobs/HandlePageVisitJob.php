@@ -27,7 +27,7 @@ class HandlePageVisitJob extends BaseRanetraceJob
         $payload = $this->filterPayload($this->visitData);
 
         // Add to buffer - batch jobs are dispatched by scheduler/command only
-        $buffer->addItem('page_visits', $payload);
+        $this->bufferOrRelease($buffer, 'page_visits', $payload);
     }
 
     protected function getConfigPath(): string

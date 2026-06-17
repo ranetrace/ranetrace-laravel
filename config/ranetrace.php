@@ -111,6 +111,7 @@ return [
         'cache_driver' => env('RANETRACE_BATCH_CACHE_DRIVER', env('CACHE_STORE', env('CACHE_DRIVER', 'file'))),
         'buffer_ttl' => env('RANETRACE_BATCH_BUFFER_TTL', 3600), // 1 hour
         'max_buffer_size' => env('RANETRACE_BATCH_MAX_BUFFER_SIZE', 5000),
+        'lock_wait' => env('RANETRACE_BATCH_LOCK_WAIT', 1), // seconds to wait for a buffer lock (0 = non-blocking)
     ],
 
     'scrubbing' => [

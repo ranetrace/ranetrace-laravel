@@ -27,7 +27,7 @@ class HandleLogJob extends BaseRanetraceJob
         $payload = $this->filterPayload($this->logData);
 
         // Add to buffer - batch jobs are dispatched by scheduler/command only
-        $buffer->addItem('logs', $payload);
+        $this->bufferOrRelease($buffer, 'logs', $payload);
     }
 
     protected function getConfigPath(): string

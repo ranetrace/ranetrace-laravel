@@ -27,7 +27,7 @@ class HandleEventJob extends BaseRanetraceJob
         $payload = $this->filterPayload($this->eventData);
 
         // Add to buffer - batch jobs are dispatched by scheduler/command only
-        $buffer->addItem('events', $payload);
+        $this->bufferOrRelease($buffer, 'events', $payload);
     }
 
     protected function getConfigPath(): string

@@ -27,7 +27,7 @@ class HandleJavaScriptErrorJob extends BaseRanetraceJob
         $payload = $this->filterPayload($this->errorData);
 
         // Add to buffer - batch jobs are dispatched by scheduler/command only
-        $buffer->addItem('javascript_errors', $payload);
+        $this->bufferOrRelease($buffer, 'javascript_errors', $payload);
     }
 
     protected function getConfigPath(): string

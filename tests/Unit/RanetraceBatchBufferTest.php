@@ -216,6 +216,47 @@ test('addItems with an empty array is a no-op', function (): void {
     expect($buffer->count('events'))->toBe(0);
 });
 
+test('addItem returns true when the item is buffered', function (): void {
+    expect((new RanetraceBatchBuffer)->addItem('events', ['event_name' => 'ok']))->toBeTrue();
+});
+
+test('addItems returns true when the items are buffered', function (): void {
+    expect((new RanetraceBatchBuffer)->addItems('events', [['event_name' => 'ok']]))->toBeTrue();
+});
+
+test('addItems returns false and adds nothing when the cache lock cannot be acquired', function (): void {
+    // 0s wait makes block() give up on the first failed acquire — no real sleep.
+    Config::set('ranetrace.batch.lock_wait', 0);
+    $buffer = new RanetraceBatchBuffer;
+
+    // Hold the buffer's lock so the add cannot acquire it.
+    $lock = Cache::store('array')->lock('ranetrace:buffer:events:lock', 10);
+    expect($lock->acquire())->toBeTrue();
+
+    expect($buffer->addItems('events', [['event_name' => 'contended']]))->toBeFalse();
+    expect($buffer->count('events'))->toBe(0);
+
+    $lock->release();
+});
+
+test('getItems returns an empty array when the cache lock cannot be acquired', function (): void {
+    Config::set('ranetrace.batch.lock_wait', 0);
+    $buffer = new RanetraceBatchBuffer;
+
+    // Seed an item with the lock free, then hold the lock and try to drain.
+    $buffer->addItem('events', ['event_name' => 'kept']);
+
+    $lock = Cache::store('array')->lock('ranetrace:buffer:events:lock', 10);
+    expect($lock->acquire())->toBeTrue();
+
+    expect($buffer->getItems('events', 10))->toBe([]);
+
+    $lock->release();
+
+    // The item was left untouched for the next drain.
+    expect($buffer->count('events'))->toBe(1);
+});
+
 test('buffer overflow sets the overflow flag', function (): void {
     Config::set('ranetrace.batch.max_buffer_size', 3);
     $buffer = new RanetraceBatchBuffer;
