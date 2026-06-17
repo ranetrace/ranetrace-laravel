@@ -24,5 +24,6 @@ composer.lock
 .junie/mcp/mcp.json
 .mcp.json
 CLAUDE.md
+/.claude
 /bin/
 /management
