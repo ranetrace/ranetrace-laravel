@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Config;
 use Ranetrace\Laravel\Dashboard\DashboardData;
+use Ranetrace\Laravel\Jobs\SendBatchToRanetraceJob;
 use Ranetrace\Laravel\Services\RanetraceBatchBuffer;
 use Ranetrace\Laravel\Services\RanetracePauseManager;
 
@@ -26,6 +27,25 @@ test('collectStatus returns the canonical status structure', function (): void {
         ->and($status['drain'])->toHaveKeys(['last_batch', 'stalled'])
         ->and($status['config'])->toHaveKeys(['enabled', 'api_key_configured', 'cache_driver', 'queue_name'])
         ->and($status['config']['api_key_configured'])->toBeTrue();
+});
+
+test('a numeric-string last-batch timestamp (Redis-style) counts as a recent drain', function (): void {
+    // Redis and Memcached return bare numbers as numeric strings, not ints. A
+    // buffer holding an overdue item must NOT be reported as stalled when such a
+    // timestamp shows a recent successful drain — the production false-positive.
+    $buffer = app(RanetraceBatchBuffer::class);
+    $buffer->addItem('events', ['event_name' => 'e1']);
+
+    // Age the item past the drain window, then record a *string* drain timestamp
+    // for "now" — exactly the shape a Redis store hands back.
+    $this->travel(DashboardData::DRAIN_STALE_SECONDS + 1)->seconds();
+    $now = now()->timestamp;
+    Cache::store('array')->put(SendBatchToRanetraceJob::LAST_BATCH_PREFIX.'events', (string) $now, 3600);
+
+    $status = app(DashboardData::class)->collectStatus();
+
+    expect($status['drain']['last_batch']['events'])->toBe($now)
+        ->and($status['drain']['stalled'])->not->toContain('events');
 });
 
 test('ranetrace:status --json output is unchanged after the DashboardData extraction', function (): void {

@@ -55,12 +55,26 @@ test('the dashboard surfaces live state: a pause and a stalled buffer', function
     app(RanetracePauseManager::class)->setFeaturePause('errors', 900, '429');
     app(RanetraceBatchBuffer::class)->addItem('events', ['event_name' => 'e1']);
 
+    // Age the buffered item past the drain window so it reads as stalled.
+    $this->travel(601)->seconds();
+
     $response = $this->get('/ranetrace');
 
     $response->assertOk();
     expect($response->getContent())
         ->toContain('Rate limited') // 429 reason explanation
-        ->toContain('Drain stalled'); // buffered item never drained
+        ->toContain('Drain stalled'); // buffered item overdue, never drained
+});
+
+test('a freshly buffered item is shown as waiting, not stalled', function (): void {
+    // The exact false-positive reported in production: an item placed in the
+    // buffer and waiting for the next ranetrace:work run must not read as stalled.
+    app(RanetraceBatchBuffer::class)->addItem('events', ['event_name' => 'e1']);
+
+    $response = $this->get('/ranetrace');
+
+    $response->assertOk();
+    expect($response->getContent())->not->toContain('Drain stalled');
 });
 
 test('the dashboard degrades to 200 (never 500) when the cache store is unavailable', function (): void {

@@ -109,9 +109,10 @@ class DashboardData
             }
         }
 
-        // Get buffer sizes and last-drain timestamps
+        // Get buffer sizes, last-drain timestamps, and oldest buffered-item ages
         $buffers = [];
         $lastBatch = [];
+        $oldestItem = [];
         $totalBuffered = 0;
         foreach ($features as $feature) {
             try {
@@ -122,11 +123,19 @@ class DashboardData
             $buffers[$feature] = $count;
             $totalBuffered += $count;
             $lastBatch[$feature] = $this->getLastBatchTimestamp($feature);
+            $oldestItem[$feature] = $this->getOldestBufferedTimestamp($feature);
         }
 
         $maxPerFeature = config('ranetrace.batch.max_buffer_size', 5000);
 
-        // Detect drain-stalled buffers: items present, not paused, no recent drain.
+        // Detect drain-stalled buffers. A buffer is stalled only when it holds an
+        // item that has genuinely waited too long: the oldest item is older than
+        // DRAIN_STALE_SECONDS AND no successful drain has happened within that
+        // window. Items simply waiting for the next scheduled ranetrace:work run
+        // — and brand-new buffers that have never drained yet — are NOT stalled.
+        // (Treating an absent drain history alone as failure produced false
+        // "drain stalled" alarms for items that were draining perfectly well.)
+        $now = Carbon::now()->timestamp;
         $stalledFeatures = [];
         foreach ($features as $feature) {
             if ($buffers[$feature] <= 0) {
@@ -137,8 +146,16 @@ class DashboardData
                 continue;
             }
 
+            $oldest = $oldestItem[$feature];
+            if ($oldest === null || ($now - $oldest) <= self::DRAIN_STALE_SECONDS) {
+                // No readable items, or the oldest item is still within the
+                // normal drain window — waiting for its turn, not stalled.
+                continue;
+            }
+
             $last = $lastBatch[$feature];
-            if ($last === null || (Carbon::now()->timestamp - $last) > self::DRAIN_STALE_SECONDS) {
+            $drainedRecently = $last !== null && ($now - $last) <= self::DRAIN_STALE_SECONDS;
+            if (! $drainedRecently) {
                 $stalledFeatures[] = $feature;
             }
         }
@@ -387,6 +404,13 @@ class DashboardData
 
     /**
      * Get the timestamp of the last successful batch send for a feature.
+     *
+     * Numeric strings are accepted as well as ints: the Redis and Memcached
+     * cache stores keep bare numbers un-serialized (to support atomic
+     * increments) and hand them back as numeric strings. An `is_int()` check
+     * would discard a perfectly valid timestamp from those stores and report
+     * the buffer as never drained — the root cause of false "drain stalled"
+     * alarms on a Redis-backed cache.
      */
     protected function getLastBatchTimestamp(string $feature): ?int
     {
@@ -394,7 +418,22 @@ class DashboardData
             $cacheDriver = config('ranetrace.batch.cache_driver', 'file');
             $value = Cache::store($cacheDriver)->get(SendBatchToRanetraceJob::LAST_BATCH_PREFIX.$feature);
 
-            return is_int($value) ? $value : null;
+            return is_numeric($value) ? (int) $value : null;
+        } catch (Throwable) {
+            return null;
+        }
+    }
+
+    /**
+     * Get the timestamp of the oldest item currently buffered for a feature,
+     * or null when the buffer is empty or unreadable. Drives stalled detection:
+     * a buffer is only stalled once its oldest item has waited past the drain
+     * window, never the instant an item lands.
+     */
+    protected function getOldestBufferedTimestamp(string $feature): ?int
+    {
+        try {
+            return $this->buffer->oldestTimestamp($feature);
         } catch (Throwable) {
             return null;
         }

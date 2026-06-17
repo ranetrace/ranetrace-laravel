@@ -55,10 +55,21 @@ test('cache driver check fails on a volatile driver in production', function ():
     expect(runChecks()['cache_driver']->level)->toBe(CheckLevel::Fail);
 });
 
-test('drain stalled check fails when a buffer has items but never drained', function (): void {
+test('drain stalled check fails when buffered items wait past the drain window with no drain', function (): void {
     app(RanetraceBatchBuffer::class)->addItem('events', ['event_name' => 'e1']);
 
+    // Age the item past the stale window so it is genuinely overdue.
+    $this->travel(DashboardData::DRAIN_STALE_SECONDS + 1)->seconds();
+
     expect(runChecks()['drain_stalled']->level)->toBe(CheckLevel::Fail);
+});
+
+test('drain stalled check passes for a freshly buffered item awaiting its first drain', function (): void {
+    app(RanetraceBatchBuffer::class)->addItem('events', ['event_name' => 'e1']);
+
+    // A just-buffered item is waiting for the next ranetrace:work run, not
+    // stalled — even though no successful drain has been recorded yet.
+    expect(runChecks()['drain_stalled']->level)->toBe(CheckLevel::Pass);
 });
 
 test('buffer capacity check flags an active overflow as a failure', function (): void {

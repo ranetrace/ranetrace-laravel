@@ -153,6 +153,23 @@ class RanetraceBatchBuffer
     }
 
     /**
+     * Timestamp of the oldest item currently buffered for a type, or null when
+     * the buffer is empty or unreadable. Items are appended in arrival order and
+     * drained FIFO, so the first element is always the oldest. Lets the dashboard
+     * tell a buffer that is simply waiting for its next drain apart from one that
+     * is genuinely stalled.
+     */
+    public function oldestTimestamp(string $type): ?int
+    {
+        $cacheKey = $this->getCacheKey($type);
+        $buffer = Cache::store($this->cacheDriver)->get($cacheKey, []);
+
+        $timestamp = $buffer[0]['timestamp'] ?? null;
+
+        return is_numeric($timestamp) ? (int) $timestamp : null;
+    }
+
+    /**
      * Clear all items from the buffer for a specific type.
      */
     public function clear(string $type): void

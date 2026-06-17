@@ -35,16 +35,18 @@ test('the dashboard hint never appears in the --json payload', function (): void
     expect(Artisan::output())->not->toContain('Dashboard:');
 });
 
-test('the production 403 explains how to grant access (friendly, not bare)', function (): void {
+test('the production 403 is a simple forbidden page that leaks no setup instructions', function (): void {
     $this->app['env'] = 'production';
 
     $response = $this->get('/ranetrace');
 
     $response->assertForbidden();
     expect($response->getContent())
-        ->toContain('access denied')
-        ->toContain('viewRanetrace')
-        ->toContain('AppServiceProvider')
+        ->toContain('Forbidden')
+        // An unauthorized visitor is shown nothing about how the gate works.
+        ->not->toContain('viewRanetrace')
+        ->not->toContain('AppServiceProvider')
+        ->not->toContain('Gate::define')
         // CSP-clean: external stylesheet, no inline style/script
         ->toContain('ranetrace.css?v=')
         ->not->toContain('<style')

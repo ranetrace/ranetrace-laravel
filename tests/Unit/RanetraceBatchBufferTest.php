@@ -53,6 +53,27 @@ test('it can count items in the buffer', function (): void {
     expect($buffer->count('events'))->toBe(2);
 });
 
+test('oldestTimestamp returns null for an empty buffer', function (): void {
+    expect((new RanetraceBatchBuffer)->oldestTimestamp('events'))->toBeNull();
+});
+
+test('oldestTimestamp returns the first (oldest) buffered item timestamp', function (): void {
+    $buffer = new RanetraceBatchBuffer;
+
+    $this->freezeTime();
+    $oldest = now()->timestamp;
+    $buffer->addItem('events', ['event_name' => 'first']);
+
+    $this->travel(30)->seconds();
+    $buffer->addItem('events', ['event_name' => 'second']);
+
+    expect($buffer->oldestTimestamp('events'))->toBe($oldest);
+
+    // Draining the oldest item promotes the next one to oldest (FIFO).
+    $buffer->getItems('events', 1);
+    expect($buffer->oldestTimestamp('events'))->toBe($oldest + 30);
+});
+
 test('it can clear all items for a type', function (): void {
     $buffer = new RanetraceBatchBuffer;
 
