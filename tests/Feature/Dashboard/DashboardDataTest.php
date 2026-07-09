@@ -48,6 +48,23 @@ test('a numeric-string last-batch timestamp (Redis-style) counts as a recent dra
         ->and($status['drain']['stalled'])->not->toContain('events');
 });
 
+test('the Ranetrace log channel surface reports wired even when logging is disabled', function (): void {
+    // The channel is registered unconditionally (so a committed stack that
+    // references `ranetrace` stays valid everywhere); the handler short-circuits
+    // when disabled. The installation-truth surface must therefore report it as
+    // wired regardless of the logging.enabled flag. `note` stays null because
+    // `surface()` only surfaces a note when a check is NOT ok.
+    $this->configOverrides = ['ranetrace.logging.enabled' => false];
+    $this->reloadApplication();
+
+    $surface = collect(app(DashboardData::class)->registeredSurfaces())
+        ->firstWhere('label', 'Ranetrace log channel');
+
+    expect($surface)->not->toBeNull()
+        ->and($surface['ok'])->toBeTrue()
+        ->and($surface['note'])->toBeNull();
+});
+
 test('ranetrace:status --json output is unchanged after the DashboardData extraction', function (): void {
     // Populate state across panels (a pause, a buffered item) so parity is
     // checked against a populated structure, not just an empty baseline.

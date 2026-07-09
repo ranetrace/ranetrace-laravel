@@ -20,6 +20,7 @@ use Ranetrace\Laravel\Commands\RanetraceStatusCommand;
 use Ranetrace\Laravel\Commands\RanetraceTestCommand;
 use Ranetrace\Laravel\Commands\RanetraceWorkCommand;
 use Ranetrace\Laravel\Events\EventTracker;
+use Ranetrace\Laravel\Http\Controllers\AnalyticsBeaconController;
 use Ranetrace\Laravel\Http\Controllers\AssetController;
 use Ranetrace\Laravel\Http\Controllers\JavaScriptErrorController;
 use Ranetrace\Laravel\Http\Middleware\Authorize;
@@ -82,6 +83,7 @@ class RanetraceServiceProvider extends ServiceProvider
         // Add middleware to web group
         if (config('ranetrace.enabled', true) && config('ranetrace.website_analytics.enabled')) {
             $this->app['router']->pushMiddlewareToGroup('web', TrackPageVisit::class);
+//            $this->registerAnalyticsBeaconRoute();
         }
 
         // Register JavaScript error tracking route
@@ -190,8 +192,14 @@ class RanetraceServiceProvider extends ServiceProvider
             'days' => config('ranetrace.internal_logging.days', 14),
         ]);
 
-        if (config('ranetrace.logging.enabled', false)
-            && ! $this->app['config']->has('logging.channels.ranetrace')) {
+        // Define the user-facing `ranetrace` channel unconditionally. The
+        // `ranetrace` log driver is always extended, and the handler
+        // short-circuits when logging is disabled, so a defined-but-inactive
+        // channel is inert. Registering it regardless of the enabled flag keeps
+        // a committed `config/logging.php` stack that references `ranetrace`
+        // valid in every environment, including local or dev where logging is
+        // turned off, instead of throwing "Log [ranetrace] is not defined".
+        if (! $this->app['config']->has('logging.channels.ranetrace')) {
             $this->app['config']->set('logging.channels.ranetrace', [
                 'driver' => 'ranetrace',
                 'level' => config('ranetrace.logging.level', 'notice'),
@@ -209,11 +217,31 @@ class RanetraceServiceProvider extends ServiceProvider
             ->name('ranetrace.javascript-errors.store');
     }
 
+    /**
+     * Register the human-verification beacon route. Mounted whenever website
+     * analytics is on (same condition as the capture middleware); the controller
+     * itself enforces `website_analytics.beacon.enabled` so a stray call while
+     * the beacon is off is a clean 403 rather than a 404.
+     */
+    protected function registerAnalyticsBeaconRoute(): void
+    {
+//        $throttle = config('ranetrace.website_analytics.beacon.throttle', '120,1');
+//
+//        $this->app['router']
+//            ->post('ranetrace/analytics/verify', [AnalyticsBeaconController::class, 'verify'])
+//            ->middleware(['web', "throttle:{$throttle}"])
+//            ->name('ranetrace.analytics.verify');
+    }
+
     protected function registerBladeDirectives(): void
     {
         Blade::directive('ranetraceErrorTracking', function () {
             return "<?php echo view('ranetrace::error-tracker')->render(); ?>";
         });
+
+//        Blade::directive('ranetraceAnalytics', function () {
+/*            return "<?php echo view('ranetrace::analytics-beacon')->render(); ?>";*/
+//        });
     }
 
     protected function registerMcpServer(): void

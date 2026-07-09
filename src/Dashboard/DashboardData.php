@@ -285,7 +285,7 @@ class DashboardData
                 $this->surface('@ranetraceErrorTracking Blade directive', isset(Blade::getCustomDirectives()['ranetraceErrorTracking'])),
                 $this->surface('MCP server', $mcpActive, 'Needs laravel/mcp + mcp.enabled + API key'),
                 $this->surface('Internal log channel', config()->has('logging.channels.ranetrace_internal')),
-                $this->surface('Ranetrace log channel', $ranetraceChannel, 'Created when logging.enabled and the host has not defined one'),
+                $this->surface('Ranetrace log channel', $ranetraceChannel),
             ];
         } catch (Throwable) {
             return [];
