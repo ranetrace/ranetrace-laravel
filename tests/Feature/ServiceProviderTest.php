@@ -28,6 +28,27 @@ test('ranetrace log driver is registered', function (): void {
     expect($channel)->toBeInstanceOf(Psr\Log\LoggerInterface::class);
 });
 
+test('ranetrace channel stays defined and inert when logging is disabled', function (): void {
+    // A committed config/logging.php stack that references `ranetrace` must
+    // stay valid in environments where logging is turned off (local/dev),
+    // rather than throwing "Log [ranetrace] is not defined". The handler
+    // short-circuits, so the channel is present but sends nothing.
+    $this->configOverrides = ['ranetrace.logging.enabled' => false];
+    $this->reloadApplication();
+
+    expect(config('logging.channels.ranetrace'))
+        ->toBeArray()
+        ->toHaveKey('driver', 'ranetrace');
+
+    config()->set('logging.channels.stack_with_ranetrace', [
+        'driver' => 'stack',
+        'channels' => ['ranetrace'],
+    ]);
+
+    expect(fn () => Log::channel('stack_with_ranetrace')->error('inert while disabled'))
+        ->not->toThrow(Exception::class);
+});
+
 test('blade directive is registered', function (): void {
     $directives = Illuminate\Support\Facades\Blade::getCustomDirectives();
 

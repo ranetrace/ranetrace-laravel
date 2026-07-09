@@ -11,43 +11,16 @@ Use this skill when setting up centralized logging to Ranetrace, configuring the
 
 ## Setup
 
-### 1. Enable logging
+Setup splits into two parts: **wiring in your code** (it deploys with your app)
+and a **switch you flip in production** (where logging actually runs). An AI
+agent or a local dev can do the wiring; the production switch is a deployment
+step a human sets in the host's environment.
 
-```env
-RANETRACE_LOGGING_ENABLED=true
-```
+### 1. Wire the channel into your log stack
 
-That is all the wiring required. When logging is enabled the package
-**auto-registers** a `ranetrace` log channel into your application's
-`logging.channels` config at boot — you do **not** need to edit
-`config/logging.php` to add a channel definition. The auto-registered channel is
-equivalent to:
-
-```php
-'ranetrace' => [
-    'driver' => 'ranetrace',
-    'level' => 'notice', // from RANETRACE_LOGGING_LEVEL
-],
-```
-
-If you have already defined your own `ranetrace` channel, that definition always
-wins (see *Overriding the channel* below).
-
-### 2. Send your logs to Ranetrace
-
-The recommended setup is to route your whole application log to Ranetrace by
-adding the `ranetrace` channel to your log stack. Everything your app already
-logs is centralized, with no extra logging calls to write.
-
-On a default Laravel install the stack is env-driven, so this is a one-line
-change. Keep the channels you already stack and add `ranetrace`:
-
-```env
-LOG_STACK=single,ranetrace
-```
-
-If your app hard-codes its stack in `config/logging.php`, add `ranetrace` to
-that channel's list instead:
+Route your whole application log to Ranetrace by adding the `ranetrace` channel
+to your stack in `config/logging.php`. This is code, so it deploys to every
+environment:
 
 ```php
 // config/logging.php
@@ -60,8 +33,14 @@ that channel's list instead:
 ],
 ```
 
-To send only specific records instead of your whole log, write to the
-`ranetrace` channel directly from anywhere in your app:
+The package registers the `ranetrace` channel for you, so this stack entry is
+valid everywhere. Where logging is turned off the channel is inert: records
+short-circuit at the handler and nothing is sent, so the stack is safe in every
+environment even though it is only active in production. If you have defined your own
+`ranetrace` channel, that definition always wins (see *Overriding the channel*).
+
+To forward only specific records instead of your whole log, skip the stack and
+write to the channel directly:
 
 ```php
 use Illuminate\Support\Facades\Log;
@@ -71,6 +50,25 @@ Log::channel('ranetrace')->error('Payment processing failed', [
     'error' => $exception->getMessage(),
 ]);
 ```
+
+### 2. Turn it on in production
+
+Logging only does something once it is enabled, and it belongs in production, not
+local development. Set these in your **production** environment, not just a local
+`.env`:
+
+```env
+RANETRACE_ENABLED=true
+RANETRACE_LOGGING_ENABLED=true
+```
+
+Also set `RANETRACE_KEY` from your Ranetrace dashboard if it is not already
+configured. Records at or above `notice` are forwarded; tune the threshold with
+`RANETRACE_LOGGING_LEVEL`.
+
+To verify the wiring before deploying, set the same flags in your local `.env`.
+That ships your development logs to Ranetrace, so treat it as a one-off check
+rather than a permanent local setting.
 
 ## Configuration
 
@@ -94,8 +92,8 @@ Log::channel('ranetrace')->error('Payment processing failed', [
 
 ## Overriding the channel
 
-The channel is auto-registered only when you have not defined one yourself. To
-customize it — e.g. a different minimum level — define `ranetrace` in
+The channel is registered for you only when you have not defined one yourself.
+To customize it (for example a different minimum level), define `ranetrace` in
 `config/logging.php` and your definition wins:
 
 ```php
