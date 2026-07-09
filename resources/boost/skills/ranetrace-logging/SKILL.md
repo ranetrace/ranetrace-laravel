@@ -33,9 +33,35 @@ equivalent to:
 If you have already defined your own `ranetrace` channel, that definition always
 wins (see *Overriding the channel* below).
 
-### 2. Route logs to the channel
+### 2. Send your logs to Ranetrace
 
-Send logs to the channel directly:
+The recommended setup is to route your whole application log to Ranetrace by
+adding the `ranetrace` channel to your log stack. Everything your app already
+logs is centralized, with no extra logging calls to write.
+
+On a default Laravel install the stack is env-driven, so this is a one-line
+change. Keep the channels you already stack and add `ranetrace`:
+
+```env
+LOG_STACK=single,ranetrace
+```
+
+If your app hard-codes its stack in `config/logging.php`, add `ranetrace` to
+that channel's list instead:
+
+```php
+// config/logging.php
+'channels' => [
+    'stack' => [
+        'driver' => 'stack',
+        'channels' => ['single', 'ranetrace'],
+        'ignore_exceptions' => false,
+    ],
+],
+```
+
+To send only specific records instead of your whole log, write to the
+`ranetrace` channel directly from anywhere in your app:
 
 ```php
 use Illuminate\Support\Facades\Log;
@@ -44,19 +70,6 @@ Log::channel('ranetrace')->error('Payment processing failed', [
     'order_id' => $orderId,
     'error' => $exception->getMessage(),
 ]);
-```
-
-Or capture **all** application logs by adding `ranetrace` to your default stack:
-
-```php
-// config/logging.php
-'channels' => [
-    'stack' => [
-        'driver' => 'stack',
-        'channels' => ['daily', 'ranetrace'],
-        'ignore_exceptions' => false,
-    ],
-],
 ```
 
 ## Configuration
