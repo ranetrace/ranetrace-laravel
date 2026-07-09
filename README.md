@@ -148,7 +148,7 @@ Enable it in your `.env`:
 RANETRACE_LOGGING_ENABLED=true
 ```
 
-The package auto-registers a `ranetrace` log channel — no `config/logging.php` edit is required. Add it to your existing log stack so application logs are routed to both your normal destination AND Ranetrace:
+The package always registers a `ranetrace` log channel, so no `config/logging.php` edit is required to define it. It stays inert until logging is enabled, so you can add it to your existing log stack right away to route application logs to both your normal destination and Ranetrace:
 
 ```php
 // config/logging.php — example stacked channel

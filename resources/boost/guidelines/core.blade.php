@@ -61,7 +61,7 @@ php artisan ranetrace:work
 
 ### Logging Channel
 
-The package **auto-registers** a `ranetrace` log channel when `RANETRACE_LOGGING_ENABLED=true` — no `config/logging.php` edit is required (a user-defined `ranetrace` channel always wins). Route application logs to Ranetrace by adding `'ranetrace'` to your log stack, or use it directly via `Log::channel('ranetrace')`. The default minimum level is `notice` (tune via `RANETRACE_LOGGING_LEVEL`).
+The package **always registers** a `ranetrace` log channel, regardless of the feature flag, so no `config/logging.php` edit is required to define it (a user-defined `ranetrace` channel still wins). The channel is inert while logging is disabled: records short-circuit at the handler, so adding `'ranetrace'` to a committed log stack is safe in every environment. Route application logs to Ranetrace by adding `'ranetrace'` to your log stack, or use it directly via `Log::channel('ranetrace')`. Whether records are actually sent is what `RANETRACE_LOGGING_ENABLED` controls. The default minimum level is `notice` (tune via `RANETRACE_LOGGING_LEVEL`).
 
 ### MCP Server
 
