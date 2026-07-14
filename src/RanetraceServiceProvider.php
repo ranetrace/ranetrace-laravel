@@ -83,7 +83,7 @@ class RanetraceServiceProvider extends ServiceProvider
         // Add middleware to web group
         if (config('ranetrace.enabled', true) && config('ranetrace.website_analytics.enabled')) {
             $this->app['router']->pushMiddlewareToGroup('web', TrackPageVisit::class);
-//            $this->registerAnalyticsBeaconRoute();
+            //            $this->registerAnalyticsBeaconRoute();
         }
 
         // Register JavaScript error tracking route
@@ -225,12 +225,12 @@ class RanetraceServiceProvider extends ServiceProvider
      */
     protected function registerAnalyticsBeaconRoute(): void
     {
-//        $throttle = config('ranetrace.website_analytics.beacon.throttle', '120,1');
-//
-//        $this->app['router']
-//            ->post('ranetrace/analytics/verify', [AnalyticsBeaconController::class, 'verify'])
-//            ->middleware(['web', "throttle:{$throttle}"])
-//            ->name('ranetrace.analytics.verify');
+        //        $throttle = config('ranetrace.website_analytics.beacon.throttle', '120,1');
+        //
+        //        $this->app['router']
+        //            ->post('ranetrace/analytics/verify', [AnalyticsBeaconController::class, 'verify'])
+        //            ->middleware(['web', "throttle:{$throttle}"])
+        //            ->name('ranetrace.analytics.verify');
     }
 
     protected function registerBladeDirectives(): void
@@ -239,9 +239,9 @@ class RanetraceServiceProvider extends ServiceProvider
             return "<?php echo view('ranetrace::error-tracker')->render(); ?>";
         });
 
-//        Blade::directive('ranetraceAnalytics', function () {
-/*            return "<?php echo view('ranetrace::analytics-beacon')->render(); ?>";*/
-//        });
+        //        Blade::directive('ranetraceAnalytics', function () {
+        /*            return "<?php echo view('ranetrace::analytics-beacon')->render(); ?>"; */
+        //        });
     }
 
     protected function registerMcpServer(): void
