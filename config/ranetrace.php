@@ -87,6 +87,30 @@ return [
             'modern_browser_min_version' => env('RANETRACE_WEBSITE_ANALYTICS_MODERN_BROWSER_MIN_VERSION', 100),
         ],
 
+        // Human-verification beacon. Opt in, off by default. With it on, the
+        // visit job waits `wait_seconds` for a tiny script on the page to post
+        // one opaque token back, then reports the visit as verified or not.
+        // The beacon rides the existing `@ranetraceErrorTracking` directive, so
+        // a layout that already has it needs only the env var.
+        //
+        // It requires a real queue connection: a `sync` queue ignores the
+        // delay, so with `QUEUE_CONNECTION=sync` visits go out without the flag
+        // rather than late.
+        //
+        // The token is printed into the HTML, so a full-page cache in front of
+        // the app (Cloudflare cache-everything, a static export) serves one
+        // token to many visitors and the beacon must stay off there.
+        //
+        // `delay_ms` is how long the browser waits before posting, which
+        // filters instant bounces and prerenders. `throttle` is the rate limit
+        // on the beacon route, in Laravel's `requests,minutes` form.
+        'beacon' => [
+            'enabled' => env('RANETRACE_WEBSITE_ANALYTICS_BEACON_ENABLED', false),
+            'wait_seconds' => env('RANETRACE_WEBSITE_ANALYTICS_BEACON_WAIT_SECONDS', 15),
+            'delay_ms' => env('RANETRACE_WEBSITE_ANALYTICS_BEACON_DELAY_MS', 1500),
+            'throttle' => env('RANETRACE_WEBSITE_ANALYTICS_BEACON_THROTTLE', '120,1'),
+        ],
+
         'extra_bot_user_agents' => [
             // 'YourCustomMonitor/',
         ],

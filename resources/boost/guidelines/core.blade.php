@@ -44,11 +44,13 @@ Without this line, unhandled exceptions are NOT captured (though `Ranetrace::rep
 
 ### Middleware
 
-The `TrackPageVisit` middleware is auto-registered on the `web` middleware group when analytics is enabled. Analytics is privacy-first: no cookies and no client-side scripts. Visitors are identified only by salted, one-way HMAC hashes (a user-agent hash and a daily-rotating session-id hash) — never raw identifiers, and never across sites.
+The `TrackPageVisit` middleware is auto-registered on the `web` middleware group when analytics is enabled. Analytics is privacy-first: no cookies, no fingerprinting, no consent banner, and an optional beacon that sends one opaque token and nothing else. Visitors are identified only by salted, one-way HMAC hashes (a user-agent hash and a daily-rotating session-id hash), never raw identifiers and never across sites.
+
+The human-verification beacon is opt-in (`RANETRACE_WEBSITE_ANALYTICS_BEACON_ENABLED=true`). With it on, the visit job is delayed a few seconds, a tiny script posts the view's token back to `POST ranetrace/analytics/verify`, and the visit ships with `verified_human` true or false. It requires a real queue connection (a `sync` queue ignores the delay) and must stay off behind a full-page cache, which would serve one token to many visitors.
 
 ### Blade Directive
 
-Add `@ranetraceErrorTracking` before `</body>` to enable client-side JavaScript error tracking.
+Add `@ranetraceErrorTracking` before `</body>`. It enables client-side JavaScript error tracking and, when the analytics beacon is on, renders the human-verification beacon as well, so installing both stays one line.
 
 ### Queue & Batch Processing
 

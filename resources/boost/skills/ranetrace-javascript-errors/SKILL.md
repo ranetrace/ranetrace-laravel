@@ -35,6 +35,8 @@ Place `@ranetraceErrorTracking` in your layout, just before the closing `</body>
 
 The directive injects a self-contained script that automatically captures errors. No npm packages or build steps required.
 
+The same directive also renders the website analytics human-verification beacon when `RANETRACE_WEBSITE_ANALYTICS_BEACON_ENABLED=true`, so one line in the layout installs both. The two are gated separately: with JavaScript error tracking off and the beacon on, the directive renders only the beacon. See the `ranetrace-analytics` skill for what the beacon does and what it requires.
+
 ## What Gets Captured Automatically
 
 - **Global errors** via `window.onerror`

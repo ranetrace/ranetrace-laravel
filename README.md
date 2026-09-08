@@ -6,7 +6,7 @@
 Ranetrace is an all-in-one tool for **Error Tracking**, **Website Analytics**, and **Website Monitoring** for Laravel applications.
 
 - Alerts you about errors and provides the context you need to fix them
-- Privacy-first, fully server-side website analytics — no cookies and no client-side scripts; visitors are identified only by salted, one-way hashes (never raw identifiers, never across sites)
+- Privacy-first website analytics: no cookies, no fingerprinting, no consent banner, and an optional beacon that sends one opaque token and nothing else; visitors are identified only by salted, one-way hashes (never raw identifiers, never across sites)
 - Monitors uptime, performance, SSL certificates, domain and DNS status, Lighthouse scores, and broken links
 
 Check out the [Ranetrace website](https://ranetrace.com) for more information.
@@ -184,6 +184,23 @@ RANETRACE_WEBSITE_ANALYTICS_ENABLED=true
 ```
 
 The `TrackPageVisit` middleware is automatically added to the `web` middleware group. It applies extensive bot and crawler filtering before sending visits to your Ranetrace dashboard. No code changes needed.
+
+Analytics stays privacy-first: no cookies, no fingerprinting, and nothing that needs a consent banner.
+
+#### Counting only real browsers
+
+Server-side filtering can only read what a request claims about itself. Turn the human-verification beacon on and Ranetrace counts only the visits a real, visible browser actually rendered, and tells you how many it kept out:
+
+```env
+RANETRACE_WEBSITE_ANALYTICS_BEACON_ENABLED=true
+```
+
+Keep the `@ranetraceErrorTracking` directive just before `</body>` in your layout: it renders the beacon too, so a layout that already has it needs nothing else. The beacon posts one opaque token and nothing else, which is why it needs no consent banner.
+
+Two things to know before turning it on:
+
+- It needs a real queue connection. The visit job waits a few seconds for the beacon, and a `sync` queue ignores that wait, so visits would go out with no verification either way.
+- Keep it off behind a full-page cache (Cloudflare cache-everything, a static export). The token is printed into the HTML, so a cached page hands the same token to every visitor.
 
 See the [Ranetrace website](https://ranetrace.com) for dashboard setup and configuration details.
 

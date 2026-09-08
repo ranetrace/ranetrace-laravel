@@ -19,6 +19,7 @@ use Ranetrace\Laravel\Commands\RanetraceStatusCommand;
 use Ranetrace\Laravel\Commands\RanetraceTestCommand;
 use Ranetrace\Laravel\Commands\RanetraceWorkCommand;
 use Ranetrace\Laravel\Events\EventTracker;
+use Ranetrace\Laravel\Http\Controllers\AnalyticsBeaconController;
 use Ranetrace\Laravel\Http\Controllers\AssetController;
 use Ranetrace\Laravel\Http\Controllers\JavaScriptErrorController;
 use Ranetrace\Laravel\Http\Middleware\Authorize;
@@ -80,6 +81,7 @@ class RanetraceServiceProvider extends ServiceProvider
         // Add middleware to web group
         if (config('ranetrace.enabled', true) && config('ranetrace.website_analytics.enabled')) {
             $this->app['router']->pushMiddlewareToGroup('web', TrackPageVisit::class);
+            $this->registerAnalyticsBeaconRoute();
         }
 
         // Register JavaScript error tracking route
@@ -208,6 +210,24 @@ class RanetraceServiceProvider extends ServiceProvider
             ->post('ranetrace/javascript-errors/store', [JavaScriptErrorController::class, 'store'])
             ->middleware(['web', "throttle:{$throttle}"])
             ->name('ranetrace.javascript-errors.store');
+    }
+
+    /**
+     * Mount the human-verification beacon endpoint.
+     *
+     * Registered whenever website analytics is on, not only when the beacon is,
+     * so a beacon fired from a page rendered before the flag was turned off is
+     * answered with a clean 403 by the controller rather than a 404 that reads
+     * as a broken install.
+     */
+    protected function registerAnalyticsBeaconRoute(): void
+    {
+        $throttle = config('ranetrace.website_analytics.beacon.throttle', '120,1');
+
+        $this->app['router']
+            ->post('ranetrace/analytics/verify', [AnalyticsBeaconController::class, 'verify'])
+            ->middleware(['web', "throttle:{$throttle}"])
+            ->name('ranetrace.analytics.verify');
     }
 
     protected function registerBladeDirectives(): void

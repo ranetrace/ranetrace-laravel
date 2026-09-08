@@ -7,6 +7,7 @@ namespace Ranetrace\Laravel\Analytics\Middleware;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Str;
 use Jaybizzle\CrawlerDetect\CrawlerDetect;
 use Ranetrace\Laravel\Analytics\BotSignals;
 use Ranetrace\Laravel\Analytics\Contracts\RequestFilter;
@@ -275,12 +276,58 @@ class TrackPageVisit
         $throttleStore = Cache::store(config('ranetrace.batch.cache_driver', 'file'));
 
         if ($throttleStore->add($cacheKey, true, now()->addSeconds($throttleSeconds))) {
-            if (config('ranetrace.website_analytics.queue', true)) {
-                HandlePageVisitJob::dispatch($visitData);
-            } else {
-                HandlePageVisitJob::dispatchSync($visitData);
-            }
+            $this->dispatchVisit($request, $visitData);
         }
+    }
+
+    /**
+     * Dispatch the captured visit, and when the human-verification beacon is
+     * enabled, give this view a token for the beacon to post back.
+     *
+     * The mechanism is one delayed job and one cache key. The job is delayed by
+     * `beacon.wait_seconds`, the beacon endpoint marks the token as seen while
+     * it waits, and the job reads that mark to decide `verified_human`. The
+     * visit is sent either way, so a browser that never answers costs a flag
+     * rather than a visit.
+     *
+     * The job reads a MARK rather than the visit being parked and sent by
+     * whoever gets to it first. A parked visit needs a store holding every
+     * pending visit, a lock so the beacon and a sweep cannot send the same one
+     * twice, and a sweep to flush the ones whose beacon never arrived. A mark
+     * needs one cache key with a TTL, and nothing has to be swept.
+     *
+     * @param  array<string, mixed>  $visitData
+     */
+    private function dispatchVisit(Request $request, array $visitData): void
+    {
+        // A synchronous send happens before the response leaves the server, so
+        // there is no beacon to wait for and no delay to wait in: `sync` runs
+        // the job at once and would report every visit unverified. Such a visit
+        // therefore carries no flag at all rather than a false one.
+        if (! config('ranetrace.website_analytics.queue', true)) {
+            HandlePageVisitJob::dispatchSync($visitData);
+
+            return;
+        }
+
+        if (! config('ranetrace.website_analytics.beacon.enabled', false)) {
+            HandlePageVisitJob::dispatch($visitData);
+
+            return;
+        }
+
+        $token = (string) Str::uuid();
+
+        // The `@ranetraceErrorTracking` directive reads this attribute to
+        // render the beacon for this view.
+        $request->attributes->set('ranetrace_view_token', $token);
+
+        $visitData['verified_human'] = false;
+        $visitData['view_token'] = $token;
+
+        HandlePageVisitJob::dispatch($visitData)->delay(
+            now()->addSeconds((int) config('ranetrace.website_analytics.beacon.wait_seconds', 15))
+        );
     }
 
     /**

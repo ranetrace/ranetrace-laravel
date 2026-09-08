@@ -2,9 +2,11 @@
 
 declare(strict_types=1);
 
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Str;
 use Ranetrace\Laravel\Analytics\Middleware\TrackPageVisit;
 use Ranetrace\Laravel\Jobs\HandlePageVisitJob;
 
@@ -217,13 +219,13 @@ test('it keeps throttling across a minute boundary within the throttle window', 
     ];
 
     // Pin to 10 seconds before a minute boundary.
-    $this->travelTo(Illuminate\Support\Carbon::create(2026, 1, 1, 10, 0, 50));
+    $this->travelTo(Carbon::create(2026, 1, 1, 10, 0, 50));
     $this->withHeaders($headers)->get('/test-page');
     Bus::assertDispatchedTimes(HandlePageVisitJob::class, 1);
 
     // 30s later — now in the NEXT minute, but still inside the 120s window.
     // The old per-minute key bucket would have reset and dispatched again.
-    $this->travelTo(Illuminate\Support\Carbon::create(2026, 1, 1, 10, 1, 20));
+    $this->travelTo(Carbon::create(2026, 1, 1, 10, 1, 20));
     $this->withHeaders($headers)->get('/test-page');
     Bus::assertDispatchedTimes(HandlePageVisitJob::class, 1);
 
@@ -628,6 +630,106 @@ test('a normal human GET is still tracked (regression)', function (): void {
     captureThroughMiddleware('/some-marketing-page');
 
     Bus::assertDispatched(HandlePageVisitJob::class);
+});
+
+test('with the beacon on, the visit is delayed and carries the view token unverified', function (): void {
+    Bus::fake();
+    Cache::flush();
+    $this->travelTo(Carbon::create(2026, 1, 1, 10, 0, 0));
+
+    config([
+        'ranetrace.website_analytics.queue' => true,
+        'ranetrace.website_analytics.beacon.enabled' => true,
+        'ranetrace.website_analytics.beacon.wait_seconds' => 15,
+    ]);
+
+    // The page echoes the attribute the directive reads, so the assertion below
+    // can prove the token on the page is the token the job waits on.
+    Route::get('/beacon-probe', fn () => response(
+        (string) request()->attributes->get('ranetrace_view_token')
+    ))->middleware(['web', TrackPageVisit::class]);
+
+    $response = $this->withHeaders(humanBrowserHeaders())->get('/beacon-probe');
+
+    $response->assertOk();
+    expect(Str::isUuid($response->getContent()))->toBeTrue();
+
+    Bus::assertDispatched(HandlePageVisitJob::class, function ($job) use ($response): bool {
+        $data = $job->getVisitData();
+
+        return $data['verified_human'] === false
+            && ($data['view_token'] ?? null) === $response->getContent()
+            // The wait window is what gives the browser time to answer; without
+            // the delay the job would always read an absent mark.
+            && $job->delay->equalTo(now()->addSeconds(15));
+    });
+
+    $this->travelBack();
+});
+
+test('with the beacon off, the visit is dispatched without delay and carries no flag', function (): void {
+    Bus::fake();
+    Cache::flush();
+
+    config(['ranetrace.website_analytics.beacon.enabled' => false]);
+
+    $this->withHeaders(humanBrowserHeaders())->get('/test-page');
+
+    Bus::assertDispatched(HandlePageVisitJob::class, function ($job): bool {
+        $data = $job->getVisitData();
+
+        // No beacon means nothing verified either way, so the visit says
+        // nothing about it rather than claiming a false.
+        return ! array_key_exists('verified_human', $data)
+            && ! array_key_exists('view_token', $data)
+            && $job->delay === null;
+    });
+});
+
+test('a sync visit carries no beacon token even with the beacon on', function (): void {
+    Bus::fake();
+    Cache::flush();
+
+    config([
+        'ranetrace.website_analytics.beacon.enabled' => true,
+        'ranetrace.website_analytics.queue' => false,
+    ]);
+
+    Route::get('/beacon-sync-probe', fn () => response(
+        (string) request()->attributes->get('ranetrace_view_token')
+    ))->middleware(['web', TrackPageVisit::class]);
+
+    $response = $this->withHeaders(humanBrowserHeaders())->get('/beacon-sync-probe');
+
+    // A sync send runs before the response leaves the server, so there is no
+    // beacon to wait for and nothing for the page to carry.
+    expect($response->getContent())->toBe('');
+
+    Bus::assertDispatchedSync(HandlePageVisitJob::class, function ($job): bool {
+        $data = $job->getVisitData();
+
+        return ! array_key_exists('verified_human', $data)
+            && ! array_key_exists('view_token', $data);
+    });
+});
+
+test('a throttled repeat visit gets no token, because there is no visit to verify', function (): void {
+    Bus::fake();
+    Cache::flush();
+
+    config(['ranetrace.website_analytics.beacon.enabled' => true]);
+
+    Route::get('/beacon-throttle-probe', fn () => response(
+        (string) request()->attributes->get('ranetrace_view_token')
+    ))->middleware(['web', TrackPageVisit::class]);
+
+    $first = $this->withHeaders(humanBrowserHeaders())->get('/beacon-throttle-probe');
+    $second = $this->withHeaders(humanBrowserHeaders())->get('/beacon-throttle-probe');
+
+    expect(Str::isUuid($first->getContent()))->toBeTrue()
+        ->and($second->getContent())->toBe('');
+
+    Bus::assertDispatchedTimes(HandlePageVisitJob::class, 1);
 });
 
 /**

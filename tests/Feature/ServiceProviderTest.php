@@ -63,6 +63,21 @@ test('javascript error route is registered when enabled', function (): void {
     expect($routes)->not->toBeEmpty();
 });
 
+/**
+ * Mounted on the analytics flag, not the beacon flag, so a beacon from a page
+ * served before the beacon was switched off meets the controller's 403 rather
+ * than a 404 that reads as a broken install.
+ */
+test('analytics beacon route is registered when analytics is enabled', function (): void {
+    $routes = collect(app('router')->getRoutes())->filter(function ($route): bool {
+        return $route->getName() === 'ranetrace.analytics.verify';
+    });
+
+    expect($routes)->not->toBeEmpty()
+        ->and($routes->first()->methods())->toContain('POST')
+        ->and($routes->first()->uri())->toBe('ranetrace/analytics/verify');
+});
+
 test('middleware is registered when analytics enabled', function (): void {
     $middleware = app('router')->getMiddlewareGroups()['web'] ?? [];
 

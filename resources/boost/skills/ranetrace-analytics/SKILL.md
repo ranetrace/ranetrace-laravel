@@ -13,7 +13,7 @@ Use this skill when setting up website analytics, configuring bot detection, exc
 
 The `TrackPageVisit` middleware is auto-registered on the `web` middleware group when both `RANETRACE_ENABLED` and `RANETRACE_WEBSITE_ANALYTICS_ENABLED` are `true`. No manual middleware registration is needed.
 
-Analytics is privacy-first: no cookies and no client-side scripts. Visitors are identified only by **salted, one-way HMAC hashes** — a user-agent hash and a daily-rotating session-id hash (IP + user agent + date, keyed by a per-install salt) — never raw identifiers, and never across sites. The raw IP and user agent are used transiently on the server and are not sent (unless `debug.preserve_user_agent` is enabled for local debugging).
+Analytics is privacy-first: no cookies, no fingerprinting, no consent banner, and an optional beacon that sends one opaque token and nothing else. Visitors are identified only by **salted, one-way HMAC hashes**: a user-agent hash and a daily-rotating session-id hash (IP + user agent + date, keyed by a per-install salt), never raw identifiers and never across sites. The raw IP and user agent are used transiently on the server and are not sent (unless `debug.preserve_user_agent` is enabled for local debugging).
 
 ## Configuration
 
@@ -39,8 +39,35 @@ Analytics is privacy-first: no cookies and no client-side scripts. Visitors are 
         'require_client_hints' => env('RANETRACE_WEBSITE_ANALYTICS_REQUIRE_CLIENT_HINTS', true),
         'modern_browser_min_version' => env('RANETRACE_WEBSITE_ANALYTICS_MODERN_BROWSER_MIN_VERSION', 100),
     ],
+    'beacon' => [
+        'enabled' => env('RANETRACE_WEBSITE_ANALYTICS_BEACON_ENABLED', false),
+        'wait_seconds' => env('RANETRACE_WEBSITE_ANALYTICS_BEACON_WAIT_SECONDS', 15),
+        'delay_ms' => env('RANETRACE_WEBSITE_ANALYTICS_BEACON_DELAY_MS', 1500),
+        'throttle' => env('RANETRACE_WEBSITE_ANALYTICS_BEACON_THROTTLE', '120,1'),
+    ],
 ],
 ```
+
+## Human-verification beacon
+
+Every filter above reads what a request claims about itself, which an HTTP client can lie about. The beacon asks the other side to prove it: a real browser that ran JavaScript and had the page visible posts one opaque token back, and the visit is reported as verified or not.
+
+Opt in with one env var:
+
+```env
+RANETRACE_WEBSITE_ANALYTICS_BEACON_ENABLED=true
+```
+
+Then keep `@ranetraceErrorTracking` just before `</body>` in your layout. That directive renders the beacon as well as the JavaScript error script, so a layout that already has it needs nothing else, and a layout that does not needs one line.
+
+How it works: the capture middleware mints a token for the view, hands it to the page, and dispatches the page visit job with a delay of `wait_seconds`. In the browser the beacon waits for `load`, one animation frame and `delay_ms`, checks the page is still visible, and posts the token to `POST ranetrace/analytics/verify` (rate limited by `beacon.throttle`, in Laravel's `requests,minutes` form). The endpoint leaves a mark in Ranetrace's own cache store. When the job runs it reads that mark and ships the visit with `verified_human` true or false. A visit is never lost to a missing beacon: it is only reported unverified. Ranetrace's traffic pages then show verified visits, and how many were kept out.
+
+Two constraints:
+
+- **It needs a real queue connection.** A `sync` queue runs the job before the response leaves the server, so there is no wait and no beacon. In that case the visit goes out with no `verified_human` field rather than a false one.
+- **Keep it off behind a full-page cache** (Cloudflare cache-everything, a static export). The token is printed into the HTML, so a cached page hands one token to many visitors.
+
+`delay_ms` is what filters instant bounces and prerenders. `wait_seconds` is how long the visit is held before it is reported; the mark outlives it by a minute so a busy queue running the job late does not read a beacon that did arrive as absent.
 
 ## Excluded Paths
 
@@ -91,6 +118,7 @@ The middleware uses a multi-layer bot detection system:
 5. **Human probability scoring**: analyzes HTTP headers and patterns to score request likelihood of being human (a `Sec-CH-UA` header adds to that score)
 6. **Minimum score threshold**: a request scoring below `RANETRACE_WEBSITE_ANALYTICS_MIN_HUMAN_SCORE` (default 70) is not captured. Lower it towards 50 if legitimate visitors on uncommon browsers or behind header-stripping proxies go missing
 7. **Header validation**: requires `Accept-Language` and meaningful `Accept` headers
+8. **Human-verification beacon** (opt-in, off by default): the layers above read what a request claims about itself; the beacon asks a real browser to answer. See *Human-verification beacon* above
 
 ## Throttling
 
@@ -104,6 +132,7 @@ Each page visit includes:
 - Browser detection (Chrome, Firefox, Safari, Edge, Opera, etc.)
 - Privacy-safe user agent hash and daily-rotating session ID hash
 - Human probability score
+- `verified_human`, only when the beacon is enabled
 - Country code (when available)
 
 ## Testing
