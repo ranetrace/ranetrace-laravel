@@ -244,6 +244,14 @@ class HumanProbabilityScorer
             $score += 15;
         }
 
+        // User-Agent Client Hints (Sec-CH-UA) are emitted by modern Chromium
+        // browsers and are awkward for simple HTTP clients to forge in a way
+        // consistent with the claimed user agent.
+        if ($request->header('sec-ch-ua')) {
+            $this->reasons[] = 'User-Agent Client Hints (Sec-CH-UA) present';
+            $score += 10;
+        }
+
         return $score;
     }
 

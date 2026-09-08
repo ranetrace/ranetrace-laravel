@@ -66,6 +66,27 @@ return [
             'max_length' => env('RANETRACE_WEBSITE_ANALYTICS_UA_MAX_LENGTH', 1000),
         ],
         'throttle_seconds' => env('RANETRACE_WEBSITE_ANALYTICS_THROTTLE_SECONDS', 30),
+
+        // Minimum human-probability score (0-100) a request must reach to be
+        // captured. Higher = stricter: 70 keeps only "likely human" traffic,
+        // 50 also keeps the borderline "possibly human" band. Lower this if you
+        // notice legitimate visitors (uncommon browsers, privacy proxies that
+        // strip headers) being dropped from your analytics.
+        'min_human_score' => env('RANETRACE_WEBSITE_ANALYTICS_MIN_HUMAN_SCORE', 70),
+
+        // Consistency check for spoofed user agents. Modern Chromium browsers
+        // (Chrome/Edge) always send fetch-metadata (Sec-Fetch-*) and User-Agent
+        // Client Hint (Sec-CH-UA) headers. A request whose user agent claims a
+        // recent Chromium build but carries none of them is almost always an
+        // HTTP client wearing a fake browser user agent, so it is rejected.
+        // `modern_browser_min_version` is the Chrome/Edge major version at or
+        // above which these headers are required; set `require_client_hints` to
+        // false to disable the check entirely.
+        'bot_detection' => [
+            'require_client_hints' => env('RANETRACE_WEBSITE_ANALYTICS_REQUIRE_CLIENT_HINTS', true),
+            'modern_browser_min_version' => env('RANETRACE_WEBSITE_ANALYTICS_MODERN_BROWSER_MIN_VERSION', 100),
+        ],
+
         'extra_bot_user_agents' => [
             // 'YourCustomMonitor/',
         ],

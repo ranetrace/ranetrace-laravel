@@ -34,6 +34,11 @@ Analytics is privacy-first: no cookies and no client-side scripts. Visitors are 
         'max_length' => env('RANETRACE_WEBSITE_ANALYTICS_UA_MAX_LENGTH', 1000),
     ],
     'throttle_seconds' => env('RANETRACE_WEBSITE_ANALYTICS_THROTTLE_SECONDS', 30),
+    'min_human_score' => env('RANETRACE_WEBSITE_ANALYTICS_MIN_HUMAN_SCORE', 70),
+    'bot_detection' => [
+        'require_client_hints' => env('RANETRACE_WEBSITE_ANALYTICS_REQUIRE_CLIENT_HINTS', true),
+        'modern_browser_min_version' => env('RANETRACE_WEBSITE_ANALYTICS_MODERN_BROWSER_MIN_VERSION', 100),
+    ],
 ],
 ```
 
@@ -79,11 +84,13 @@ Register in config:
 ## Bot Detection
 
 The middleware uses a multi-layer bot detection system:
-1. **CrawlerDetect library** — comprehensive crawler detection
-2. **Extra bot patterns** — additional bots not caught by CrawlerDetect (ChatGPT, Claude, social media crawlers, SEO bots, headless browsers)
-3. **Suspicious user agent patterns** — filters curl, wget, python-requests, etc.
-4. **Human probability scoring** — analyzes HTTP headers and patterns to score request likelihood of being human
-5. **Header validation** — requires `Accept-Language` and meaningful `Accept` headers
+1. **CrawlerDetect library**: comprehensive crawler detection
+2. **Extra bot patterns**: additional bots not caught by CrawlerDetect (ChatGPT, Claude, social media crawlers, SEO bots, headless browsers)
+3. **Suspicious user agent patterns**: filters curl, wget, python-requests, etc.
+4. **Client hint consistency check**: a user agent claiming Chrome or Edge 100 or newer while sending none of the `Sec-Fetch-Site`, `Sec-Fetch-Mode`, `Sec-Fetch-Dest` or `Sec-CH-UA` headers every real Chromium build emits is rejected as a spoofed HTTP client. Set `RANETRACE_WEBSITE_ANALYTICS_REQUIRE_CLIENT_HINTS=false` to switch the check off, or `RANETRACE_WEBSITE_ANALYTICS_MODERN_BROWSER_MIN_VERSION` (default 100) to move the version floor. Older Chromium builds and non-Chromium browsers are never touched by it
+5. **Human probability scoring**: analyzes HTTP headers and patterns to score request likelihood of being human (a `Sec-CH-UA` header adds to that score)
+6. **Minimum score threshold**: a request scoring below `RANETRACE_WEBSITE_ANALYTICS_MIN_HUMAN_SCORE` (default 70) is not captured. Lower it towards 50 if legitimate visitors on uncommon browsers or behind header-stripping proxies go missing
+7. **Header validation**: requires `Accept-Language` and meaningful `Accept` headers
 
 ## Throttling
 

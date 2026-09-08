@@ -223,9 +223,17 @@ class TrackPageVisit
             }
         }
 
+        // A user agent claiming a recent Chromium build that sends none of the
+        // headers such a build always emits (Sec-Fetch-* / Sec-CH-UA) is almost
+        // certainly a spoofed HTTP client. Reject it before scoring.
+        if ($this->claimsModernChromiumWithoutClientHints($request, $userAgent)) {
+            return;
+        }
+
         $humanScore = HumanProbabilityScorer::score($request);
 
-        if (in_array($humanScore['classification'], ['definitely_bot', 'probably_bot'], true)) {
+        $minHumanScore = (int) config('ranetrace.website_analytics.min_human_score', 70);
+        if ($humanScore['score'] < $minHumanScore) {
             return;
         }
 
@@ -305,5 +313,42 @@ class TrackPageVisit
         }
 
         return $request->is($prefix) || $request->is($prefix.'/*');
+    }
+
+    /**
+     * Detect a spoofed modern-Chromium request: the user agent claims a recent
+     * Chrome or Edge build, but the request carries none of the fetch-metadata
+     * (Sec-Fetch-*) or User-Agent Client Hint (Sec-CH-UA) headers those builds
+     * always send. Real browsers emit at least one of these on a navigation, so
+     * their total absence on a recent-Chromium claim is a high-confidence sign
+     * of an HTTP client wearing a fake user agent.
+     *
+     * Controlled by `website_analytics.bot_detection.*`. Scoped to Chrome/Edge
+     * at or above `modern_browser_min_version` to avoid penalising older or
+     * non-Chromium browsers that legitimately omit these headers.
+     */
+    private function claimsModernChromiumWithoutClientHints(Request $request, string $userAgent): bool
+    {
+        if (! config('ranetrace.website_analytics.bot_detection.require_client_hints', true)) {
+            return false;
+        }
+
+        // `Edg/` is Chromium-based Edge; Chrome reports `Chrome/`.
+        if (! preg_match('/(?:Chrome|Edg)\/(\d+)/', $userAgent, $matches)) {
+            return false;
+        }
+
+        $minVersion = (int) config('ranetrace.website_analytics.bot_detection.modern_browser_min_version', 100);
+        if ((int) $matches[1] < $minVersion) {
+            return false;
+        }
+
+        $hasFetchMetadata = $request->header('sec-fetch-site')
+            || $request->header('sec-fetch-mode')
+            || $request->header('sec-fetch-dest');
+
+        $hasClientHints = (bool) $request->header('sec-ch-ua');
+
+        return ! $hasFetchMetadata && ! $hasClientHints;
     }
 }

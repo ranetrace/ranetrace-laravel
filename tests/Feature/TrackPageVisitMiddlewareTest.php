@@ -402,6 +402,137 @@ test('it filters headless browser user agents', function (): void {
     Bus::assertNotDispatched(HandlePageVisitJob::class);
 });
 
+test('it rejects a modern Chrome user agent that sends no client hint headers', function (): void {
+    Bus::fake();
+    Cache::flush();
+
+    // A current Chrome user agent with none of the Sec-Fetch / Sec-CH-UA headers
+    // a real Chromium build always sends, the hallmark of a spoofed HTTP client.
+    $this->withHeaders(browserHeadersWithUserAgent(chromeUserAgent(120)))->get('/');
+
+    Bus::assertNotDispatched(HandlePageVisitJob::class);
+});
+
+test('it rejects a modern Edge user agent that sends no client hint headers', function (): void {
+    Bus::fake();
+    Cache::flush();
+
+    // Chromium-based Edge reports both `Chrome/` and `Edg/`, so it is covered by
+    // the same rule; the config comment promises Chrome and Edge alike.
+    $this->withHeaders(browserHeadersWithUserAgent(edgeUserAgent(120)))->get('/');
+
+    Bus::assertNotDispatched(HandlePageVisitJob::class);
+});
+
+test('it tracks a modern Chrome user agent that sends client hint headers', function (): void {
+    Bus::fake();
+    Cache::flush();
+
+    $this->withHeaders(browserHeadersWithUserAgent(chromeUserAgent(120)) + [
+        'Sec-Fetch-Site' => 'none',
+        'Sec-Fetch-Mode' => 'navigate',
+        'Sec-Fetch-Dest' => 'document',
+        'Sec-CH-UA' => '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
+    ])->get('/');
+
+    Bus::assertDispatched(HandlePageVisitJob::class);
+});
+
+test('a single client hint header is enough to clear the check', function (string $header): void {
+    Bus::fake();
+    Cache::flush();
+
+    // Any one of the four proves the request came from something that speaks
+    // fetch metadata. A proxy that forwards only part of the set must not cost a
+    // real visitor their visit, and `sec-fetch-dest` earns no scorer bonus, so
+    // this is the case a scorer-only check would get wrong.
+    $this->withHeaders(browserHeadersWithUserAgent(chromeUserAgent(120)) + [$header => 'document'])->get('/');
+
+    Bus::assertDispatched(HandlePageVisitJob::class);
+})->with(['Sec-Fetch-Site', 'Sec-Fetch-Mode', 'Sec-Fetch-Dest', 'Sec-CH-UA']);
+
+test('it tracks a Firefox user agent that never sends client hints', function (): void {
+    Bus::fake();
+    Cache::flush();
+
+    // Firefox emits no Sec-CH-UA at all. The check is scoped to Chromium
+    // precisely so browsers like this are never touched by it.
+    $this->withHeaders(browserHeadersWithUserAgent(
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0'
+    ))->get('/');
+
+    Bus::assertDispatched(HandlePageVisitJob::class);
+});
+
+test('the version floor is inclusive', function (int $version, bool $tracked): void {
+    Bus::fake();
+    Cache::flush();
+
+    $this->withHeaders(browserHeadersWithUserAgent(chromeUserAgent($version)))->get('/');
+
+    $tracked
+        ? Bus::assertDispatched(HandlePageVisitJob::class)
+        : Bus::assertNotDispatched(HandlePageVisitJob::class);
+})->with([
+    'exactly at the floor' => [100, false],
+    'one below the floor' => [99, true],
+]);
+
+test('the modern browser version floor is read from config', function (): void {
+    Bus::fake();
+    Cache::flush();
+    config(['ranetrace.website_analytics.bot_detection.modern_browser_min_version' => 999]);
+
+    $this->withHeaders(browserHeadersWithUserAgent(chromeUserAgent(120)))->get('/');
+
+    Bus::assertDispatched(HandlePageVisitJob::class);
+});
+
+test('the client hint requirement can be disabled via config', function (): void {
+    Bus::fake();
+    Cache::flush();
+    config(['ranetrace.website_analytics.bot_detection.require_client_hints' => false]);
+
+    $this->withHeaders(browserHeadersWithUserAgent(chromeUserAgent(120)))->get('/');
+
+    Bus::assertDispatched(HandlePageVisitJob::class);
+});
+
+test('it drops requests below the configured min_human_score', function (): void {
+    Bus::fake();
+    Cache::flush();
+    config(['ranetrace.website_analytics.min_human_score' => 99]);
+
+    // A legitimate-looking browser request that scores well, but below an
+    // extreme threshold, proving the gate is honoured.
+    $this->withHeaders(humanBrowserHeaders())->get('/');
+
+    Bus::assertNotDispatched(HandlePageVisitJob::class);
+});
+
+test('it tracks a request that clears a lowered min_human_score but not the default', function (): void {
+    Bus::fake();
+    Cache::flush();
+
+    // A user agent without the structure the scorer rewards: browser-shaped
+    // enough to clear every other filter, but scoring under the default 70.
+    $headers = browserHeadersWithUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) NicheBrowser/3.1');
+
+    $this->withHeaders($headers)->get('/test-page');
+    Bus::assertNotDispatched(HandlePageVisitJob::class);
+
+    Cache::flush();
+    config(['ranetrace.website_analytics.min_human_score' => 50]);
+
+    $this->withHeaders($headers)->get('/test-page');
+
+    Bus::assertDispatched(HandlePageVisitJob::class, function ($job): bool {
+        // Under the default threshold, so only the lowered config can explain
+        // this dispatch.
+        return $job->getVisitData()['human_probability_score'] < 70;
+    });
+});
+
 test('it does not track non-GET requests even with human browser headers', function (): void {
     Bus::fake();
     Cache::flush();
@@ -512,6 +643,35 @@ function humanBrowserHeaders(): array
         'Accept' => 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
         'Accept-Language' => 'en-US,en;q=0.9',
     ];
+}
+
+/**
+ * The same browser headers with a caller-chosen user agent. No Sec-* header is
+ * included: the client-hint tests each add back exactly the ones they are about.
+ *
+ * @return array<string, string>
+ */
+function browserHeadersWithUserAgent(string $userAgent): array
+{
+    return array_merge(humanBrowserHeaders(), ['User-Agent' => $userAgent]);
+}
+
+/**
+ * A Chrome user agent of the given major version.
+ */
+function chromeUserAgent(int $majorVersion): string
+{
+    return 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) '
+        ."Chrome/{$majorVersion}.0.0.0 Safari/537.36";
+}
+
+/**
+ * A Chromium-based Edge user agent of the given major version. Real Edge reports
+ * `Chrome/` as well as `Edg/`, which is why the check matches either token.
+ */
+function edgeUserAgent(int $majorVersion): string
+{
+    return chromeUserAgent($majorVersion)." Edg/{$majorVersion}.0.0.0";
 }
 
 /**

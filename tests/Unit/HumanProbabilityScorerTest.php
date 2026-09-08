@@ -85,6 +85,25 @@ test('it rewards cookies', function (): void {
     expect($result['reasons'])->toContain('Request includes cookies');
 });
 
+test('it rewards User-Agent Client Hints', function (): void {
+    $withoutHints = Illuminate\Http\Request::create('/', 'GET');
+    $withoutHints->headers->set('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0');
+    $withoutHints->server->set('REMOTE_ADDR', '127.0.0.1');
+
+    $request = Illuminate\Http\Request::create('/', 'GET');
+    $request->headers->set('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0');
+    $request->headers->set('Sec-CH-UA', '"Chromium";v="120", "Google Chrome";v="120"');
+    $request->server->set('REMOTE_ADDR', '127.0.0.1');
+
+    $result = HumanProbabilityScorer::score($request);
+
+    expect($result['reasons'])->toContain('User-Agent Client Hints (Sec-CH-UA) present');
+
+    // The reward has to move the number too: the middleware gates on the score,
+    // not on the reason list.
+    expect($result['score'])->toBeGreaterThan(HumanProbabilityScorer::score($withoutHints)['score']);
+});
+
 test('score is always between 0 and 100', function (): void {
     $userAgents = [
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/91.0',
