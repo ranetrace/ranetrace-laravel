@@ -22,7 +22,7 @@ Ranetrace is an all-in-one monitoring package for Laravel providing error tracki
 
 ### Error Tracking
 
-Capturing unhandled exceptions is **required wiring — it is NOT automatic.** Register Ranetrace on Laravel's exception handler in `bootstrap/app.php`:
+Capturing unhandled exceptions is **required wiring: it is NOT automatic.** Register Ranetrace on Laravel's exception handler in `bootstrap/app.php`:
 
 @verbatim
 <code-snippet name="Wire Ranetrace into the exception handler" lang="php">
@@ -39,8 +39,8 @@ Without this line, unhandled exceptions are NOT captured (though `Ranetrace::rep
 
 ### Key Facades
 
-- `Ranetrace` — error reporting (`Ranetrace::report($exception)`) and event tracking (`Ranetrace::trackEvent('event_name', $properties)`)
-- `RanetraceEvents` — convenience methods for common events (sales, user registration, etc.)
+- `Ranetrace`: error reporting (`Ranetrace::report($exception)`) and event tracking (`Ranetrace::trackEvent('event_name', $properties)`)
+- `RanetraceEvents`: convenience methods for common events (sales, user registration, etc.)
 
 ### Middleware
 
@@ -86,7 +86,7 @@ At the approval screen the user picks **exactly one website** the connection may
 
 An application with `RANETRACE_MCP_TOKEN` in `.env` is on a retired setup: there is no local MCP server to run. Delete the variable and connect the MCP client over OAuth as above.
 
-The monitor tools are `get-monitor-status-tool` (which of my monitors needs a look), plus `get-uptime-status-tool`, `get-performance-stats-tool`, `get-lighthouse-audit-tool`, `get-certificate-status-tool`, `get-domain-status-tool` and `get-broken-links-tool`. None takes parameters: the connection scopes every call to one website. Each answers verdict first (what we found, why it matters, what to do) with the raw data following, so pass the verdict on rather than re-deriving a conclusion from the numbers. A monitor that is switched off answers 409 `MONITOR_DISABLED` rather than returning stale figures.
+`get-monitor-status-tool` answers "which of my monitors needs a look" for the website, every enabled monitor with its verdict. The per-monitor tools (uptime, performance, Lighthouse, certificate, domain, broken links) give the detail behind one of them: `get-uptime-status-tool`, `get-performance-stats-tool`, `get-lighthouse-audit-tool`, `get-certificate-status-tool`, `get-domain-status-tool` and `get-broken-links-tool`. None takes parameters: the connection scopes every call to one website. Every monitor tool answers verdict first: what we found, why it matters, what to do, the same guidance a human reads on the dashboard, with the raw measurements following as its evidence. Read the verdict before the numbers, and pass its wording on rather than re-deriving your own conclusion from the data. A monitor that is switched off answers 409 `MONITOR_DISABLED` rather than returning stale figures.
 
 ### Testing
 
@@ -102,6 +102,6 @@ Individual test commands: `ranetrace:test-errors`, `ranetrace:test-events`, `ran
 ### Common Pitfalls
 
 - Both `RANETRACE_ENABLED=true` and the feature-specific env var must be set for any feature to work.
-- Error tracking requires the `Ranetrace::handles($exceptions)` wiring in `bootstrap/app.php` (see *Error Tracking* above) — without it, unhandled exceptions are not captured.
-- Batch buffering uses your app's cache store by default (`RANETRACE_BATCH_CACHE_DRIVER`, falling back to `CACHE_STORE`/`CACHE_DRIVER` → `file`). For production / multi-worker setups, point it at a shared, lock-capable store (`redis`, `memcached`, or `database`) — avoid `array` (per-process).
-- The logging channel name `ranetrace_internal` is reserved for internal diagnostics — do not use it in your application. Self-logging is handled internally (the package writes its own diagnostics to that separate channel), so you do NOT need to add anything to `excluded_channels` to prevent loops.
+- Error tracking requires the `Ranetrace::handles($exceptions)` wiring in `bootstrap/app.php` (see *Error Tracking* above). Without it, unhandled exceptions are not captured.
+- Batch buffering uses your app's cache store by default (`RANETRACE_BATCH_CACHE_DRIVER`, falling back to `CACHE_STORE`/`CACHE_DRIVER` → `file`). For production / multi-worker setups, point it at a shared, lock-capable store (`redis`, `memcached`, or `database`), never `array` (per-process).
+- The logging channel name `ranetrace_internal` is reserved for internal diagnostics: do not use it in your application. Self-logging is handled internally (the package writes its own diagnostics to that separate channel), so you do NOT need to add anything to `excluded_channels` to prevent loops.

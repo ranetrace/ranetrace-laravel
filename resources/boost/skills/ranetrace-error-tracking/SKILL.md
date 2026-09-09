@@ -11,7 +11,7 @@ Use this skill when working with error tracking, exception reporting, error inve
 
 ## Reporting Errors
 
-Capturing unhandled exceptions is **required wiring — it is NOT automatic.** Register Ranetrace on Laravel's exception handler in `bootstrap/app.php` with the package's one-liner:
+Capturing unhandled exceptions is **required wiring: it is NOT automatic.** Register Ranetrace on Laravel's exception handler in `bootstrap/app.php` with the package's one-liner:
 
 ```php
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -160,7 +160,7 @@ The same MCP server also answers for the website being monitored, not only the a
 
 None of them takes parameters: the connection already scopes every call to one website.
 
-Each answers **verdict first** — what we found, why it matters, what to do — with the raw measurements following as evidence. Read the verdict and pass its wording on rather than re-deriving a conclusion from the numbers. A monitor that is switched off answers 409 `MONITOR_DISABLED` instead of returning stale figures, and the tool surfaces that message as-is.
+Each answers **verdict first**: what we found, why it matters, what to do, the same guidance a human reads on the dashboard, with the raw measurements following as its evidence. Read the verdict before the numbers, and pass its wording on rather than re-deriving your own conclusion from the data. A monitor that is switched off answers 409 `MONITOR_DISABLED` instead of returning stale figures, and the tool surfaces that message as-is.
 
 ## Notification rules
 
