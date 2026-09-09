@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Ranetrace\Laravel\Tests;
 
+use Illuminate\Filesystem\Filesystem;
 use Orchestra\Testbench\TestCase as Orchestra;
 use Ranetrace\Laravel\Analytics\Middleware\TrackPageVisit;
 use Ranetrace\Laravel\RanetraceServiceProvider;
@@ -20,9 +21,20 @@ class TestCase extends Orchestra
      */
     public array $configOverrides = [];
 
-    protected function setUp(): void
+    /**
+     * This test's own storage directory, created in getEnvironmentSetUp() and
+     * removed in tearDown(). Null until the application is built.
+     */
+    protected ?string $temporaryStoragePath = null;
+
+    protected function tearDown(): void
     {
-        parent::setUp();
+        parent::tearDown();
+
+        if ($this->temporaryStoragePath !== null) {
+            (new Filesystem)->deleteDirectory($this->temporaryStoragePath);
+            $this->temporaryStoragePath = null;
+        }
     }
 
     protected function getPackageProviders($app): array
@@ -32,8 +44,38 @@ class TestCase extends Orchestra
         ];
     }
 
+    /**
+     * Testbench runs this after the config is loaded, which is what makes the
+     * storage redirect below safe, and after the package provider's register(),
+     * which is why the internal log channel has to be re-pointed by hand.
+     *
+     * Every framework path derived from storage (view.compiled, session.files,
+     * the file cache store, the app's single/daily log channels) was computed
+     * from the Testbench skeleton's storage path while the config loaded, so
+     * useStoragePath() here only redirects the storage_path() calls made later:
+     * the dashboard's glob for the internal log's daily files, and the reader's
+     * fallback. The skeleton's storage is shared by every run and is never
+     * reset, so without this a log file an earlier run left behind would decide
+     * what the dashboard's log panel shows on this machine.
+     *
+     * The `ranetrace_internal` channel is the other half: the provider computed
+     * its path from the skeleton's storage before this method ran, so the value
+     * is re-set here (config set after register() wins) and the writer lands in
+     * the same private directory the reader looks in. That also keeps the suite
+     * from dropping `ranetrace-internal-*.log` files into the shared skeleton.
+     */
     protected function getEnvironmentSetUp($app): void
     {
+        // Unique per test, so a parallel run has nothing to coordinate. Kept
+        // across a reloadApplication() so the rebuilt app reads the same files.
+        if ($this->temporaryStoragePath === null) {
+            $this->temporaryStoragePath = sys_get_temp_dir().'/ranetrace-laravel-tests-'.uniqid('', true);
+            mkdir($this->temporaryStoragePath.'/logs', 0755, true);
+        }
+
+        $app->useStoragePath($this->temporaryStoragePath);
+        $app['config']->set('logging.channels.ranetrace_internal.path', $app->storagePath('logs/ranetrace-internal.log'));
+
         // Configure cache to use array driver for testing
         $app['config']->set('cache.default', 'array');
 

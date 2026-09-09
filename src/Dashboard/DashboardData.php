@@ -292,19 +292,30 @@ class DashboardData
 
     /**
      * Most-recent internal-log entries at warning level or above. Reads the
-     * latest daily `ranetrace-internal-*.log` file; an absent/unreadable file
-     * yields an empty feed rather than an error.
+     * latest daily file written by the `ranetrace_internal` channel; an
+     * absent/unreadable file yields an empty feed rather than an error.
+     *
+     * The directory and basename come from that channel's own configured path,
+     * so the reader follows the writer through one seam. Both calling
+     * storage_path() would make them agree only by coincidence: point the
+     * channel elsewhere and this panel would keep reading the old directory.
+     * The service provider always sets the path, so the fallback only covers a
+     * host that has torn the channel out of its config.
      *
      * @return array<int, array{time: string, level: string, message: string}>
      */
     public function internalLogTail(int $limit = self::LOG_TAIL_LIMIT): array
     {
         try {
-            $files = glob(storage_path('logs/ranetrace-internal-*.log')) ?: [];
+            $configured = config('logging.channels.ranetrace_internal.path');
+            $path = is_string($configured) && $configured !== ''
+                ? $configured
+                : storage_path('logs/ranetrace-internal.log');
+
+            $files = glob(dirname($path).'/'.basename($path, '.log').'-*.log') ?: [];
 
             if ($files === []) {
-                $single = storage_path('logs/ranetrace-internal.log');
-                $files = is_file($single) ? [$single] : [];
+                $files = is_file($path) ? [$path] : [];
             }
 
             if ($files === []) {

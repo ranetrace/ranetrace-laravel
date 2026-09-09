@@ -76,33 +76,22 @@ test('the page speaks its warnings and its log panel with no em-dash anywhere', 
     // Age the buffered item past the drain window so it reads as stalled.
     $this->travel(601)->seconds();
 
-    // The log tail reads the most-recent daily file in the shared Workbench
-    // storage, so a far-future info-only file pins the panel to its empty state
-    // and keeps whatever an earlier run left on disk out of the sweep below.
-    $dir = storage_path('logs');
-    if (! is_dir($dir)) {
-        mkdir($dir, 0755, true);
-    }
-    $file = $dir.'/ranetrace-internal-2099-01-03.log';
-    file_put_contents($file, "[2099-01-03 10:00:00] testing.INFO: nothing worth surfacing\n");
+    // No log fixture: this test's storage directory (see TestCase) starts
+    // empty, so the log panel renders its empty state and no line an earlier
+    // run wrote can carry a dash into the sweep below.
+    $response = $this->get('/ranetrace');
 
-    try {
-        $response = $this->get('/ranetrace');
+    $response->assertOk();
 
-        $response->assertOk();
-
-        // Every config and environment value is set here, so the page renders no
-        // empty-value marker and the whole of it can be swept for the character.
-        expect($response->getContent())
-            ->toContain('<title>Ranetrace diagnostics</title>')
-            ->toContain("Drain stalled: buffered items aren't being sent.")
-            ->toContain('Internal log: warnings and errors')
-            ->toContain('Rate limited, auto-resumes')
-            ->toContain('No recent warnings or errors, or the internal log file isn’t present yet.')
-            ->not->toContain("\u{2014}");
-    } finally {
-        @unlink($file);
-    }
+    // Every config and environment value is set here, so the page renders no
+    // empty-value marker and the whole of it can be swept for the character.
+    expect($response->getContent())
+        ->toContain('<title>Ranetrace diagnostics</title>')
+        ->toContain("Drain stalled: buffered items aren't being sent.")
+        ->toContain('Internal log: warnings and errors')
+        ->toContain('Rate limited, auto-resumes')
+        ->toContain('No recent warnings or errors, or the internal log file isn’t present yet.')
+        ->not->toContain("\u{2014}");
 });
 
 test('a freshly buffered item is shown as waiting, not stalled', function (): void {
