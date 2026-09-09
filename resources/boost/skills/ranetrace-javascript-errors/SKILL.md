@@ -106,14 +106,14 @@ window.Ranetrace.addBreadcrumb('custom', 'User selected plan', {
 
 ### Key Options
 
-- **`sample_rate`** — `1.0` captures 100% of errors, `0.1` captures 10%. Useful for high-traffic sites.
-- **`capture_console_errors`** — When `true`, intercepts `console.error()` calls and reports them.
-- **`max_breadcrumbs`** — Maximum number of breadcrumbs stored per error (default: 20).
-- **`ignored_errors`** — Error messages containing any of these strings are silently dropped. Add your own patterns as needed.
+- **`sample_rate`**: `1.0` captures 100% of errors, `0.1` captures 10%. Useful for high-traffic sites.
+- **`capture_console_errors`**: when `true`, intercepts `console.error()` calls and reports them.
+- **`max_breadcrumbs`**: maximum number of breadcrumbs stored per error (default: 20).
+- **`ignored_errors`**: error messages containing any of these strings are silently dropped. Add your own patterns as needed.
 
 ## Endpoint & Throttling
 
-Errors are sent to `POST /ranetrace/javascript-errors/store` (route name `ranetrace.javascript-errors.store`). The route is auto-registered when JS error tracking is enabled, with `web` middleware (CSRF — the injected script sends the host page's `X-CSRF-TOKEN`) plus `throttle`. The default rate limit is `60,1` (60 requests/minute), keyed by the authenticated user's id when present, otherwise the client IP — tune via `RANETRACE_JAVASCRIPT_ERRORS_THROTTLE` (Laravel `requests,minutes` format).
+Errors are sent to `POST /ranetrace/javascript-errors/store` (route name `ranetrace.javascript-errors.store`). The route is auto-registered when JS error tracking is enabled, with `web` middleware (CSRF: the injected script sends the host page's `X-CSRF-TOKEN`) plus `throttle`. The default rate limit is `60,1` (60 requests/minute), keyed by the authenticated user's id when present, otherwise the client IP. Tune it via `RANETRACE_JAVASCRIPT_ERRORS_THROTTLE` (Laravel `requests,minutes` format).
 
 Client-side deduplication prevents the same error (same message + file + line + column) from being sent more than once per page session.
 

@@ -40,7 +40,7 @@ Each error report includes:
 - Exception message (key=value secrets redacted), type, file, and line number
 - Stack trace (truncated to 5000 chars; key=value secrets redacted)
 - Code snippet (5 lines before and after the error line; each line length-capped)
-- HTTP request data (URL with sensitive query params redacted, method, allowlisted headers only — the client IP / `x-forwarded-for` is masked, not captured)
+- HTTP request data (URL with sensitive query params redacted, method, allowlisted headers only; the client IP / `x-forwarded-for` is masked, not captured)
 - Authenticated user ID (email only when `ranetrace.errors.capture_user_email` is enabled; off by default)
 - PHP and Laravel versions
 - Environment name

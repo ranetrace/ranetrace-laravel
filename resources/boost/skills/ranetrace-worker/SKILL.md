@@ -64,7 +64,7 @@ php artisan queue:work --queue=ranetrace
     'queue_name' => env('RANETRACE_BATCH_QUEUE_NAME', 'default'),
     // Defaults to your app's cache store (CACHE_STORE / CACHE_DRIVER, → file).
     // For production / multi-worker setups point this at a shared, lock-capable
-    // store (redis, memcached, or database) — never `array` (per-process).
+    // store (redis, memcached, or database), never `array` (per-process).
     'cache_driver' => env('RANETRACE_BATCH_CACHE_DRIVER', env('CACHE_STORE', env('CACHE_DRIVER', 'file'))),
     'buffer_ttl' => env('RANETRACE_BATCH_BUFFER_TTL', 3600),         // 1 hour
     'max_buffer_size' => env('RANETRACE_BATCH_MAX_BUFFER_SIZE', 5000),
@@ -106,5 +106,5 @@ php artisan ranetrace:pause-clear --all
 - Clear manually: `php artisan ranetrace:pause-clear --feature=<type>`
 
 **Cache driver not available:**
-- The batch buffer uses the cache store set by `RANETRACE_BATCH_CACHE_DRIVER` (defaults to your app's cache store — `CACHE_STORE`/`CACHE_DRIVER`, i.e. `file` unless you've changed it)
+- The batch buffer uses the cache store set by `RANETRACE_BATCH_CACHE_DRIVER` (defaults to your app's cache store: `CACHE_STORE`/`CACHE_DRIVER`, i.e. `file` unless you've changed it)
 - For production / multi-worker setups, point it at a shared, lock-capable store (`redis`, `memcached`, or `database`) and make sure that store is configured in `config/cache.php`

@@ -86,8 +86,8 @@ rather than a permanent local setting.
 ],
 ```
 
-- `level` — minimum level the auto-registered channel captures (default `notice`).
-- `excluded_channels` — record channel names to skip (matched against
+- `level`: minimum level the auto-registered channel captures (default `notice`).
+- `excluded_channels`: record channel names to skip (matched against
   `$record->channel`). Use it to drop noisy or sensitive channels.
 
 ## Overriding the channel
@@ -108,7 +108,7 @@ To customize it (for example a different minimum level), define `ranetrace` in
 ## Self-logging is handled for you
 
 Ranetrace writes its own diagnostics to a separate, package-owned
-`ranetrace_internal` channel — never back through the `ranetrace` channel — so
+`ranetrace_internal` channel (never back through the `ranetrace` channel), so
 capturing logs cannot create a feedback loop. You do **not** need to add anything
 to `excluded_channels` to prevent self-referencing. (`ranetrace_internal` is
 reserved for Ranetrace; do not use it in application code.)
@@ -125,7 +125,7 @@ Each log entry includes:
 - Extra metadata: environment, Laravel version, PHP version
 
 Values stored under sensitive keys (`password`, `token`, `api_key`, `secret`,
-`authorization`, …) — and `key=value` secrets written into the message string —
+`authorization`, …), and `key=value` secrets written into the message string,
 are redacted to `[REDACTED]` before the entry is sent. Extend the sensitive-key
 list via `ranetrace.scrubbing.extra_keys`. Scrubbing is defense-in-depth; avoid
 deliberately logging secrets regardless.
@@ -137,7 +137,7 @@ The `ranetrace` driver uses a custom Monolog handler (`RanetraceLogHandler`) tha
 - Respects the `level` config to filter which log levels are sent
 - Supports the `bubble` config for Monolog handler chaining
 - Sanitizes context data to handle non-serializable objects (closures, resources)
-- Is failure-isolated — it never throws back into your `Log::*()` call
+- Is failure-isolated: it never throws back into your `Log::*()` call
 - Dispatches logs to the queue by default, so transmission to the API happens off
   the request path
 
