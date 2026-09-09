@@ -30,7 +30,7 @@ function bufferedLogItem(RanetraceBatchBuffer $buffer): array
 /**
  * An error payload whose every allowed key holds an oversize free-form string:
  * each one is shrunk to the per-field budget, yet nineteen of them together stay
- * far above the per-item budget — the only way an item reaches the drop branch.
+ * far above the per-item budget, the only way an item reaches the drop branch.
  *
  * @return array<string, string>
  */

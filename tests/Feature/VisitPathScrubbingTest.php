@@ -134,7 +134,7 @@ test('a non-sensitive referrer path is preserved in full', function () use ($bro
 });
 
 test('an external referrer keeps its path and still has its query scrubbed', function () use ($browserHeaders, $visitData): void {
-    // A third-party path is not described by our routes, so it is left alone —
+    // A third-party path is not described by our routes, so it is left alone,
     // but the query-string scrub still applies, as it always did.
     $this->withHeaders($browserHeaders + [
         'Referer' => 'https://search.example.com/results/laravel?token=theirs&q=ranetrace',

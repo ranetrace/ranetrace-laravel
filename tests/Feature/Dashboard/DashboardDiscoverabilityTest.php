@@ -54,6 +54,19 @@ test('the production 403 is a simple forbidden page that leaks no setup instruct
         ->not->toMatch('/<script(?![^>]*\bsrc=)/');
 });
 
+test('the forbidden page titles itself with no em-dash', function (): void {
+    // The house writing rule keeps the dash out of anything the package says,
+    // and this title is what an unauthorized visitor reads in their browser tab.
+    $this->app['env'] = 'production';
+
+    $response = $this->get('/ranetrace');
+
+    $response->assertForbidden();
+    expect($response->getContent())
+        ->toContain('<title>Ranetrace diagnostics: Forbidden</title>')
+        ->not->toContain("\u{2014}");
+});
+
 test('the friendly 403 leaks no secrets', function (): void {
     $this->app['env'] = 'production';
     Config::set('ranetrace.key', 'super-secret-key-value');

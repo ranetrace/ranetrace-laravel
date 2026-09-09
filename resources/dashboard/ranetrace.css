@@ -1,5 +1,5 @@
 /**
- * Ranetrace diagnostics dashboard — hand-written, no build step.
+ * Ranetrace diagnostics dashboard: hand-written, no build step.
  * Clean, functional, neutral. System fonts, CSS grid, automatic dark/light
  * via prefers-color-scheme. Served by AssetController (CSP-clean, no inline CSS).
  */
@@ -253,7 +253,7 @@ body {
 .rt-bar__fill--bad { background: var(--rt-bad); }
 
 /*
- * Bucketed widths (5% steps) so buffer bars carry NO inline style attribute —
+ * Bucketed widths (5% steps) so buffer bars carry NO inline style attribute and
  * the page stays clean under a strict style-src CSP. The Blade rounds the
  * fill percentage to the nearest bucket; rt-w-0 keeps a faint visible sliver.
  */

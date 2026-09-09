@@ -404,7 +404,7 @@ test('it scrubs a stringified rejection object in the message', function (): voi
 
 test('it accepts an explicit null breadcrumbs value', function (): void {
     // `nullable|array` permits null, and input()'s default does not replace a
-    // stored null — passing it on used to raise a TypeError and a 500.
+    // stored null. Passing it on used to raise a TypeError and a 500.
     $response = $this->postJson(route('ranetrace.javascript-errors.store'), [
         'message' => 'Test error',
         'url' => 'https://example.com/',

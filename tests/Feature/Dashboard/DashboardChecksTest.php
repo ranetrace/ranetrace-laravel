@@ -68,7 +68,7 @@ test('drain stalled check passes for a freshly buffered item awaiting its first 
     app(RanetraceBatchBuffer::class)->addItem('events', ['event_name' => 'e1']);
 
     // A just-buffered item is waiting for the next ranetrace:work run, not
-    // stalled — even though no successful drain has been recorded yet.
+    // stalled, even though no successful drain has been recorded yet.
     expect(runChecks()['drain_stalled']->level)->toBe(CheckLevel::Pass);
 });
 

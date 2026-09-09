@@ -19,7 +19,7 @@ test('the panels fragment renders the panels without the shell', function (): vo
         ->toContain('Checks')
         ->toContain('Pipeline buffers')
         ->toContain('Configuration')
-        // fragment only — no surrounding HTML document
+        // fragment only, no surrounding HTML document
         ->not->toContain('<!DOCTYPE')
         ->not->toContain('<html')
         ->not->toContain('<body');

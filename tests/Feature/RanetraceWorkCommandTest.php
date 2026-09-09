@@ -28,7 +28,7 @@ test('ranetrace:work fails cleanly when the cache backend is unavailable', funct
         $mock->shouldReceive('isGloballyPaused')->andThrow(new RuntimeException('cache backend unavailable'));
     });
 
-    // The command must not let the raw exception escape — it logs and exits non-zero.
+    // The command must not let the raw exception escape: it logs and exits non-zero.
     $this->artisan('ranetrace:work')->assertFailed();
 });
 

@@ -8,7 +8,7 @@ use Ranetrace\Laravel\Http\Middleware\Authorize;
 /**
  * Access control for the diagnostics dashboard. The `viewRanetrace` gate is the
  * only guard; it must default-deny everywhere except `local`. The environment is
- * faked at request time — the default gate closure reads it lazily — while
+ * faked at request time (the default gate closure reads it lazily), while
  * route-registration variations (path/enabled) are decided at boot, so they set
  * $this->configOverrides and reloadApplication().
  */
@@ -30,7 +30,7 @@ test('a host gate override grants access even in production', function (): void 
     $this->app['env'] = 'production';
 
     // Defining the gate resolves the Gate, which fires the package's
-    // callAfterResolving default first; this definition then overrides it —
+    // callAfterResolving default first; this definition then overrides it,
     // proving a host AppServiceProvider override always wins.
     Gate::define('viewRanetrace', fn ($user = null): bool => true);
 
@@ -85,7 +85,7 @@ test('the package appends its own Authorize middleware to the dashboard route', 
 
 test('the dashboard route does not swallow the JavaScript error ingest route', function (): void {
     // Distinct verbs/paths (GET ranetrace vs POST ranetrace/javascript-errors/store)
-    // — no Horizon-style catch-all — so both routes coexist.
+    // and no Horizon-style catch-all, so both routes coexist.
     $names = collect(app('router')->getRoutes())->map(fn ($route): ?string => $route->getName());
 
     expect($names)->toContain('ranetrace.dashboard')

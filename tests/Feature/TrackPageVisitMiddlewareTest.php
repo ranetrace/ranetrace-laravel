@@ -223,7 +223,7 @@ test('it keeps throttling across a minute boundary within the throttle window', 
     $this->withHeaders($headers)->get('/test-page');
     Bus::assertDispatchedTimes(HandlePageVisitJob::class, 1);
 
-    // 30s later — now in the NEXT minute, but still inside the 120s window.
+    // 30s later, now in the NEXT minute, but still inside the 120s window.
     // The old per-minute key bucket would have reset and dispatched again.
     $this->travelTo(Carbon::create(2026, 1, 1, 10, 1, 20));
     $this->withHeaders($headers)->get('/test-page');
@@ -322,8 +322,8 @@ test('it ignores a misconfigured request_filter that does not implement RequestF
         'Accept-Language' => 'en-US,en;q=0.9',
     ])->get('/test-page')->assertStatus(200);
 
-    // The bad filter is skipped (not invoked), so capture proceeds normally —
-    // before the instanceof guard this threw and the visit was never dispatched.
+    // The bad filter is skipped (not invoked), so capture proceeds normally.
+    // Before the instanceof guard this threw and the visit was never dispatched.
     Bus::assertDispatched(HandlePageVisitJob::class);
 });
 
@@ -560,8 +560,8 @@ test('it does not track visits to the package dashboard', function (): void {
     Bus::fake();
     Cache::flush();
 
-    // Gate-denied (non-local env) still reaches the middleware — capture runs
-    // before $next() — so a 403 hit must not be counted either.
+    // Gate-denied (non-local env) still reaches the middleware, where capture
+    // runs before $next(), so a 403 hit must not be counted either.
     $this->withHeaders(humanBrowserHeaders())->get('/ranetrace')->assertForbidden();
 
     Bus::assertNotDispatched(HandlePageVisitJob::class);
@@ -778,7 +778,7 @@ function edgeUserAgent(int $majorVersion): string
 
 /**
  * Run one request straight through the middleware. Used where the assertion is
- * about a path or verb the test application has no route for — an unmatched
+ * about a path or verb the test application has no route for: an unmatched
  * route never reaches group middleware, which would make the test vacuous.
  */
 function captureThroughMiddleware(string $uri, string $method = 'GET'): void
@@ -796,7 +796,7 @@ function captureThroughMiddleware(string $uri, string $method = 'GET'): void
 }
 
 /**
- * A valid RequestFilter whose shouldSkip() always throws — used to prove the
+ * A valid RequestFilter whose shouldSkip() always throws, used to prove the
  * middleware's failure isolation (a fault mid-capture must not 500 the request).
  */
 class ThrowingRequestFilterFixture implements Ranetrace\Laravel\Analytics\Contracts\RequestFilter

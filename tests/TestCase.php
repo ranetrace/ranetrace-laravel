@@ -39,7 +39,7 @@ class TestCase extends Orchestra
 
         // Ranetrace's buffer/pause/throttle/frequency caches use this store; pin
         // it to the (default) array store so it's isolated per test and cleared
-        // by Cache::flush() — otherwise it would resolve to the on-disk file store.
+        // by Cache::flush(). Otherwise it would resolve to the on-disk file store.
         $app['config']->set('ranetrace.batch.cache_driver', 'array');
 
         // Set encryption key for session handling

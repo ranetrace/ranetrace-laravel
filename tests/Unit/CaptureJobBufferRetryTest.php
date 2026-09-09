@@ -10,7 +10,7 @@ use Ranetrace\Laravel\Services\RanetraceBatchBuffer;
 
 /**
  * When the buffer lock is contended, a capture job must re-queue the item via
- * release() instead of dropping it — bounded by $tries so a permanently stuck
+ * release() instead of dropping it, bounded by $tries so a permanently stuck
  * lock cannot loop forever. 0s lock_wait makes the contended add fail without a
  * real sleep.
  */
@@ -41,7 +41,7 @@ test('a contended buffer add re-queues the capture job instead of dropping it', 
 
 test('a contended buffer add stops re-queuing once the attempt cap is reached', function (): void {
     $queueJob = Mockery::mock(QueueJobContract::class);
-    $queueJob->shouldReceive('attempts')->andReturn(3); // at $tries — give up, drop
+    $queueJob->shouldReceive('attempts')->andReturn(3); // at $tries, give up and drop
     $queueJob->shouldReceive('release')->never();
 
     $job = new HandleLogJob(['level' => 'error', 'message' => 'boom']);

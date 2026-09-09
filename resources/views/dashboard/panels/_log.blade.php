@@ -4,7 +4,7 @@
 @endphp
 <section class="rt-panel rt-panel--wide">
     <div class="rt-panel__head">
-        <h2 class="rt-panel__title">Internal log — warnings &amp; errors</h2>
+        <h2 class="rt-panel__title">Internal log: warnings and errors</h2>
         <span class="rt-pill rt-pill--muted">{{ count($logs) }} recent</span>
     </div>
     <div class="rt-panel__body">
@@ -15,7 +15,7 @@
                 <span class="rt-log__time">{{ $entry['time'] }}</span>
             </div>
         @empty
-            <div class="rt-empty">No recent warnings or errors — or the internal log file isn’t present yet.</div>
+            <div class="rt-empty">No recent warnings or errors, or the internal log file isn’t present yet.</div>
         @endforelse
     </div>
 </section>

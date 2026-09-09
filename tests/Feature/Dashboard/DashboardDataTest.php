@@ -49,12 +49,12 @@ test('no MCP surface is reported now the local server is gone', function (): voi
 test('a numeric-string last-batch timestamp (Redis-style) counts as a recent drain', function (): void {
     // Redis and Memcached return bare numbers as numeric strings, not ints. A
     // buffer holding an overdue item must NOT be reported as stalled when such a
-    // timestamp shows a recent successful drain — the production false-positive.
+    // timestamp shows a recent successful drain, the production false-positive.
     $buffer = app(RanetraceBatchBuffer::class);
     $buffer->addItem('events', ['event_name' => 'e1']);
 
     // Age the item past the drain window, then record a *string* drain timestamp
-    // for "now" — exactly the shape a Redis store hands back.
+    // for "now", exactly the shape a Redis store hands back.
     $this->travel(DashboardData::DRAIN_STALE_SECONDS + 1)->seconds();
     $now = now()->timestamp;
     Cache::store('array')->put(SendBatchToRanetraceJob::LAST_BATCH_PREFIX.'events', (string) $now, 3600);

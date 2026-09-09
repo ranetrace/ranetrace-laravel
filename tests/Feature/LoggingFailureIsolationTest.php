@@ -10,7 +10,7 @@ use Ranetrace\Laravel\Services\RanetraceBatchBuffer;
  * package's Core Rule is that it must NEVER throw back into the caller. These
  * tests deliberately do NOT fake the bus: the capture runs inline (queue
  * disabled → dispatchSync), so a failure mid-capture surfaces through the
- * handler's own try/catch — exactly the path being guarded.
+ * handler's own try/catch, exactly the path being guarded.
  */
 beforeEach(function (): void {
     config([

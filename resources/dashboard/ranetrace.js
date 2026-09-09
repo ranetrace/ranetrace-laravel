@@ -1,10 +1,10 @@
 /**
- * Ranetrace diagnostics dashboard — client script (no build step).
+ * Ranetrace diagnostics dashboard: client script (no build step).
  * Served by AssetController (CSP-clean, no inline JS).
  *
  * Auto-refresh poller: every `data-refresh` seconds it fetches the server-
  * rendered panels fragment from `data-panels-url` and swaps #rt-panels. Blade
- * stays the only renderer — there is no JSON-to-DOM rebuild here. Polling pauses
+ * stays the only renderer: there is no JSON-to-DOM rebuild here. Polling pauses
  * while the tab is hidden and skips overlapping requests; a failed poll is
  * ignored and retried on the next tick (the page never breaks on a blip).
  */
@@ -44,7 +44,7 @@
                 container.innerHTML = html;
             })
             .catch(function () {
-                // Transient failure — leave the current panels in place and retry.
+                // Transient failure, leave the current panels in place and retry.
             })
             .finally(function () {
                 inFlight = false;

@@ -9,7 +9,7 @@ use Ranetrace\Laravel\Services\RanetraceBatchBuffer;
 /**
  * trackEvent() must never throw from its capture body. This test does NOT fake
  * the queue/bus: with the queue disabled the job runs inline (sync), so a buffer
- * failure surfaces through trackEvent's own try/catch — which must swallow it.
+ * failure surfaces through trackEvent's own try/catch, which must swallow it.
  * (Event-name validation is intentionally loud and lives OUTSIDE the isolation;
  * that path is covered in RanetraceTest.)
  */
@@ -29,7 +29,7 @@ test('trackEvent swallows a capture-body failure and never throws', function ():
             ->andThrow(new RuntimeException('buffer exploded mid-capture'));
     });
 
-    // A VALID event name — validation is intentionally loud and outside the
+    // A VALID event name: validation is intentionally loud and outside the
     // isolation; the failure here is in the capture body and must be swallowed.
     expect(fn () => (new Ranetrace)->trackEvent('checkout_completed', ['k' => 'v']))
         ->not->toThrow(Throwable::class);

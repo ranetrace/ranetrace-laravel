@@ -52,8 +52,8 @@ test('report dispatches HandleErrorJob when enabled and configured', function ()
 test('report ignores an exception thrown from inside the package', function (): void {
     // An exception whose throw-site is a package file represents one of
     // Ranetrace's own failures, not a host application error. Capturing it would
-    // report the package's internals as the customer's bug and — via the
-    // reportable() hook on a queued job exception — loop back into Ranetrace.
+    // report the package's internals as the customer's bug and (via the
+    // reportable() hook on a queued job exception) loop back into Ranetrace.
     try {
         EventTracker::ensureValidEventName('Invalid Name With Spaces');
         $internal = null;
@@ -70,7 +70,7 @@ test('report ignores an exception thrown from inside the package', function (): 
 });
 
 test('report still captures an exception thrown from host application code', function (): void {
-    // Instantiated here (a stand-in for host code) — its throw-site is outside
+    // Instantiated here (a stand-in for host code): its throw-site is outside
     // the package, so it is captured as a normal application error. Guards the
     // self-origin check against ever becoming too broad.
     (new Ranetrace)->report(new RuntimeException('host app boom'));
@@ -78,7 +78,7 @@ test('report still captures an exception thrown from host application code', fun
     Queue::assertPushed(HandleErrorJob::class);
 });
 
-// --- report(): failure isolation (Core Rule — never throw from the capture path) ---
+// --- report(): failure isolation (Core Rule: never throw from the capture path) ---
 
 test('report never throws', function (): void {
     expect(fn () => (new Ranetrace)->report(new RuntimeException('boom')))
@@ -98,7 +98,7 @@ test('handles() reporting is additive and does not stop the host default logging
 
     // A sentinel reportable registered AFTER Ranetrace's. Laravel stops the
     // report loop only when a callback returns false, so this runs ONLY if
-    // Ranetrace's callback did not stop propagation — i.e. host logging survives.
+    // Ranetrace's callback did not stop propagation, i.e. host logging survives.
     $sentinelRan = false;
     $handler->reportable(function (Throwable $e) use (&$sentinelRan): void {
         $sentinelRan = true;

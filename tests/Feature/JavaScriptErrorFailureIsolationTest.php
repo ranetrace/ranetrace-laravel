@@ -9,7 +9,7 @@ use Ranetrace\Laravel\Services\RanetraceBatchBuffer;
  * The public JS-error endpoint must never throw uncaught into the host app,
  * even when capture fails mid-request. This test does NOT fake the bus: the
  * capture runs inline (queue disabled → dispatchSync), so a buffer failure
- * surfaces through the controller's own try/catch — which must convert it to a
+ * surfaces through the controller's own try/catch, which must convert it to a
  * clean 500 JSON response rather than a leaked error page.
  */
 beforeEach(function (): void {

@@ -30,7 +30,7 @@ test('forUrl returns nothing for routes without a sensitive parameter', function
 
 test('forUrl ignores urls that are not this application', function (): void {
     // A third-party referrer's path is not described by our routes, so guessing
-    // at it would be meaningless — even when it happens to look like one. A
+    // at it would be meaningless, even when it happens to look like one. A
     // host-less URL carrying a scheme is not one of our pages either.
     expect(RouteSecretResolver::forUrl('https://example.com/reset-password/not-ours'))->toBe([])
         ->and(RouteSecretResolver::forUrl('mailto:someone@example.com'))->toBe([])

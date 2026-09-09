@@ -227,7 +227,7 @@ test('addItems returns true when the items are buffered', function (): void {
 });
 
 test('addItems returns false and adds nothing when the cache lock cannot be acquired', function (): void {
-    // 0s wait makes block() give up on the first failed acquire — no real sleep.
+    // 0s wait makes block() give up on the first failed acquire, with no real sleep.
     Config::set('ranetrace.batch.lock_wait', 0);
     $buffer = new RanetraceBatchBuffer;
 

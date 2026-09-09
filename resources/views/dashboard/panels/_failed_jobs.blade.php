@@ -15,7 +15,7 @@
                 @elseif ($failed < 10)
                     Review with <code>php artisan queue:failed</code>.
                 @else
-                    High failure rate — check the internal log and the failed_jobs table.
+                    High failure rate. Check the internal log and the failed_jobs table.
                 @endif
             </span>
         </div>

@@ -184,7 +184,7 @@ test('a failed batch re-buffers items and retries WITHOUT throwing into the host
 
     // A queued job that throws is reported through the host's exception
     // handler (logs/failed_jobs/error tracker). On a transient failure the job
-    // must retry via release() instead — so handle() must NOT throw.
+    // must retry via release() instead, so handle() must NOT throw.
     $batchJob->handle(app(RanetraceApiClient::class), $buffer, $pauseManager);
 
     // Items are back in the buffer, and (since attempts remain) the feature is

@@ -30,7 +30,7 @@
                 </div>
                 <div class="rt-buffer__note {{ $isStalled ? 'rt-buffer__note--bad' : '' }}">
                     @if ($isStalled)
-                        Drain stalled — buffered items aren't being sent.
+                        Drain stalled: buffered items aren't being sent.
                     @elseif ($last)
                         Last drained {{ \Illuminate\Support\Carbon::createFromTimestamp($last)->diffForHumans() }}.
                     @else
