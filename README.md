@@ -63,7 +63,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->create();
 ```
 
-That's it — every unhandled exception is now reported to your Ranetrace dashboard (alongside Laravel's normal logging). You can also capture exceptions in-flow:
+That's it: every unhandled exception is now reported to your Ranetrace dashboard (alongside Laravel's normal logging). You can also capture exceptions in-flow:
 
 ```php
 use Ranetrace\Laravel\Facades\Ranetrace;
@@ -110,7 +110,7 @@ window.Ranetrace.captureError(error, { payment_amount: amount });
 
 ### Event Tracking
 
-Track custom events with a privacy-first approach — no IP addresses are stored, user agents are hashed, and session IDs rotate daily.
+Track custom events with a privacy-first approach: no IP addresses are stored, user agents are hashed, and session IDs rotate daily.
 
 ```php
 use Ranetrace\Laravel\Facades\Ranetrace;
@@ -151,7 +151,7 @@ RANETRACE_LOGGING_ENABLED=true
 The package always registers a `ranetrace` log channel, so no `config/logging.php` edit is required to define it. It stays inert until logging is enabled, so you can add it to your existing log stack right away to route application logs to both your normal destination and Ranetrace:
 
 ```php
-// config/logging.php — example stacked channel
+// config/logging.php: example stacked channel
 'channels' => [
     'production' => [
         'driver' => 'stack',
@@ -270,13 +270,13 @@ At any time, from the terminal:
 php artisan ranetrace:status
 ```
 
-Reports overall health, configured features, buffer sizes, pause states (if the API has rate-limited you), and recent failed jobs — both as formatted output and via `--json` for monitoring integrations. When the dashboard is enabled, it also prints a one-line link to it.
+Reports overall health, configured features, buffer sizes, pause states (if the API has rate-limited you), and recent failed jobs, both as formatted output and via `--json` for monitoring integrations. When the dashboard is enabled, it also prints a one-line link to it.
 
 ### Diagnostics dashboard
 
 An in-app health page at `/ranetrace`, in the spirit of Laravel Horizon and Pulse. It shows whether *your* installation is correctly wired up and data is flowing: a configuration snapshot, misconfiguration checks (missing API key, volatile cache driver, stalled worker, near-capacity buffers, and more), pipeline buffers, pauses, failed jobs, a tail of the internal log, and the routes/middleware the package actually registered. It links out to the hosted Ranetrace dashboard for the captured data itself.
 
-It is read-only, makes no outbound calls, and degrades gracefully — a failing cache or database renders a degraded panel rather than throwing into your app.
+It is read-only, makes no outbound calls, and degrades gracefully: a failing cache or database renders a degraded panel rather than throwing into your app.
 
 **Access is local-only by default.** Exactly like Horizon, Pulse, and Telescope, the dashboard is not reachable outside the `local` environment until you explicitly grant access. Define the `viewRanetrace` gate in `app/Providers/AppServiceProvider.php`:
 
