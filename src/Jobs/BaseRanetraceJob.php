@@ -85,7 +85,7 @@ abstract class BaseRanetraceJob implements ShouldQueue
      * (effectively only a stuck/crashed holder). Re-queuing rather than dropping
      * keeps a captured item from being lost to transient contention. The attempt
      * cap ($tries) bounds the retries so a permanently stuck lock cannot loop the
-     * job forever — at which point the item is dropped, matching the package's
+     * job forever, at which point the item is dropped, matching the package's
      * "lose data before crashing the host" contract. release() never throws into
      * the host (and is a no-op for inline/sync dispatch).
      *
@@ -162,7 +162,7 @@ abstract class BaseRanetraceJob implements ShouldQueue
         // Still over budget. The item is dropped rather than replaced with a
         // marker payload: the wire shape is an allow-list per type, so a marker
         // key belongs to no type and the backend's strict field matching would
-        // 422 the item — discarding the whole batch of up to 1000 items and
+        // 422 the item, discarding the whole batch of up to 1000 items and
         // pausing the type, which is precisely the failure this budget exists
         // to prevent. Dropping loses one item and nothing else, and the internal
         // log keeps that loss visible.

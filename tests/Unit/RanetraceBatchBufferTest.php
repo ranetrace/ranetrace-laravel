@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\Log;
+use Psr\Log\LoggerInterface;
 use Ranetrace\Laravel\Services\RanetraceBatchBuffer;
 
 beforeEach(function (): void {
@@ -281,4 +283,28 @@ test('draining the buffer below capacity clears the overflow flag', function ():
     $buffer->getItems('events', 10);
 
     expect(Cache::store('array')->get('ranetrace:buffer:events:overflow'))->toBeNull();
+});
+
+test('the overflow warning speaks in one comma-joined sentence, with no em-dash', function (): void {
+    // The house writing rule keeps the dash out of anything the package says,
+    // and this warning is what an operator reads in the internal log tail.
+    Config::set('ranetrace.batch.max_buffer_size', 3);
+
+    $logged = [];
+    $logger = Mockery::mock(LoggerInterface::class);
+    $logger->shouldReceive('warning')->andReturnUsing(function (string $message) use (&$logged): void {
+        $logged[] = $message;
+    });
+    Log::shouldReceive('channel')->with('ranetrace_internal')->andReturn($logger);
+
+    $buffer = new RanetraceBatchBuffer;
+    for ($i = 1; $i <= 5; $i++) {
+        $buffer->addItem('events', ['event_name' => "event{$i}"]);
+    }
+
+    expect($logged)->toContain('Ranetrace buffer overflow, oldest items dropped');
+
+    foreach ($logged as $message) {
+        expect($message)->not->toContain("\u{2014}");
+    }
 });

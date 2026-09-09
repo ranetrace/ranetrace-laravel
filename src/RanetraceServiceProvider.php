@@ -112,12 +112,12 @@ class RanetraceServiceProvider extends ServiceProvider
 
         $this->registerDashboardGate();
 
-        // Data routes — behind the gate.
+        // Data routes, behind the gate.
         $this->app['router']->group($this->dashboardRouteConfiguration(), function (): void {
             $this->loadRoutesFrom(__DIR__.'/../routes/dashboard.php');
         });
 
-        // Asset routes — same path/domain but NOT gated (no secrets; keeps the
+        // Asset routes, same path/domain but NOT gated (no secrets; keeps the
         // page CSP-clean). Long-cached, content-hash busted by the shell.
         $this->app['router']->group([
             'domain' => config('ranetrace.dashboard.domain'),
@@ -135,7 +135,7 @@ class RanetraceServiceProvider extends ServiceProvider
      * Mirrors Pulse: registered after the Gate resolves so a host override in
      * AppServiceProvider::boot() always wins regardless of provider boot order.
      * The closure takes a nullable user and explicitly denies in every
-     * non-local environment — it must never fall through to allow.
+     * non-local environment: it must never fall through to allow.
      */
     protected function registerDashboardGate(): void
     {
@@ -176,7 +176,7 @@ class RanetraceServiceProvider extends ServiceProvider
      * defines its own `ranetrace` channel, that definition always wins. The
      * internal `ranetrace_internal` channel is package-owned and is always
      * (re)set from `ranetrace.internal_logging.*`, so it cannot be overridden
-     * via `config/logging.php` — tune it through those config keys instead.
+     * via `config/logging.php`. Tune it through those config keys instead.
      */
     protected function registerLogChannels(): void
     {

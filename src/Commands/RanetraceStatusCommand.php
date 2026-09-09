@@ -145,7 +145,7 @@ class RanetraceStatusCommand extends Command
         }
         $this->newLine();
 
-        // Drain warning — buffers holding items with no recent batch send
+        // Drain warning: buffers holding items with no recent batch send
         if (! empty($status['drain']['stalled'])) {
             $this->warn('! No recent batch drain for: '.implode(', ', $status['drain']['stalled']));
             $this->line('  Buffered items are not being sent to Ranetrace.');
@@ -234,7 +234,7 @@ class RanetraceStatusCommand extends Command
      * Print a one-line pointer to the in-app diagnostics dashboard.
      *
      * Skipped when the dashboard is disabled or its route isn't registered, and
-     * defensive against URL-generation failures — a status command must never
+     * defensive against URL-generation failures: a status command must never
      * throw. (Text output only; the --json payload is intentionally untouched.)
      */
     protected function displayDashboardHint(): void
@@ -251,7 +251,7 @@ class RanetraceStatusCommand extends Command
             $this->line('<fg=cyan>Dashboard:</> '.route('ranetrace.dashboard'));
             $this->newLine();
         } catch (Throwable) {
-            // URL generation failed — skip the hint rather than break the command.
+            // URL generation failed, so skip the hint rather than break the command.
         }
     }
 

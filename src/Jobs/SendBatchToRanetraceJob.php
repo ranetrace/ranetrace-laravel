@@ -114,7 +114,7 @@ class SendBatchToRanetraceJob implements ShouldBeUnique, ShouldQueue
      * The controlled failure paths (network, 5xx, unexpected status) retry via
      * release() and give up gracefully without throwing, so they never reach
      * here. This only fires for an unexpected exception (e.g. an unknown batch
-     * type) — log it internally and pause the feature for 15 minutes.
+     * type): log it internally and pause the feature for 15 minutes.
      */
     public function failed(Throwable $exception): void
     {
@@ -275,12 +275,12 @@ class SendBatchToRanetraceJob implements ShouldBeUnique, ShouldQueue
 
     /**
      * Retry a transient send failure (network, 5xx, or an unexpected status)
-     * with backoff, or — once the retry envelope is exhausted — give up by
+     * with backoff, or, once the retry envelope is exhausted, give up by
      * pausing the feature for 15 minutes.
      *
      * Retries are driven by release(), NOT by throwing. An exception that
      * escapes a queued job is reported through the HOST application's exception
-     * handler — its logs, its failed_jobs table, and any error tracker — and is
+     * handler (its logs, its failed_jobs table, and any error tracker) and is
      * additionally re-captured by Ranetrace's own reportable() hook, leaking an
      * internal transport failure into the customer's application. release()
      * re-queues the job with the same backoff schedule but surfaces nothing.
@@ -299,7 +299,7 @@ class SendBatchToRanetraceJob implements ShouldBeUnique, ShouldQueue
             return;
         }
 
-        // Retry envelope exhausted — pause the feature so the worker stops
+        // Retry envelope exhausted. Pause the feature so the worker stops
         // hammering a degraded endpoint. The items stay buffered and drain on a
         // later run once the pause lifts. Return without throwing.
         $this->logError('Batch send abandoned after exhausting retries', [
@@ -349,7 +349,7 @@ class SendBatchToRanetraceJob implements ShouldBeUnique, ShouldQueue
     /**
      * Trim items off the tail of $this->items so the serialized batch stays
      * within MAX_BATCH_BYTES, returning the removed items for re-buffering.
-     * Always keeps at least one item — a single over-budget item can't be split
+     * Always keeps at least one item: a single over-budget item can't be split
      * (per-field caps bound single items).
      *
      * @return array<int, array{id: string, data: array, timestamp: int}>

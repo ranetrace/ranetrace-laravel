@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Ranetrace\Laravel\Dashboard\Checks;
 
 /**
- * Without an ingest key, capture is silently disabled — the single most common
+ * Without an ingest key, capture is silently disabled, the single most common
  * "nothing is arriving" cause. Critical.
  *
  * Deliberately only about `RANETRACE_KEY`. The MCP tools use an OAuth

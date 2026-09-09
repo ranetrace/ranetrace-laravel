@@ -89,7 +89,7 @@ class TrackPageVisit
     ];
 
     /**
-     * Per-worker cache of the CrawlerDetect instance — the library's internal
+     * Per-worker cache of the CrawlerDetect instance: the library's internal
      * data structures are non-trivial to construct, and the middleware runs on
      * every request. One instance per worker is plenty.
      */
@@ -98,7 +98,7 @@ class TrackPageVisit
     public function handle(Request $request, Closure $next): Response
     {
         // The middleware sits in every web request's path. It MUST NEVER throw
-        // back into the host application — a failure here would 500 every
+        // back into the host application, since a failure here would 500 every
         // page. Per the package's Core Rule, capture is wrapped and the
         // request continues regardless.
         try {
@@ -120,7 +120,7 @@ class TrackPageVisit
      * - Correctness/safety skips (this method, in code): rules the package owns
      *   and must be able to fix for every installation. They are NOT expressed
      *   as `excluded_paths` entries, because a published config freezes that
-     *   array — the in-code fallback only applies when the key is absent — so
+     *   array (the in-code fallback only applies when the key is absent), so
      *   anything added there upstream never reaches an app that published the
      *   config.
      * - App-owned preferences (`website_analytics.excluded_paths`): which of
@@ -142,8 +142,9 @@ class TrackPageVisit
 
         // Defense-in-depth for Livewire GETs: Livewire 4 serves its endpoint
         // from /livewire-{hash}/update (the hash derives from APP_KEY), so no
-        // static path can match it. The header is read directly — this package
-        // does not depend on Livewire and must never reference its classes.
+        // static path can match it. The header is read directly because this
+        // package does not depend on Livewire and must never reference its
+        // classes.
         if ($request->headers->has('X-Livewire')) {
             return;
         }
@@ -206,7 +207,7 @@ class TrackPageVisit
             }
         }
 
-        // CrawlerDetect is cached per-worker — its internal data structures
+        // CrawlerDetect is cached per-worker: its internal data structures
         // are non-trivial to construct and this runs on every request.
         self::$crawlerDetect ??= new CrawlerDetect;
         if (self::$crawlerDetect->isCrawler($userAgent)) {
@@ -255,7 +256,7 @@ class TrackPageVisit
 
         // Throttle to one capture per IP + path per throttle_seconds window.
         // Cache::add is atomic (put-if-absent), so concurrent requests can't both
-        // pass a check-then-set race. The key is NOT time-bucketed — the TTL alone
+        // pass a check-then-set race. The key is NOT time-bucketed: the TTL alone
         // defines the window, so throttle_seconds works for any value (a minute
         // bucket would silently cap it at ~60s).
         // The collector reports a decoded path, which is what makes this key
@@ -271,7 +272,7 @@ class TrackPageVisit
         $throttleSeconds = config('ranetrace.website_analytics.throttle_seconds', 30);
 
         // Use the Ranetrace cache store (same as the buffer/pause manager) so the
-        // throttle is consistent and actually shared across workers — the host's
+        // throttle is consistent and actually shared across workers: the host's
         // default cache may be `array`, which would make this a per-process no-op.
         $throttleStore = Cache::store(config('ranetrace.batch.cache_driver', 'file'));
 
@@ -335,8 +336,8 @@ class TrackPageVisit
      *
      * The dashboard prefix is configurable, so it cannot be expressed as a
      * static `excluded_paths` entry. The route-name check is the primary
-     * signal — this runs as `web` group middleware, so the route is already
-     * resolved — and the path comparison covers edge wiring where no route
+     * signal (this runs as `web` group middleware, so the route is already
+     * resolved) and the path comparison covers edge wiring where no route
      * matched. When a dashboard domain is configured, the path comparison only
      * applies on that host: the same path on the main domain is a legitimate
      * page of the host application.

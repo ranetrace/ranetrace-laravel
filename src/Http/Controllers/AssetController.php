@@ -12,7 +12,7 @@ use Illuminate\Routing\Controller;
  *
  * Deliberately outside the `viewRanetrace` gate: the assets carry no secrets
  * (they only show installation state, never captured data), so serving them
- * publicly keeps the page CSP-clean — no inline `<style>`/`<script>`. All
+ * publicly keeps the page CSP-clean, with no inline `<style>`/`<script>`. All
  * *data* routes stay behind the gate.
  *
  * Cache-busting is by content hash (see version()): the shell appends `?v=<hash>`

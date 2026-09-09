@@ -140,7 +140,7 @@ class JavaScriptErrorController extends Controller
 
         $reportedUrl = (string) $request->input('url');
 
-        // Contract method on Authenticatable — safe for non-Eloquent user
+        // Contract method on Authenticatable, safe for non-Eloquent user
         // models, and typed `mixed` because a host may key users any way it
         // likes. Only a scalar identifier is shippable as `user_id`.
         $userId = $request->user()?->getAuthIdentifier();

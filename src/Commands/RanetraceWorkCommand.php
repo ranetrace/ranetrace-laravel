@@ -31,7 +31,7 @@ class RanetraceWorkCommand extends Command
 
         // Pause/buffer state lives in the cache and dispatch hits the queue. If
         // either backend is down, fail cleanly (log + non-zero exit) instead of
-        // throwing an uncaught exception on every scheduled run — there is nothing
+        // throwing an uncaught exception on every scheduled run: there is nothing
         // to drain anyway, and ranetrace:status remains the diagnostic.
         try {
             return $this->dispatchBatches($buffer, $pauseManager, $specificType);
@@ -39,7 +39,7 @@ class RanetraceWorkCommand extends Command
             InternalLogger::error('ranetrace:work failed to read buffer/pause state or dispatch', [
                 'exception' => $e->getMessage(),
             ]);
-            $this->error('Ranetrace: ranetrace:work could not run — is the cache/queue backend available? See the ranetrace_internal log.');
+            $this->error('Ranetrace: ranetrace:work could not run. Is the cache/queue backend available? See the ranetrace_internal log.');
 
             return self::FAILURE;
         }

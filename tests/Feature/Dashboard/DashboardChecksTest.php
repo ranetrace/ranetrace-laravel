@@ -104,6 +104,16 @@ test('a check that throws is skipped, never breaking the set', function (): void
         ->and($results[0]->name)->toBe('api_key');
 });
 
+test('the volatile cache driver advice speaks in two sentences, with no em-dash', function (): void {
+    // The house writing rule keeps the dash out of anything the package says,
+    // and this remediation line is rendered verbatim on the dashboard.
+    $remediation = runChecks()['cache_driver']->remediation;
+
+    expect($remediation)
+        ->toBe('Fine locally, but buffers/pauses will not survive in production. Use a durable store there.')
+        ->not->toContain("\u{2014}");
+});
+
 class ThrowingCheck implements Ranetrace\Laravel\Dashboard\Checks\Check
 {
     public function run(array $status): Ranetrace\Laravel\Dashboard\Checks\CheckResult

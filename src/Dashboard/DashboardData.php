@@ -29,7 +29,7 @@ use Throwable;
  *
  * Both the `ranetrace:status` command and the in-app dashboard consume this
  * service, so the CLI and the web page can never disagree. Every cache/database
- * read degrades gracefully — this is a diagnostic surface and must never throw,
+ * read degrades gracefully: this is a diagnostic surface and must never throw,
  * even when the cache store or database is unavailable.
  */
 class DashboardData
@@ -41,8 +41,8 @@ class DashboardData
     public const int DRAIN_STALE_SECONDS = 600;
 
     /**
-     * Fraction of a buffer's max size at which it is considered "near capacity"
-     * — drives both the overall health flag and the recommendations output.
+     * Fraction of a buffer's max size at which it is considered "near capacity".
+     * Drives both the overall health flag and the recommendations output.
      */
     public const float NEAR_CAPACITY_RATIO = 0.8;
 
@@ -75,7 +75,7 @@ class DashboardData
     /**
      * Collect all status information.
      *
-     * All cache/database reads degrade gracefully — the status surface is a
+     * All cache/database reads degrade gracefully: the status surface is a
      * diagnostic tool and must never throw, even when subsystems are down.
      *
      * @return array<string, mixed>
@@ -132,7 +132,7 @@ class DashboardData
         // item that has genuinely waited too long: the oldest item is older than
         // DRAIN_STALE_SECONDS AND no successful drain has happened within that
         // window. Items simply waiting for the next scheduled ranetrace:work run
-        // — and brand-new buffers that have never drained yet — are NOT stalled.
+        // (and brand-new buffers that have never drained yet) are NOT stalled.
         // (Treating an absent drain history alone as failure produced false
         // "drain stalled" alarms for items that were draining perfectly well.)
         $now = Carbon::now()->timestamp;
@@ -149,7 +149,7 @@ class DashboardData
             $oldest = $oldestItem[$feature];
             if ($oldest === null || ($now - $oldest) <= self::DRAIN_STALE_SECONDS) {
                 // No readable items, or the oldest item is still within the
-                // normal drain window — waiting for its turn, not stalled.
+                // normal drain window, waiting for its turn, not stalled.
                 continue;
             }
 
@@ -213,7 +213,7 @@ class DashboardData
      * extras (checks, registered surfaces, internal-log tail, environment).
      *
      * `collectStatus()` is computed once and shared with the checks so the cache
-     * isn't read twice. No outbound API calls — everything is local.
+     * isn't read twice. No outbound API calls: everything is local.
      *
      * @return array{
      *     status: array<string, mixed>,
@@ -255,7 +255,7 @@ class DashboardData
                     $results[] = $check->run($status);
                 }
             } catch (Throwable) {
-                // A broken check must never break the dashboard — skip it.
+                // A broken check must never break the dashboard, so skip it.
             }
         }
 
@@ -263,8 +263,8 @@ class DashboardData
     }
 
     /**
-     * What the service provider actually wired up given the current config —
-     * the "installation truth" view (B2). Read-only introspection; degrades to
+     * What the service provider actually wired up given the current config, the
+     * "installation truth" view (B2). Read-only introspection; degrades to
      * an empty list rather than throwing.
      *
      * @return array<int, array{label: string, ok: bool, note: ?string}>
@@ -348,7 +348,7 @@ class DashboardData
     /**
      * Extract warning+ entries from raw log contents, keeping the most recent
      * $limit in chronological order. Continuation lines (stack traces) are
-     * ignored — only lines that start a log entry are parsed.
+     * ignored: only lines that start a log entry are parsed.
      *
      * @return array<int, array{time: string, level: string, message: string}>
      */
@@ -392,7 +392,7 @@ class DashboardData
     /**
      * Whole seconds remaining until a pause's ISO-8601 expiry timestamp, floored
      * at 0. Carbon 3's diffInSeconds() returns a float, so the result is cast to
-     * int — both the CLI's formatDuration() and the JSON `time_remaining_seconds`
+     * int: both the CLI's formatDuration() and the JSON `time_remaining_seconds`
      * field require an integer (a float would TypeError under strict_types).
      */
     protected function remainingSecondsUntil(string $until): int
@@ -407,7 +407,7 @@ class DashboardData
      * cache stores keep bare numbers un-serialized (to support atomic
      * increments) and hand them back as numeric strings. An `is_int()` check
      * would discard a perfectly valid timestamp from those stores and report
-     * the buffer as never drained — the root cause of false "drain stalled"
+     * the buffer as never drained, the root cause of false "drain stalled"
      * alarms on a Redis-backed cache.
      */
     protected function getLastBatchTimestamp(string $feature): ?int

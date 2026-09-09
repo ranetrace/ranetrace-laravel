@@ -6,7 +6,7 @@ namespace Ranetrace\Laravel\Dashboard\Checks;
 
 /**
  * The buffer and pause state live in the cache. A volatile store (array/null)
- * loses them between requests — critical in production, only a warning locally.
+ * loses them between requests: critical in production, only a warning locally.
  */
 class CacheDriverCheck implements Check
 {
@@ -34,7 +34,7 @@ class CacheDriverCheck implements Check
         return CheckResult::warn(
             'cache_driver',
             "Volatile cache driver \"{$driver}\"",
-            'Fine locally, but buffers/pauses will not survive in production — use a durable store there.'
+            'Fine locally, but buffers/pauses will not survive in production. Use a durable store there.'
         );
     }
 }

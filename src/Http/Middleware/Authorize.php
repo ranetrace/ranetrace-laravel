@@ -16,12 +16,12 @@ use Throwable;
  *
  * Mirrors Horizon/Pulse/Telescope: the package appends this middleware to its
  * own route group and never trusts the host's `web` group to authorize. The
- * `viewRanetrace` gate is the single decision point — default-deny everywhere
+ * `viewRanetrace` gate is the single decision point: default-deny everywhere
  * except `local` until the host explicitly grants access.
  *
  * On denial it returns a friendly, CSP-clean page explaining how to grant
  * access (define `viewRanetrace` in AppServiceProvider::boot()) rather than a
- * bare 403. This leaks nothing — it's the same advice as the docs.
+ * bare 403. This leaks nothing: it's the same advice as the docs.
  */
 class Authorize
 {

@@ -13,7 +13,7 @@ use Ranetrace\Laravel\Support\InternalLogger;
 class RanetraceBatchBuffer
 {
     /**
-     * Canonical list of all buffer types. Single source of truth — consumers
+     * Canonical list of all buffer types. Single source of truth: consumers
      * must derive from this rather than hardcoding their own lists.
      *
      * @var array<int, string>
@@ -88,10 +88,10 @@ class RanetraceBatchBuffer
                 if (count($buffer) > $maxSize) {
                     $dropped = count($buffer) - $maxSize;
 
-                    // Keep only the most recent items (FIFO — oldest dropped first)
+                    // Keep only the most recent items (FIFO, oldest dropped first)
                     $buffer = array_slice($buffer, -$maxSize);
 
-                    // Buffer overflow drops data by design — log it so the loss is
+                    // Buffer overflow drops data by design. Log it so the loss is
                     // visible, but only once per overflow cycle (see logOverflowOnce).
                     $this->logOverflowOnce($type, $dropped, $maxSize);
                 }
@@ -100,7 +100,7 @@ class RanetraceBatchBuffer
             });
         } catch (LockTimeoutException) {
             // Lock not acquired within the wait window. Callers re-queue rather
-            // than drop (see BaseRanetraceJob::bufferOrRelease) — log so the rare
+            // than drop (see BaseRanetraceJob::bufferOrRelease). Log so the rare
             // contention is still visible.
             InternalLogger::warning('Could not acquire cache lock to add items to buffer', [
                 'type' => $type,
@@ -136,7 +136,7 @@ class RanetraceBatchBuffer
                 $buffer = array_slice($buffer, $limit);
 
                 // A drain that brings the buffer below capacity ends the overflow
-                // cycle — clear the flag so the next overflow is logged again.
+                // cycle. Clear the flag so the next overflow is logged again.
                 if (count($buffer) < $this->getMaxBufferSize()) {
                     Cache::store($this->cacheDriver)->forget($cacheKey.':overflow');
                 }
@@ -151,7 +151,7 @@ class RanetraceBatchBuffer
                 return $itemsToProcess;
             });
         } catch (LockTimeoutException) {
-            // Lock not acquired within the wait window. Harmless for a drain —
+            // Lock not acquired within the wait window. Harmless for a drain:
             // the items stay buffered and the next ranetrace:work run picks them
             // up. Log for monitoring and return nothing this cycle.
             InternalLogger::warning('Could not acquire cache lock to get items from buffer', ['type' => $type]);
@@ -223,7 +223,7 @@ class RanetraceBatchBuffer
     /**
      * Log a buffer-overflow drop at most once per overflow cycle. An overflow
      * flag is set on the first drop and cleared by getItems() once a drain
-     * brings the buffer back below capacity — preventing log spam under load.
+     * brings the buffer back below capacity, preventing log spam under load.
      */
     protected function logOverflowOnce(string $type, int $dropped, int $maxSize): void
     {
@@ -235,7 +235,7 @@ class RanetraceBatchBuffer
 
         Cache::store($this->cacheDriver)->put($flagKey, true, $this->ttl);
 
-        InternalLogger::warning('Ranetrace buffer overflow — oldest items dropped', [
+        InternalLogger::warning('Ranetrace buffer overflow, oldest items dropped', [
             'type' => $type,
             'dropped' => $dropped,
             'max' => $maxSize,

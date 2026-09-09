@@ -69,7 +69,7 @@ class RanetraceLogHandler extends AbstractProcessingHandler
                 HandleLogJob::dispatchSync($logData);
             }
         } catch (Throwable $e) {
-            // Fail silently — the handler must never propagate exceptions into
+            // Fail silently: the handler must never propagate exceptions into
             // the host's logging call site. Diagnose via the internal channel.
             InternalLogger::warning('Failed to capture log to Ranetrace', [
                 'exception' => $e->getMessage(),

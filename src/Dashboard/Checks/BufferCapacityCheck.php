@@ -54,7 +54,7 @@ class BufferCapacityCheck implements Check
     }
 
     /**
-     * Features whose overflow flag is currently set. Reads are defensive — a
+     * Features whose overflow flag is currently set. Reads are defensive: a
      * cache failure yields an empty list rather than throwing.
      *
      * @param  array<int, string>  $features

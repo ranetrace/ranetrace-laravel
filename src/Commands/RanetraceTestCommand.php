@@ -219,7 +219,7 @@ class RanetraceTestCommand extends Command
 
         // Additional config details. Note: per-item size caps (message/trace/file/
         // context) and the 1000-item batch size are fixed internal constants, not
-        // config — so only genuinely configurable settings are shown here.
+        // config, so only genuinely configurable settings are shown here.
         if (! empty($config['errors'])) {
             $this->line('⚙️  <fg=cyan>Error Reporting Settings:</>');
             $this->table(

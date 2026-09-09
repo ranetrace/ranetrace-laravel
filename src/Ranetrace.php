@@ -41,7 +41,7 @@ class Ranetrace
 
         // Never capture an exception that Ranetrace itself threw. The host wires
         // report() into its exception handler, and Laravel's queue worker routes
-        // EVERY job exception through that handler — so without this guard a
+        // EVERY job exception through that handler, so without this guard a
         // transport failure or internal bug in the package would be reported as
         // one of the customer's application errors and loop back into Ranetrace.
         if ($this->isInternalException($exception)) {
@@ -78,9 +78,9 @@ class Ranetrace
         }
 
         // Everything past validation must never throw into the caller's
-        // business logic — fail silently per the package's Core Rule.
+        // business logic: fail silently per the package's Core Rule.
         try {
-            // getAuthIdentifier() is the safe contract method — works for any
+            // getAuthIdentifier() is the safe contract method: it works for any
             // Authenticatable, Eloquent or not. Skip the Auth lookup entirely
             // when the caller already provided a userId.
             if ($userId !== null) {
@@ -131,7 +131,7 @@ class Ranetrace
     }
 
     /**
-     * Whether the exception was thrown from inside this package — i.e. it is one
+     * Whether the exception was thrown from inside this package, i.e. it is one
      * of Ranetrace's own operational failures rather than a host application
      * error. Detection is by throw-site file only (getFile()), deliberately NOT
      * by walking the stack trace: the analytics middleware sits in every web

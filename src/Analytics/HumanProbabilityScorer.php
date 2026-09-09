@@ -262,7 +262,7 @@ class HumanProbabilityScorer
     {
         // Use the Ranetrace cache store (same as the buffer/pause manager and the
         // page-visit throttle) so the per-IP frequency counter is shared across
-        // workers — the host's default cache may be `array`, a per-process no-op.
+        // workers: the host's default cache may be `array`, a per-process no-op.
         $store = Cache::store(config('ranetrace.batch.cache_driver', 'file'));
 
         $cacheKey = 'ranetrace:request_frequency:'.$request->ip();

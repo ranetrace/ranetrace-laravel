@@ -6,7 +6,7 @@ namespace Ranetrace\Laravel\Dashboard\Checks;
 
 /**
  * Buffers holding items with no recent successful batch send almost always mean
- * the worker isn't running — i.e. `ranetrace:work` isn't scheduled.
+ * the worker isn't running, i.e. `ranetrace:work` isn't scheduled.
  */
 class DrainStalledCheck implements Check
 {

@@ -17,7 +17,7 @@ class DashboardFragmentController extends Controller
      * Render just the panels fragment (no shell) for the auto-refresh poller.
      *
      * Same view + same data as the shell's panel block, so a poll swaps the
-     * container with byte-identical markup to the first paint — no JSON-to-DOM
+     * container with byte-identical markup to the first paint, no JSON-to-DOM
      * rebuild. Stays behind the gate like every other data route.
      */
     public function index(DashboardData $data): View

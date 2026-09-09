@@ -15,7 +15,7 @@ use Throwable;
 class RanetraceApiClient
 {
     /**
-     * Connection-phase timeout (seconds) for batch sends — fail fast on a dead
+     * Connection-phase timeout (seconds) for batch sends: fail fast on a dead
      * or unreachable host rather than tying up the worker for the full timeout.
      */
     protected const int CONNECT_TIMEOUT = 5;

@@ -42,7 +42,7 @@ test('the internal log tail reads warning+ entries and skips info and stack trac
     $file = $dir.'/ranetrace-internal-2099-01-01.log';
     file_put_contents($file, implode("\n", [
         '[2099-01-01 10:00:00] testing.INFO: a routine note',
-        '[2099-01-01 10:01:00] testing.WARNING: buffer overflow — oldest items dropped',
+        '[2099-01-01 10:01:00] testing.WARNING: buffer overflow, oldest items dropped',
         '[2099-01-01 10:02:00] testing.ERROR: batch send failed (500)',
         '    #0 /some/stack/trace/line that should be ignored',
     ])."\n");

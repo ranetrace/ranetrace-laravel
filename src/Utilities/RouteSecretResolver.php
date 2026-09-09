@@ -21,14 +21,14 @@ use Throwable;
  * because it named the segment `{token}`, `{hash}` or `{invitation:token}`, and
  * a framework-agnostic library has no router to ask. Three situations exist:
  *
- * - {@see forRequest()} — the URL belongs to the request being handled, so the
+ * - {@see forRequest()}: the URL belongs to the request being handled, so the
  *   router already resolved and bound its route. Free, and the only lookup that
  *   works for a non-GET route.
- * - {@see forUrl()} — the URL came from somewhere else (a `Referer` header, a
+ * - {@see forUrl()}: the URL came from somewhere else (a `Referer` header, a
  *   page URL reported by the browser error snippet), so it describes a request
  *   that is not the current one and has no bound route. It must be matched
  *   against the route table separately.
- * - {@see resolver()} — free-form data (breadcrumbs, log context, event
+ * - {@see resolver()}: free-form data (breadcrumbs, log context, event
  *   properties) holds many URLs, each describing a different request. That is
  *   the callable the shared scrubber's `$sensitiveValues` seam takes.
  *
@@ -102,14 +102,14 @@ final class RouteSecretResolver
      * A URL with a host is only matched when that host is the application's
      * own: a third-party referrer's path is not described by our routes, so
      * guessing at it would be meaningless. A URL with NO host is a relative
-     * reference, which by definition points at this application — the browser
-     * resolved it against the page it was on — so it is matched the same way. A
+     * reference, which by definition points at this application (the browser
+     * resolved it against the page it was on), so it is matched the same way. A
      * host-less URL that still carries a scheme (`mailto:`, `data:`) is not one
      * of our pages and is refused.
      *
      * Matching is restricted to the routes that actually declare a sensitive
-     * parameter — usually a handful (password reset, verification, invitations)
-     * — so the common case costs a few regex tests rather than a second full
+     * parameter, usually a handful (password reset, verification, invitations),
+     * so the common case costs a few regex tests rather than a second full
      * pass over the route table. A URL is only ever matched against a CLONE of
      * the route: `Route::bind()` mutates the route it is called on, and these
      * are the same shared instances the current request is using.
@@ -216,7 +216,7 @@ final class RouteSecretResolver
     }
 
     /**
-     * Whether the host belongs to this application — the current request's host
+     * Whether the host belongs to this application: the current request's host
      * or the configured `app.url` host. Both are consulted because a queue
      * worker or console context has no meaningful request host, while `app.url`
      * is frequently left at its default in local development.

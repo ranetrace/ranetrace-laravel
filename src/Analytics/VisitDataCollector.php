@@ -31,8 +31,8 @@ class VisitDataCollector
         $scrubber = Core::scrubber();
         $fingerprints = Core::fingerprints();
 
-        // The referrer describes a DIFFERENT request — the page the visitor came
-        // from — so the current route says nothing about it. Same-origin
+        // The referrer describes a DIFFERENT request (the page the visitor came
+        // from), so the current route says nothing about it. Same-origin
         // navigations send the full URL by default, which is exactly how a live
         // reset token reaches us one page after `/reset-password/{token}` was
         // itself redacted; that URL gets its own route lookup.
@@ -43,7 +43,7 @@ class VisitDataCollector
 
             // Reported decoded, so every spelling of one page (`/login`,
             // `/%6Cogin`) is a single entry rather than an attacker-chosen
-            // supply of distinct ones — the router resolved them all to the
+            // supply of distinct ones, since the router resolved them all to the
             // same route. Scrubbing runs FIRST and on the raw path: the values
             // resolved from the route are compared against rawurldecoded
             // segments, so decoding up front would stop a token that itself
