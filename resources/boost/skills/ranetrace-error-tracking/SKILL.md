@@ -88,9 +88,31 @@ On claude.ai the same URL is added as a custom connector. Clients configured fro
 Two things, both chosen by the user and neither of them changeable from the agent's side:
 
 - **One website.** The connection reaches that site and nothing else in the account.
-- **Read or write.** Writes are off by default. A read-only connection reads errors, monitors, notes and notification rules; the tools that change anything are not registered for it at all, so they are absent from `tools/list` rather than refused at call time. That is why a tool below may simply not be there. Allowing write actions adds the error state and bulk tools, the note create/update/delete tools, and notification-rule updates.
+- **Read or write.** Writes are off by default. A read-only connection lists the read tools and nothing else: no write tools, and no meta tools either, so there is no catalog for it to search and nothing to refuse at call time. That is why a tool below may simply not be there. Allowing write actions adds `search_tools` and `execute_tools` next to the reads, and the error state tools, the bulk tools, the note create/update/delete tools and the notification-rule update all run through those two.
 
 Connections are listed and revoked by the user on the agent connections page in their Ranetrace account, at `/user/profile/connections`, which also carries the connect instructions. A machine with no browser can use the device authorization grant instead, entering the code it displays at `https://app.ranetrace.com/oauth/device`.
+
+### Changing state: search, then execute
+
+The read tools are listed directly in `tools/list`. The tools that change something are not listed at all. They sit in a tool catalog reached through two meta tools, which a write-enabled connection lists next to the reads:
+
+- `search_tools` takes a `query` and an optional `limit` of 1 to 50. An empty query browses the whole catalog. It answers `{"ok":true,"tools":[{"name":...,"description":...,"inputSchema":...}],"hasMore":false}`.
+- `execute_tools` takes `calls`, a list of `{"name":"<exact name from search_tools>","arguments":{...}}`, at most 10 per call. They run in order and stop at the first error. It answers `{"ok":true,"results":[{"name":...,"content":[...],"isError":false}]}`.
+
+The tool names are the familiar ones, kebab-cased on the wire: the `ResolveErrorTool` in the tables below is `resolve-error-tool`. A direct `tools/call` of a catalogued name answers not found, so search first rather than guessing at a name. `execute_tools` re-checks the write permission, so it is not a way around a read-only connection either.
+
+Resolving an error, end to end:
+
+```json
+// 1. search_tools arguments
+{"query": "resolve error"}
+
+// 2. what search_tools answers, shortened to the one match and its schema
+{"ok":true,"tools":[{"name":"resolve-error-tool","description":"Mark an error as resolved. This is an idempotent operation - resolving an already resolved error succeeds silently.","inputSchema":{"type":"object","properties":{"error_id":{"type":"string","description":"The error ID (with or without err_ prefix)."},"type":{"type":"string","enum":["php","javascript","js"]}},"required":["error_id","type"]}}],"hasMore":false}
+
+// 3. execute_tools arguments, using that exact name
+{"calls":[{"name":"resolve-error-tool","arguments":{"error_id":"err_123","type":"php"}}]}
+```
 
 ### MCP tokens are retired
 
@@ -102,6 +124,8 @@ An application with `RANETRACE_MCP_TOKEN` in `.env` is on a retired setup: there
 
 ### Retrieving Errors
 
+Listed directly, so call these by name.
+
 | Tool | Description |
 |---|---|
 | `LatestErrorsTool` | Fetch the most recent errors |
@@ -111,6 +135,8 @@ An application with `RANETRACE_MCP_TOKEN` in `.env` is on a retired setup: there
 | `GetErrorActivityTool` | View the activity timeline for an error |
 
 ### Managing Error States
+
+In the catalog, so find them with `search_tools` and run them with `execute_tools`.
 
 | Tool | Description |
 |---|---|
@@ -125,6 +151,8 @@ An application with `RANETRACE_MCP_TOKEN` in `.env` is on a retired setup: there
 
 ### Bulk Operations
 
+In the catalog too, same route in.
+
 | Tool | Description |
 |---|---|
 | `BulkResolveErrorsTool` | Resolve multiple errors at once |
@@ -135,18 +163,20 @@ An application with `RANETRACE_MCP_TOKEN` in `.env` is on a retired setup: there
 
 ### Investigation Notes
 
-| Tool | Description |
-|---|---|
-| `CreateNoteTool` | Add a note to an error |
-| `CreateNotesTool` | Add multiple notes at once |
-| `ListNotesTool` | List all notes on an error |
-| `GetNoteTool` | Get a specific note |
-| `UpdateNoteTool` | Update a note |
-| `DeleteNoteTool` | Delete a note |
+Reading notes is listed directly; writing them is in the catalog.
+
+| Tool | Description | Where |
+|---|---|---|
+| `ListNotesTool` | List all notes on an error | Listed |
+| `GetNoteTool` | Get a specific note | Listed |
+| `CreateNoteTool` | Add a note to an error | Catalog |
+| `CreateNotesTool` | Add multiple notes at once | Catalog |
+| `UpdateNoteTool` | Update a note | Catalog |
+| `DeleteNoteTool` | Delete a note | Catalog |
 
 ## Monitor Tools
 
-The same MCP server also answers for the website being monitored, not only the application's errors.
+The same MCP server also answers for the website being monitored, not only the application's errors. These are reads, so they are all listed directly.
 
 | Tool | Description |
 |---|---|
@@ -164,10 +194,10 @@ Each answers **verdict first**: what we found, why it matters, what to do, the s
 
 ## Notification rules
 
-| Tool | Description |
-|---|---|
-| `GetNotificationRulesTool` | The owner's notification rules, verdict first: it flags when a key alert such as website down is switched off |
-| `UpdateNotificationRulesTool` | Change those rules; they are account-wide, so a change made through one website's connection affects every website the owner has |
+| Tool | Description | Where |
+|---|---|---|
+| `GetNotificationRulesTool` | The owner's notification rules, verdict first: it flags when a key alert such as website down is switched off | Listed |
+| `UpdateNotificationRulesTool` | Change those rules; they are account-wide, so a change made through one website's connection affects every website the owner has | Catalog |
 
 ## Testing
 

@@ -68,7 +68,21 @@ The package **always registers** a `ranetrace` log channel, regardless of the fe
 
 ### MCP Server
 
-Ranetrace hosts an MCP server with 33 tools: 24 for error investigation, note management and error state management, 7 monitor tools, and 2 for notification rules. It runs on Ranetrace, so there is nothing to install in the application and nothing to keep running.
+Ranetrace hosts an MCP server for error investigation, investigation notes, error state management, the monitored website's monitor verdicts and the owner's notification rules. It runs on Ranetrace, so there is nothing to install in the application and nothing to keep running.
+
+**The read tools are listed directly; state changes are searched for, then executed.** `tools/list` carries the reads (errors, notes, monitors, notification rules) and nothing else. Everything that changes something (error state and its bulk variants, note create/update/delete, notification-rule updates) sits in a tool catalog behind two meta tools:
+
+@verbatim
+<code-snippet name="Find a state change, then run it" lang="json">
+// search_tools: query, plus an optional limit of 1 to 50. An empty query browses the whole catalog.
+{"query": "resolve error"}
+
+// execute_tools: up to 10 calls, run in order, stopping at the first error.
+{"calls": [{"name": "resolve-error-tool", "arguments": {"error_id": "err_123", "type": "php"}}]}
+</code-snippet>
+@endverbatim
+
+`search_tools` answers each match with its name, description and input schema, and the name it gives is the exact name `execute_tools` expects. `execute_tools` is the only way into a catalogued tool: a direct `tools/call` of a catalogued name answers not found, so search first rather than guessing a name. The write permission is checked again inside `execute_tools`.
 
 **Connect over OAuth.** Any MCP client that supports OAuth connects with no pre-shared secret: add the server URL, and the client registers itself, sends the user to Ranetrace's approval screen, and gets its own credential back.
 
@@ -80,7 +94,7 @@ claude mcp add --transport http ranetrace https://api.ranetrace.com/mcp
 
 On claude.ai the same URL is added as a custom connector. Clients configured from a file (Cursor, VS Code) read the same server as an `mcpServers` entry with `"type": "http"` and the same URL, and need no `Authorization` header.
 
-At the approval screen the user picks **exactly one website** the connection may reach, and whether the agent may write. Writes are off by default: a read-only connection reads errors, monitors, notes and notification rules, and does not see the write tools at all (they are absent from `tools/list`, not refused at call time). Turning on write actions adds error state changes, note create/update/delete, and notification-rule updates. Connections are listed and revoked on the account's agent connections page in Ranetrace, at `/user/profile/connections`, which also carries the connect instructions. A headless machine can use the device authorization grant instead, entering its code at `https://app.ranetrace.com/oauth/device`.
+At the approval screen the user picks **exactly one website** the connection may reach, and whether the agent may write. Writes are off by default: a read-only connection lists the read tools and nothing else, no write tools and no meta tools, so there is no catalog for it to search and no way to reach a write tool at call time either. Turning on write actions adds `search_tools` and `execute_tools` next to the reads, and the error state changes, the note create/update/delete and the notification-rule updates all run through them. Connections are listed and revoked on the account's agent connections page in Ranetrace, at `/user/profile/connections`, which also carries the connect instructions. A headless machine can use the device authorization grant instead, entering its code at `https://app.ranetrace.com/oauth/device`.
 
 **MCP tokens are retired.** A static per-website token is no longer accepted: a client still sending one gets a 401 with `error_code: MCP_OAUTH_REQUIRED` and instructions to reconnect over OAuth.
 
