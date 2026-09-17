@@ -13,15 +13,49 @@ beforeEach(function (): void {
 });
 
 /**
+ * What a rendered capture script is recognised by.
+ *
+ * Its header comment used to serve as this marker. `ranetrace/ranetrace-php`
+ * ships the script minified now, so every comment and every local name in it is
+ * gone: the marker has to be something minification keeps. This is the public API
+ * the script hangs on `window`, which is a property path rather than a local
+ * name, is unique to this script, and reads the same in the minified and the
+ * unminified spelling, so it holds across the dependency bump too.
+ */
+function captureScriptMarker(): string
+{
+    return 'window.Ranetrace.captureError';
+}
+
+/**
  * The runtime config object the rendered snippet carries.
+ *
+ * The variable the config is assigned to is a one-letter name in the minified
+ * script, and a different esbuild version may spell it differently, so the
+ * literal is located by the script around it instead: a probe render gives the
+ * exact prefix and suffix the substitution sits between, whatever the minifier
+ * called things.
  *
  * @return array<string, mixed>
  */
 function renderedTrackerConfig(string $html): array
 {
-    preg_match('/const config = (\{.*\});/', $html, $matches);
+    [$before, $after] = explode(
+        '{"ranetraceProbe":true}',
+        CaptureScript::withConfig(['ranetraceProbe' => true]),
+        2,
+    );
 
-    return json_decode($matches[1] ?? '', true, 512, JSON_THROW_ON_ERROR);
+    $start = mb_strpos($html, $before);
+
+    expect($start)->not->toBeFalse('the rendered output does not carry the capture script');
+
+    $start += mb_strlen($before);
+    $end = mb_strpos($html, $after, $start);
+
+    expect($end)->not->toBeFalse('the capture script is truncated after the config literal');
+
+    return json_decode(mb_substr($html, $start, $end - $start), true, 512, JSON_THROW_ON_ERROR);
 }
 
 test('error tracker view renders to valid output', function (): void {
@@ -32,9 +66,12 @@ test('error tracker view renders to valid output', function (): void {
     $html = view('ranetrace::error-tracker')->render();
 
     expect($html)
-        ->toContain('Ranetrace JavaScript Error Tracking')
-        ->toContain("window.addEventListener('error'")
-        ->toContain("window.addEventListener('unhandledrejection'")
+        ->toContain(captureScriptMarker())
+        // Both capture listeners are registered. The event names are string
+        // literals and the method is a property on `window`, so these read the
+        // same minified and unminified; the quoting around them does not.
+        ->toContain('window.addEventListener(')
+        ->toContain('unhandledrejection')
         ->not->toContain('@if')
         ->not->toContain('@endif');
 });
@@ -100,15 +137,18 @@ test('the snippet carries the csrf token and the script sends it as a header', f
 
     $html = view('ranetrace::error-tracker')->render();
 
+    // The header name is a string literal, so it survives minification; the
+    // `requestHeaders[...] = config.csrfToken` line around it does not, both
+    // names being locals the minifier renames.
     expect(renderedTrackerConfig($html)['csrfToken'])->toBe('test-csrf-token')
-        ->and($html)->toContain("requestHeaders['X-CSRF-TOKEN'] = config.csrfToken;");
+        ->and($html)->toContain('X-CSRF-TOKEN');
 });
 
 test('ranetraceErrorTracking directive renders the snippet into a host page', function (): void {
     $html = Blade::render('<html><head>@ranetraceErrorTracking</head><body></body></html>');
 
     expect($html)
-        ->toContain('Ranetrace JavaScript Error Tracking')
+        ->toContain(captureScriptMarker())
         ->toContain('<script');
 });
 
@@ -232,7 +272,7 @@ test('the beacon renders on its own when javascript error tracking is off', func
 
     expect($html)
         ->toContain(beaconMarker())
-        ->not->toContain('Ranetrace JavaScript Error Tracking');
+        ->not->toContain(captureScriptMarker());
 });
 
 test('both scripts render when both flags are on', function (): void {
@@ -244,11 +284,11 @@ test('both scripts render when both flags are on', function (): void {
     $html = renderWithViewToken('3f1b0c7e-1f4a-4a2b-9a2f-0d7f1a4b8c9d');
 
     expect($html)
-        ->toContain('Ranetrace JavaScript Error Tracking')
+        ->toContain(captureScriptMarker())
         ->toContain(beaconMarker())
-        // Two separate script elements, not one wrapping both. (Counting the
-        // closing tag: the shared capture script mentions an opening one inside
-        // a comment.)
+        // Two separate script elements, not one wrapping both. Closing tags are
+        // what is counted, because the shared capture script can mention an
+        // opening one in prose without opening anything.
         ->and(mb_substr_count($html, '</script>'))->toBe(2);
 });
 
@@ -299,10 +339,12 @@ test('the directive renders the beacon into a host page', function (): void {
  * explaining them are written for whoever maintains them, and Blade comments keep
  * those notes in the source and out of the output.
  *
- * The shared capture script is the one thing these guards cannot speak for. It is
- * a JavaScript file in `ranetrace/ranetrace-php`, not a Blade template, so its own
- * comments survive into whatever host inlines it; the second test below pins that
- * this wrapper adds none of its own around it.
+ * The shared capture script is the one these guards can only half speak for. It
+ * is a JavaScript file in `ranetrace/ranetrace-php`, not a Blade template, so
+ * whatever comments it carries survive into whatever host inlines it. The second
+ * test below pins that this wrapper adds none of its own around it, which holds
+ * whatever that package ships; the third pins that it brings none either, which
+ * only holds from the release that ships the script minified.
  */
 
 test('the beacon ships no comments to the browser', function (): void {
@@ -330,6 +372,33 @@ test('the error tracker view adds no comments of its own around the shared scrip
     // script configured any other way yields the same list.
     expect(commentsIn($html))->toBe(commentsIn(CaptureScript::withConfig(['enabled' => true])));
 });
+
+/**
+ * The stronger form of the guard above: with the shared script minified, the
+ * directive ships no comment at all, from either view. Some 9 KB of the notes
+ * explaining the capture script used to be downloaded by every visitor of every
+ * site that installs the package.
+ *
+ * It skips while the resolved `ranetrace/ranetrace-php` predates the minified
+ * twin, because until then the script really does carry its comments and this
+ * would be asserting against the wrong dependency rather than against this
+ * package. Bumping the requirement starts it running; nothing here has to change
+ * when that happens.
+ */
+test('the directive ships no comments at all once the shared script is minified', function (): void {
+    config([
+        'ranetrace.javascript_errors.enabled' => true,
+        'ranetrace.website_analytics.beacon.enabled' => true,
+    ]);
+
+    $html = renderWithViewToken('3f1b0c7e-1f4a-4a2b-9a2f-0d7f1a4b8c9d');
+
+    expect($html)->toContain(captureScriptMarker())
+        ->and(commentsIn($html))->toBe([]);
+})->skip(
+    ! is_file(dirname((string) (new ReflectionClass(CaptureScript::class))->getFileName(), 3).'/resources/js/error-tracker.min.js'),
+    'The resolved ranetrace/ranetrace-php still ships the unminified capture script, comments and all. Bump the requirement to the release that adds resources/js/error-tracker.min.js and this guard starts running.',
+);
 
 test('neither view renders a comment while its feature is off', function (): void {
     config([

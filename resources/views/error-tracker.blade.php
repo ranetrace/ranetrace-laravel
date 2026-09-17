@@ -12,10 +12,17 @@
     the directive needs nothing but the env var.
 
     The browser capture script is NOT in this file. It lives once, in
-    `ranetrace/ranetrace-php` at `resources/js/error-tracker.js`, and both SDKs
-    render it from there. It used to live here too, inline and byte-identical for
-    some 370 lines, and because each SDK's relay validates exactly what its own
-    copy sent, a fix applied to one copy silently stranded the other.
+    `ranetrace/ranetrace-php`, and both SDKs render it from there. It used to live
+    here too, inline and byte-identical for some 370 lines, and because each SDK's
+    relay validates exactly what its own copy sent, a fix applied to one copy
+    silently stranded the other.
+
+    That package ships the script as a pair: `resources/js/error-tracker.js` is
+    the readable source and the file to change, `resources/js/error-tracker.min.js`
+    is the generated twin that `CaptureScript` actually inlines here. So what a
+    browser receives below is minified, with every local name renamed and every
+    comment gone: a test of this package may not look for the script by one of
+    those names.
 
     What stays here is what only Laravel can supply: the route the relay is
     mounted on, the values out of `config/ranetrace.php`, the CSRF token the
