@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Vite;
+use Ranetrace\Php\JavaScript\CaptureScript;
 
 beforeEach(function (): void {
     config([
@@ -144,6 +145,18 @@ function renderedBeaconConfig(string $html): array
 }
 
 /**
+ * What a rendered beacon is recognised by.
+ *
+ * Its explanatory header used to serve as this marker. Those notes are Blade
+ * comments now and never reach the page, so the marker is a line of the beacon's
+ * own code instead: the visibility gate, which nothing else in this output has.
+ */
+function beaconMarker(): string
+{
+    return "document.visibilityState !== 'visible'";
+}
+
+/**
  * Render the directive's view with (or without) a view token on the request,
  * which is how the capture middleware hands one to the beacon.
  */
@@ -163,7 +176,7 @@ test('the beacon renders with its endpoint, token and a keepalive post', functio
     $html = renderWithViewToken($token);
 
     expect($html)
-        ->toContain('Ranetrace human-verification beacon')
+        ->toContain(beaconMarker())
         // keepalive lets the post survive a navigation away from the page.
         ->toContain('keepalive: true')
         ->and(renderedBeaconConfig($html))
@@ -199,14 +212,14 @@ test('the beacon renders nothing without a view token', function (): void {
 
     // No token means no visit is waiting to be verified, so there is nothing to
     // post back about.
-    expect(renderWithViewToken(null))->not->toContain('Ranetrace human-verification beacon');
+    expect(renderWithViewToken(null))->not->toContain(beaconMarker());
 });
 
 test('the beacon renders nothing while its flag is off, token or not', function (): void {
     config(['ranetrace.website_analytics.beacon.enabled' => false]);
 
     expect(renderWithViewToken('3f1b0c7e-1f4a-4a2b-9a2f-0d7f1a4b8c9d'))
-        ->not->toContain('Ranetrace human-verification beacon');
+        ->not->toContain(beaconMarker());
 });
 
 test('the beacon renders on its own when javascript error tracking is off', function (): void {
@@ -218,7 +231,7 @@ test('the beacon renders on its own when javascript error tracking is off', func
     $html = renderWithViewToken('3f1b0c7e-1f4a-4a2b-9a2f-0d7f1a4b8c9d');
 
     expect($html)
-        ->toContain('Ranetrace human-verification beacon')
+        ->toContain(beaconMarker())
         ->not->toContain('Ranetrace JavaScript Error Tracking');
 });
 
@@ -232,7 +245,7 @@ test('both scripts render when both flags are on', function (): void {
 
     expect($html)
         ->toContain('Ranetrace JavaScript Error Tracking')
-        ->toContain('Ranetrace human-verification beacon')
+        ->toContain(beaconMarker())
         // Two separate script elements, not one wrapping both. (Counting the
         // closing tag: the shared capture script mentions an opening one inside
         // a comment.)
@@ -275,5 +288,54 @@ test('the directive renders the beacon into a host page', function (): void {
 
     // Install stays one line: the beacon needs no directive of its own.
     expect(Blade::render('<html><body>@ranetraceErrorTracking</body></html>'))
-        ->toContain('Ranetrace human-verification beacon');
+        ->toContain(beaconMarker());
+});
+
+/*
+ * What the two views send to a browser, and what they must not send with it.
+ *
+ * These scripts are inlined into every page view of every site that installs the
+ * package, so every byte of them is paid for by every visitor. The notes
+ * explaining them are written for whoever maintains them, and Blade comments keep
+ * those notes in the source and out of the output.
+ *
+ * The shared capture script is the one thing these guards cannot speak for. It is
+ * a JavaScript file in `ranetrace/ranetrace-php`, not a Blade template, so its own
+ * comments survive into whatever host inlines it; the second test below pins that
+ * this wrapper adds none of its own around it.
+ */
+
+test('the beacon ships no comments to the browser', function (): void {
+    config([
+        'ranetrace.javascript_errors.enabled' => false,
+        'ranetrace.website_analytics.beacon.enabled' => true,
+    ]);
+
+    $html = renderWithViewToken('3f1b0c7e-1f4a-4a2b-9a2f-0d7f1a4b8c9d');
+
+    expect($html)->toContain(beaconMarker())
+        ->and(commentsIn($html))->toBe([]);
+});
+
+test('the error tracker view adds no comments of its own around the shared script', function (): void {
+    config([
+        'ranetrace.javascript_errors.enabled' => true,
+        'ranetrace.website_analytics.beacon.enabled' => true,
+    ]);
+
+    $html = renderWithViewToken('3f1b0c7e-1f4a-4a2b-9a2f-0d7f1a4b8c9d');
+
+    // Every comment line the page carries has to be one the shared capture script
+    // brought with it. Its config values never appear in a comment, so the same
+    // script configured any other way yields the same list.
+    expect(commentsIn($html))->toBe(commentsIn(CaptureScript::withConfig(['enabled' => true])));
+});
+
+test('neither view renders a comment while its feature is off', function (): void {
+    config([
+        'ranetrace.javascript_errors.enabled' => false,
+        'ranetrace.website_analytics.beacon.enabled' => false,
+    ]);
+
+    expect(commentsIn(renderWithViewToken('3f1b0c7e-1f4a-4a2b-9a2f-0d7f1a4b8c9d')))->toBe([]);
 });

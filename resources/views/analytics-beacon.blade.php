@@ -30,24 +30,30 @@
         'delayMs' => (int) config('ranetrace.website_analytics.beacon.delay_ms', 1500),
     ];
 @endphp
+{{--
+    Ranetrace human-verification beacon.
+
+    Confirms that a real browser executed JavaScript and had this page visible,
+    so the page visit already dispatched for this view can be reported as
+    verified. HTTP clients and headless fetchers never reach this code at all,
+    and a hidden prerender is filtered by the visibility check below.
+
+    Best effort throughout: a failure here must never disturb the host page, and
+    a visit whose beacon never arrives is still counted, just not verified.
+
+    Every note inside the script below is a Blade comment for the same reason
+    this one is: the compiler removes them before anything renders, so they stay
+    in the source and leave the page. This script ships to every visitor of
+    every site that installs the package, so its bytes are paid for by all of
+    them.
+--}}
 <script @if($ranetraceNonce ?? null) nonce="{{ $ranetraceNonce }}" @endif>
-/**
- * Ranetrace human-verification beacon.
- *
- * Confirms that a real browser executed JavaScript and had this page visible,
- * so the page visit already dispatched for this view can be reported as
- * verified. HTTP clients and headless fetchers never reach this code at all,
- * and a hidden prerender is filtered by the visibility check below.
- *
- * Best effort throughout: a failure here must never disturb the host page, and
- * a visit whose beacon never arrives is still counted, just not verified.
- */
 (function () {
     'use strict';
 
-    // Printed through Blade's json directive, which escapes the angle
-    // brackets: a value here can never close this script element from inside
-    // the string literal it landed in.
+    {{-- Printed through Blade's json directive, which escapes the angle
+         brackets: a value here can never close this script element from inside
+         the string literal it landed in. --}}
     var config = @json($ranetraceBeaconConfig);
 
     var fired = false;
@@ -57,7 +63,7 @@
             return;
         }
 
-        // A background tab or a prerender is not a human looking at the page.
+        {{-- A background tab or a prerender is not a human looking at the page. --}}
         if (document.visibilityState !== 'visible') {
             return;
         }
@@ -79,8 +85,8 @@
     }
 
     function schedule() {
-        // requestAnimationFrame proves at least one frame was painted; the
-        // delay that follows filters instant bounces and prerenders.
+        {{-- requestAnimationFrame proves at least one frame was painted; the
+             delay that follows filters instant bounces and prerenders. --}}
         try {
             if (typeof requestAnimationFrame === 'function') {
                 requestAnimationFrame(function () {
