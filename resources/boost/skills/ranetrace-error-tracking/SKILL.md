@@ -129,10 +129,12 @@ Listed directly, so call these by name.
 | Tool | Description |
 |---|---|
 | `LatestErrorsTool` | Fetch the most recent errors |
-| `SearchErrorsTool` | Search errors with advanced filtering |
+| `SearchErrorsTool` | Search errors with advanced filtering, and by free text: `query` matches a phrase in the message, a class name or a file path |
 | `GetErrorTool` | Get full details of a specific error |
 | `ErrorStatsTool` | Get error statistics and trends |
 | `GetErrorActivityTool` | View the activity timeline for an error |
+
+To find errors that mention a phrase, or that come from one class or file, pass it as `query` to `SearchErrorsTool` instead of paging through results and filtering them yourself. The match is a case-insensitive substring, at most 200 characters, and `%` and `_` are literal. For a PHP error the message is the one of its latest occurrence; for a JavaScript error the page URL is matched too. `query` combines with every other filter, so `query` plus `sort=last_occurred` also answers "the latest errors that mention this".
 
 ### Managing Error States
 
@@ -186,9 +188,9 @@ The same MCP server also answers for the website being monitored, not only the a
 | `GetLighthouseAuditTool` | Latest Lighthouse scores, metrics, trend, and ranked opportunities |
 | `GetCertificateStatusTool` | HTTPS, issuer, validity window, days until expiry |
 | `GetDomainStatusTool` | Registrar, expiry, DNSSEC, registrar locks |
-| `GetBrokenLinksTool` | Broken links from the latest site audit, with the page each was found on |
+| `GetBrokenLinksTool` | Broken links from the latest site audit, with the page each was found on; filterable and paged |
 
-None of them takes parameters: the connection already scopes every call to one website.
+The connection already scopes every call to one website, so none of them takes parameters, with one exception. A list of broken links can be longer than one answer should be, so `GetBrokenLinksTool` lists 100 links per call and takes three optional parameters: `status_code` (only links that answered with this HTTP status, 0 for a link that gave no HTTP answer), `source_page` (only links found on this page URL) and `cursor` (the next-cursor value of the previous answer, to walk the rest of the list with the same filters). The filters narrow the list only: the verdict and the counts always describe the whole audit.
 
 Each answers **verdict first**: what we found, why it matters, what to do, the same guidance a human reads on the dashboard, with the raw measurements following as its evidence. Read the verdict before the numbers, and pass its wording on rather than re-deriving your own conclusion from the data. A monitor that is switched off answers 409 `MONITOR_DISABLED` instead of returning stale figures, and the tool surfaces that message as-is.
 
