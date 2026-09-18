@@ -2,10 +2,6 @@
 
 declare(strict_types=1);
 
-use Illuminate\Support\Facades\File;
-use Pest\Plugins\Tia\Recorder;
-use Pest\Support\Container;
-
 /*
  * The Boost guideline and the shipped skills are agent-facing prose: Boost
  * surfaces them into every consuming project, where an agent reads them before
@@ -16,35 +12,6 @@ use Pest\Support\Container;
  * ratchet of their own. The whole tree was swept clean in September 2026; this
  * pins it so the next edit cannot bring the dash back unnoticed.
  */
-
-/**
- * Every file under resources/boost, as sorted absolute paths. Swept
- * recursively rather than as a list of the skills that exist today, so a skill
- * added later is covered the day it lands.
- *
- * TIA: the files are read as text, never executed, so the coverage driver
- * records no edge to them. Each one is linked by hand, or a TIA run replays
- * this sweep's cached pass while the prose it guards changes underneath it.
- * Outside a TIA run the recorder is inactive and the link is a no-op.
- *
- * @return list<string>
- */
-function boostResourceFiles(): array
-{
-    $recorder = Container::getInstance()->get(Recorder::class);
-
-    $paths = [];
-
-    foreach (File::allFiles(dirname(__DIR__, 2).'/resources/boost') as $file) {
-        $recorder->linkSource($file->getPathname());
-
-        $paths[] = $file->getPathname();
-    }
-
-    sort($paths);
-
-    return $paths;
-}
 
 test('it enumerates the guideline and every shipped skill', function (): void {
     $names = array_map(

@@ -44,9 +44,9 @@ Without this line, unhandled exceptions are NOT captured (though `Ranetrace::rep
 
 ### Middleware
 
-The `TrackPageVisit` middleware is auto-registered on the `web` middleware group when analytics is enabled. Analytics is privacy-first: no cookies, no fingerprinting, no consent banner, and an optional beacon that sends one opaque token and nothing else. Visitors are identified only by salted, one-way HMAC hashes (a user-agent hash and a daily-rotating session-id hash), never raw identifiers and never across sites.
+The `TrackPageVisit` middleware is auto-registered on the `web` middleware group when analytics is enabled. Analytics is privacy-first: no cookies, no fingerprinting, no consent banner, and an optional beacon that sends one opaque token and nothing else. Visitors are identified only by salted, one-way HMAC hashes, never raw identifiers and never across sites.
 
-The human-verification beacon is opt-in (`RANETRACE_WEBSITE_ANALYTICS_BEACON_ENABLED=true`). With it on, the visit job is delayed a few seconds, a tiny script posts the view's token back to `POST ranetrace/analytics/verify`, and the visit ships with `verified_human` true or false. It requires a real queue connection (a `sync` queue ignores the delay) and must stay off behind a full-page cache, which would serve one token to many visitors.
+The human-verification beacon is opt-in (`RANETRACE_WEBSITE_ANALYTICS_BEACON_ENABLED=true`). It requires a real queue connection, because the visit is held for a few seconds to wait for the beacon and a `sync` queue cannot hold it, and it must stay off behind a full-page cache, which would serve one token to many visitors. For how the beacon works, bot detection and request filters, activate the `ranetrace-analytics` skill.
 
 ### Blade Directive
 
@@ -68,41 +68,7 @@ The package **always registers** a `ranetrace` log channel, regardless of the fe
 
 ### MCP Server
 
-Ranetrace hosts an MCP server for error investigation, investigation notes, error state management, the monitored website's monitor verdicts and the owner's notification rules. It runs on Ranetrace, so there is nothing to install in the application and nothing to keep running.
-
-**The read tools are listed directly; state changes are searched for, then executed.** `tools/list` carries the reads (errors, notes, monitors, notification rules) and nothing else. Everything that changes something (error state and its bulk variants, note create/update/delete, notification-rule updates) sits in a tool catalog behind two meta tools:
-
-@verbatim
-<code-snippet name="Find a state change, then run it" lang="json">
-// search_tools: query, plus an optional limit of 1 to 50. An empty query browses the whole catalog.
-{"query": "resolve error"}
-
-// execute_tools: up to 10 calls, run in order, stopping at the first error.
-{"calls": [{"name": "resolve-error-tool", "arguments": {"error_id": "err_123", "type": "php"}}]}
-</code-snippet>
-@endverbatim
-
-`search_tools` answers each match with its name, description and input schema, and the name it gives is the exact name `execute_tools` expects. `execute_tools` is the only way into a catalogued tool: a direct `tools/call` of a catalogued name answers not found, so search first rather than guessing a name. The write permission is checked again inside `execute_tools`.
-
-**Connect over OAuth.** Any MCP client that supports OAuth connects with no pre-shared secret: add the server URL, and the client registers itself, sends the user to Ranetrace's approval screen, and gets its own credential back.
-
-@verbatim
-<code-snippet name="Add the hosted Ranetrace MCP server" lang="bash">
-claude mcp add --transport http ranetrace https://api.ranetrace.com/mcp
-</code-snippet>
-@endverbatim
-
-On claude.ai the same URL is added as a custom connector. Clients configured from a file (Cursor, VS Code) read the same server as an `mcpServers` entry with `"type": "http"` and the same URL, and need no `Authorization` header.
-
-At the approval screen the user picks **exactly one website** the connection may reach, and whether the agent may write. Writes are off by default: a read-only connection lists the read tools and nothing else, no write tools and no meta tools, so there is no catalog for it to search and no way to reach a write tool at call time either. Turning on write actions adds `search_tools` and `execute_tools` next to the reads, and the error state changes, the note create/update/delete and the notification-rule updates all run through them. Connections are listed and revoked on the account's agent connections page in Ranetrace, at `/user/profile/connections`, which also carries the connect instructions. A headless machine can use the device authorization grant instead, entering its code at `https://app.ranetrace.com/oauth/device`.
-
-**MCP tokens are retired.** A static per-website token is no longer accepted: a client still sending one gets a 401 with `error_code: MCP_OAUTH_REQUIRED` and instructions to reconnect over OAuth.
-
-An application with `RANETRACE_MCP_TOKEN` in `.env` is on a retired setup: there is no local MCP server to run. Delete the variable and connect the MCP client over OAuth as above.
-
-To find errors by a phrase in the message, a class name or a file path, pass it as `query` to `search-errors-tool` rather than paging through results and filtering them yourself. It combines with the tool's other filters.
-
-`get-monitor-status-tool` answers "which of my monitors needs a look" for the website, every enabled monitor with its verdict. The per-monitor tools (uptime, performance, Lighthouse, certificate, domain, broken links) give the detail behind one of them: `get-uptime-status-tool`, `get-performance-stats-tool`, `get-lighthouse-audit-tool`, `get-certificate-status-tool`, `get-domain-status-tool` and `get-broken-links-tool`. None takes parameters, because the connection scopes every call to one website, with one exception: `get-broken-links-tool` lists 100 links per call, narrows that list with `status_code` and `source_page`, and walks it with `cursor`, while its verdict and counts keep describing the whole audit. Every monitor tool answers verdict first: what we found, why it matters, what to do, the same guidance a human reads on the dashboard, with the raw measurements following as its evidence. Read the verdict before the numbers, and pass its wording on rather than re-deriving your own conclusion from the data. A monitor that is switched off answers 409 `MONITOR_DISABLED` rather than returning stale figures.
+Ranetrace hosts an MCP server for errors, investigation notes, error state, the monitored website's monitor verdicts and the owner's notification rules. It runs on Ranetrace, so there is nothing to install or run in the application. Connect an MCP client that supports OAuth to `https://api.ranetrace.com/mcp`. At the approval screen the user picks one website and whether the agent may write. No token goes in `.env`: an application with `RANETRACE_MCP_TOKEN` there is on a retired setup, so delete the variable. For the tools, the `search_tools` and `execute_tools` flow for state changes, and connection problems, activate the `ranetrace-error-tracking` skill.
 
 ### Testing
 

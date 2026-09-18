@@ -1,13 +1,13 @@
 ---
 name: ranetrace-error-tracking
-description: Track, investigate, and manage application errors with Ranetrace, including the MCP tools for AI-assisted debugging and for reading the monitored website's verdicts (uptime, performance, Lighthouse, certificate, domain, broken links).
+description: Track, investigate, and manage application errors with Ranetrace, and work with the hosted Ranetrace MCP server, including connecting an MCP client over OAuth and fixing a connection that fails, the tools for AI-assisted debugging, the search_tools and execute_tools flow for state changes, the monitored website's verdicts (uptime, performance, Lighthouse, certificate, domain, broken links) and the notification rules.
 ---
 
 # Ranetrace Error Tracking
 
 ## When to use this skill
 
-Use this skill when working with error tracking, exception reporting, error investigation, or managing error states in a Ranetrace-monitored Laravel application.
+Use this skill when working with error tracking, exception reporting, error investigation, or managing error states in a Ranetrace-monitored Laravel application. It is also the reference for the hosted MCP server: connecting a client, what a read-only or a write connection can do, the monitor tools and the notification rules.
 
 ## Reporting Errors
 
@@ -62,6 +62,8 @@ Each error report includes:
 
 Ranetrace hosts an MCP server covering error investigation, investigation notes, error state management, the monitored website's verdicts (see *Monitor tools* at the end) and the owner's notification rules. It runs on Ranetrace, so there is nothing to install in the application and nothing to keep running.
 
+The tables below name each tool by its class. On the wire the name is kebab-cased: `SearchErrorsTool` is `search-errors-tool`, `GetMonitorStatusTool` is `get-monitor-status-tool`.
+
 ### Connecting: the client asks, the user approves
 
 Any MCP client that supports OAuth connects with no pre-shared secret. Give it the server URL; it registers itself, opens the user's browser at Ranetrace's approval screen, and comes back with a credential of its own:
@@ -99,7 +101,7 @@ The read tools are listed directly in `tools/list`. The tools that change someth
 - `search_tools` takes a `query` and an optional `limit` of 1 to 50. An empty query browses the whole catalog. It answers `{"ok":true,"tools":[{"name":...,"description":...,"inputSchema":...}],"hasMore":false}`.
 - `execute_tools` takes `calls`, a list of `{"name":"<exact name from search_tools>","arguments":{...}}`, at most 10 per call. They run in order and stop at the first error. It answers `{"ok":true,"results":[{"name":...,"content":[...],"isError":false}]}`.
 
-The tool names are the familiar ones, kebab-cased on the wire: the `ResolveErrorTool` in the tables below is `resolve-error-tool`. A direct `tools/call` of a catalogued name answers not found, so search first rather than guessing at a name. `execute_tools` re-checks the write permission, so it is not a way around a read-only connection either.
+The catalogued names are kebab-cased the same way: the `ResolveErrorTool` in the tables below is `resolve-error-tool`. A direct `tools/call` of a catalogued name answers not found, so search first rather than guessing at a name. `execute_tools` re-checks the write permission, so it is not a way around a read-only connection either.
 
 Resolving an error, end to end:
 

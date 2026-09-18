@@ -2,9 +2,41 @@
 
 declare(strict_types=1);
 
+use Illuminate\Support\Facades\File;
+use Pest\Plugins\Tia\Recorder;
+use Pest\Support\Container;
 use Ranetrace\Laravel\Tests\TestCase;
 
 uses(TestCase::class)->in('Browser', 'Contract', 'Feature', 'Unit');
+
+/**
+ * Every file under resources/boost, as sorted absolute paths. Swept
+ * recursively rather than as a list of the skills that exist today, so a skill
+ * added later is covered the day it lands.
+ *
+ * TIA: the files are read as text, never executed, so the coverage driver
+ * records no edge to them. Each one is linked by hand, or a TIA run replays
+ * this sweep's cached pass while the prose it guards changes underneath it.
+ * Outside a TIA run the recorder is inactive and the link is a no-op.
+ *
+ * @return list<string>
+ */
+function boostResourceFiles(): array
+{
+    $recorder = Container::getInstance()->get(Recorder::class);
+
+    $paths = [];
+
+    foreach (File::allFiles(dirname(__DIR__).'/resources/boost') as $file) {
+        $recorder->linkSource($file->getPathname());
+
+        $paths[] = $file->getPathname();
+    }
+
+    sort($paths);
+
+    return $paths;
+}
 
 /**
  * Every comment that survived into rendered output, as the lines carrying them.

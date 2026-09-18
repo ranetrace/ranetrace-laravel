@@ -1,13 +1,13 @@
 ---
 name: ranetrace-analytics
-description: Set up and configure Ranetrace's privacy-first website analytics with bot detection, path filtering, and custom request filters.
+description: Set up and configure Ranetrace's privacy-first website analytics with bot detection, the opt-in human-verification beacon, path filtering, and custom request filters.
 ---
 
 # Ranetrace Website Analytics
 
 ## When to use this skill
 
-Use this skill when setting up website analytics, configuring bot detection, excluding paths from tracking, or implementing custom request filters.
+Use this skill when setting up website analytics, configuring bot detection, turning on the human-verification beacon, excluding paths from tracking, or implementing custom request filters.
 
 ## How It Works
 
