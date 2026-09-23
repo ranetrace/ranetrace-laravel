@@ -124,7 +124,7 @@ The middleware uses a multi-layer bot detection system:
 
 ## Throttling
 
-Requests from the same IP to the same path are throttled to prevent duplicate tracking. Default: 30 seconds between tracked visits per IP/path combination. Configure with `RANETRACE_WEBSITE_ANALYTICS_THROTTLE_SECONDS`.
+Requests from the same IP and the same browser to the same path are throttled to prevent duplicate tracking. Default: 30 seconds between tracked visits per IP, user agent and path. The user agent is part of the key so that people behind one shared IP (an office, a mobile carrier) are counted separately, while a reload by one visitor still counts once. Configure with `RANETRACE_WEBSITE_ANALYTICS_THROTTLE_SECONDS`.
 
 ## What Gets Captured
 

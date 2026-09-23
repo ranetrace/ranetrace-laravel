@@ -255,18 +255,26 @@ class TrackPageVisit
         $visitData['human_probability_score'] = $humanScore['score'];
         $visitData['human_probability_reasons'] = $humanScore['reasons'];
 
-        // Throttle to one capture per IP + path per throttle_seconds window.
-        // Cache::add is atomic (put-if-absent), so concurrent requests can't both
-        // pass a check-then-set race. The key is NOT time-bucketed: the TTL alone
-        // defines the window, so throttle_seconds works for any value (a minute
-        // bucket would silently cap it at ~60s).
+        // Throttle to one capture per IP + user agent + path per
+        // throttle_seconds window. Cache::add is atomic (put-if-absent), so
+        // concurrent requests can't both pass a check-then-set race. The key is
+        // NOT time-bucketed: the TTL alone defines the window, so
+        // throttle_seconds works for any value (a minute bucket would silently
+        // cap it at ~60s).
         // The collector reports a decoded path, which is what makes this key
         // sound: `/login`, `/%6Cogin` and `/%6cogin` all route to the same
         // handler and now share ONE bucket, where keying on the raw request
         // line handed an attacker an unlimited supply of distinct keys for a
         // single URL.
+        // The user-agent hash separates devices behind one IP: an office or a
+        // mobile carrier's NAT puts many people on one address, and keying on
+        // IP + path alone counted everyone opening the same page within the
+        // window as one visit. One device reloading still sends the same user
+        // agent, so a reload still counts once. The collector's salted hash is
+        // reused rather than the raw header being hashed again here.
         $cacheKey = 'ranetrace:visit:'.md5(
             $request->ip().'|'.
+            $visitData['user_agent_hash'].'|'.
             $visitData['path']
         );
 

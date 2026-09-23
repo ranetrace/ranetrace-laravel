@@ -184,6 +184,35 @@ test('it throttles duplicate visits', function (): void {
     Bus::assertDispatchedTimes(HandlePageVisitJob::class, 1); // Still just 1
 });
 
+test('it captures two devices behind one IP on the same path within the window', function (): void {
+    Bus::fake();
+    Cache::flush();
+
+    // An office or a carrier NAT puts many people behind one address. Keying
+    // the throttle on IP + path alone counted all of them as one visitor.
+    $this->withServerVariables(['REMOTE_ADDR' => '203.0.113.7'])
+        ->withHeaders(humanBrowserHeaders())
+        ->get('/test-page')
+        ->assertOk();
+
+    $this->withServerVariables(['REMOTE_ADDR' => '203.0.113.7'])
+        ->withHeaders(browserHeadersWithUserAgent(
+            'Mozilla/5.0 (Macintosh; Intel Mac OS X 14.5; rv:128.0) Gecko/20100101 Firefox/128.0'
+        ))
+        ->get('/test-page')
+        ->assertOk();
+
+    Bus::assertDispatchedTimes(HandlePageVisitJob::class, 2);
+
+    // The same device reloading is still one visit.
+    $this->withServerVariables(['REMOTE_ADDR' => '203.0.113.7'])
+        ->withHeaders(humanBrowserHeaders())
+        ->get('/test-page')
+        ->assertOk();
+
+    Bus::assertDispatchedTimes(HandlePageVisitJob::class, 2);
+});
+
 test('it throttles encoded variants of one path into a single bucket', function (): void {
     Bus::fake();
     Cache::flush();
