@@ -693,7 +693,10 @@ test('with the beacon on, the visit is delayed and carries the view token unveri
             && ($data['view_token'] ?? null) === $response->getContent()
             // The wait window is what gives the browser time to answer; without
             // the delay the job would always read an absent mark.
-            && $job->delay->equalTo(now()->addSeconds(15));
+            && $job->delay->equalTo(now()->addSeconds(15))
+            // The job learns when the hold ends, so it can tell a run the
+            // connection did not delay from a beacon that never came.
+            && ($data['held_until'] ?? null) === now()->addSeconds(15)->getTimestamp();
     });
 
     $this->travelBack();
@@ -810,6 +813,31 @@ test('a queue route to a connection that runs jobs at once wins over a delaying 
             && ! array_key_exists('view_token', $data)
             && $job->delay === null;
     });
+});
+
+test('a failover connection that falls through to a target running jobs at once ships no flag', function (): void {
+    Cache::flush();
+
+    // Laravel's stock failover is `database` then `deferred`. Here the first
+    // target is down for real (the test database has no jobs table) and the
+    // second runs the job at once, which a delay check made before the
+    // dispatch cannot foresee: the connection resolves to FailoverQueue.
+    config([
+        'queue.connections.failing_over' => ['driver' => 'failover', 'connections' => ['database', 'sync']],
+        'queue.default' => 'failing_over',
+        'ranetrace.website_analytics.queue' => true,
+        'ranetrace.website_analytics.beacon.enabled' => true,
+    ]);
+
+    $this->withHeaders(humanBrowserHeaders())->get('/test-page')->assertOk();
+
+    $buffered = (new Ranetrace\Laravel\Services\RanetraceBatchBuffer)->getItems('page_visits', 10);
+
+    // Sent, and unknown rather than false: no beacon has had time to answer.
+    expect($buffered)->toHaveCount(1)
+        ->and($buffered[0]['data'])->not->toHaveKey('verified_human')
+        ->and($buffered[0]['data'])->not->toHaveKey('view_token')
+        ->and($buffered[0]['data'])->not->toHaveKey('held_until');
 });
 
 test('a throttled repeat visit gets no token, because there is no visit to verify', function (): void {

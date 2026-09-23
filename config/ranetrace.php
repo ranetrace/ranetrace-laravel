@@ -96,7 +96,9 @@ return [
         // It requires a real queue connection: `sync`, `deferred` and
         // `background` run the job at once and ignore the delay, so on those
         // (and with `queue` above off) visits go out without the flag at all
-        // rather than late, and the page gets no beacon.
+        // rather than late, and the page gets no beacon. A `failover`
+        // connection that falls through to such a target is caught when the
+        // job runs early, and its visit goes out without the flag too.
         //
         // The token is printed into the HTML, so a full-page cache in front of
         // the app (Cloudflare cache-everything, a static export) serves one

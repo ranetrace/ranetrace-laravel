@@ -321,6 +321,10 @@ class TrackPageVisit
         //   `deferred` and `background`, which inherit its `later()` and so
         //   ignore the delay): the job would read an absent mark every time
         //   and report every visit unverified.
+        //
+        // A third case cannot be seen from here: a connection that only turns
+        // out not to delay once the job lands (a failover falling through to
+        // `deferred`). The job catches that one itself, from `held_until`.
         if (! config('ranetrace.website_analytics.queue', true)) {
             HandlePageVisitJob::dispatchSync($visitData);
 
@@ -343,12 +347,20 @@ class TrackPageVisit
         // render the beacon for this view.
         $request->attributes->set('ranetrace_view_token', $token);
 
+        // One instant for both the delay and the moment the job is told the
+        // hold ends, so a job the queue released on time never looks early.
+        $heldUntil = now()->addSeconds((int) config('ranetrace.website_analytics.beacon.wait_seconds', 15));
+
         $visitData['verified_human'] = false;
         $visitData['view_token'] = $token;
 
-        HandlePageVisitJob::dispatch($visitData)->delay(
-            now()->addSeconds((int) config('ranetrace.website_analytics.beacon.wait_seconds', 15))
-        );
+        // A local handle like the token, never a field: the job compares it with
+        // the clock to tell a run the connection did not delay (a failover that
+        // fell through to a target that runs jobs at once) from a beacon that
+        // never came. See HandlePageVisitJob::handle().
+        $visitData['held_until'] = $heldUntil->getTimestamp();
+
+        HandlePageVisitJob::dispatch($visitData)->delay($heldUntil);
     }
 
     /**
@@ -365,6 +377,16 @@ class TrackPageVisit
      * queue manager caches the instance and the dispatch reuses it, and a
      * connection that cannot be resolved would have failed the dispatch anyway
      * (inside the capture try/catch in handle()).
+     *
+     * This is decided before the dispatch, so it can only judge what the
+     * connection is, not where a job will land. A `failover` connection
+     * resolves to FailoverQueue and passes, yet when its first target is down
+     * the job falls through to a later one, and Laravel's own stock failover
+     * ends in `deferred`. The backstop for such connections, whose delay
+     * cannot be known up front, is in the job: it compares `held_until` with
+     * the clock and sends a visit it ran early with no `verified_human` field.
+     * This check stays because it is what keeps a beacon off the page on a
+     * connection that is known never to delay.
      */
     private function canHoldVisit(HandlePageVisitJob $job): bool
     {
