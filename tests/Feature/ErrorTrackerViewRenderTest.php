@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Illuminate\Support\Facades\Blade;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Vite;
 use Ranetrace\Php\JavaScript\CaptureScript;
 
@@ -407,4 +408,50 @@ test('neither view renders a comment while its feature is off', function (): voi
     ]);
 
     expect(commentsIn(renderWithViewToken('3f1b0c7e-1f4a-4a2b-9a2f-0d7f1a4b8c9d')))->toBe([]);
+});
+
+test('the directive renders no error script while the master switch is off', function (): void {
+    // The provider reads the flags at boot to decide whether to mount the relay
+    // route, so the app is rebuilt with the master switch off rather than
+    // flipped afterwards.
+    $this->configOverrides = [
+        'ranetrace.enabled' => false,
+        'ranetrace.javascript_errors.enabled' => true,
+    ];
+    $this->reloadApplication();
+
+    $html = Blade::render('<html><body>@ranetraceErrorTracking</body></html>');
+
+    expect($html)->not->toContain(captureScriptMarker())
+        ->and($html)->not->toContain('<script');
+});
+
+test('a page served through the web group renders neither script while the master switch is off', function (): void {
+    // The beacon half needs no gate of its own: its token comes only from the
+    // capture middleware, which is neither mounted nor capturing with the
+    // master switch off. This walks the real request path to pin that.
+    $this->configOverrides = [
+        'ranetrace.enabled' => false,
+        'ranetrace.javascript_errors.enabled' => true,
+        'ranetrace.website_analytics.enabled' => true,
+        'ranetrace.website_analytics.beacon.enabled' => true,
+    ];
+    $this->reloadApplication();
+
+    Route::get('/master-off-page', fn () => Blade::render(
+        '<html><body>@ranetraceErrorTracking</body></html>'
+    ))->middleware('web');
+
+    $response = $this->withHeaders([
+        'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+        'Accept' => 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Accept-Language' => 'en-US,en;q=0.9',
+    ])->get('/master-off-page');
+
+    $response->assertOk();
+
+    expect($response->getContent())
+        ->not->toContain(captureScriptMarker())
+        ->not->toContain(beaconMarker())
+        ->not->toContain('<script');
 });

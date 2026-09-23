@@ -29,6 +29,7 @@ This file starts at 1.0.0. The package was re-versioned to share a major with `r
 
 ### Fixed
 - An invalid event name passed to `Ranetrace::trackEvent()` now throws its `InvalidArgumentException` wherever it is called, so it fails in development instead of first in production. The name was checked only after the capture gate, so with no `RANETRACE_KEY`, events off or the master switch off (the usual state of a development machine) a bad name passed silently; `RanetraceEvents::custom()` already checked before the gate. An application that has been passing bad names with capture off will now see the exception locally. `validate: false` still skips the check
+- `@ranetraceErrorTracking` no longer breaks the page it is on while `RANETRACE_ENABLED=false` and `RANETRACE_JAVASCRIPT_ERRORS_ENABLED=true`. The relay route the JavaScript error script posts to is mounted only with the master switch on, but the view rendered the script on the feature flag alone and called `route()` for that relay, so every page carrying the directive failed with a `RouteNotFoundException` (a 500) instead of rendering. The script now renders on the same condition the route is mounted on, and the service provider and the view read it from one method, `JavaScriptErrorController::isMounted()`, so the two cannot drift apart again. The beacon half needed no change: its token comes only from the capture middleware, which does not run with the master switch off
 
 ## [1.1.1] - 2026-08-27
 

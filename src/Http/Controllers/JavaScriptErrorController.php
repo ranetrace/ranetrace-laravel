@@ -44,6 +44,23 @@ class JavaScriptErrorController extends Controller
      */
     public const array DEFAULT_IGNORED_ERRORS = Config::DEFAULT_IGNORED_JAVASCRIPT_ERRORS;
 
+    /**
+     * Whether this relay is mounted, and so whether the capture script may be
+     * rendered at all.
+     *
+     * The service provider mounts the route on this answer and the
+     * `error-tracker` view renders the script on it, and that script calls
+     * `route()` for this endpoint. Both read this one method so the two
+     * conditions cannot drift apart again: when the view gated on the feature
+     * flag alone, turning the master switch off left the route unmounted while
+     * the view still asked for it, and every page carrying the directive died
+     * on a RouteNotFoundException.
+     */
+    public static function isMounted(): bool
+    {
+        return config('ranetrace.enabled', true) && config('ranetrace.javascript_errors.enabled');
+    }
+
     public function store(Request $request): JsonResponse
     {
         // The JS error endpoint is part of the capture path and must never

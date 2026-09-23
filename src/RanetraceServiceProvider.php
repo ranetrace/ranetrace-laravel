@@ -84,8 +84,10 @@ class RanetraceServiceProvider extends ServiceProvider
             $this->registerAnalyticsBeaconRoute();
         }
 
-        // Register JavaScript error tracking route
-        if (config('ranetrace.enabled', true) && config('ranetrace.javascript_errors.enabled')) {
+        // Register JavaScript error tracking route. The error-tracker view
+        // renders its script on the same answer, since that script names this
+        // route.
+        if (JavaScriptErrorController::isMounted()) {
             $this->registerJavaScriptErrorRoute();
         }
 

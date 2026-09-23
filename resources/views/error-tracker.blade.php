@@ -1,8 +1,10 @@
 {{--
     One directive, two scripts, each behind its own flag:
 
-    - the JavaScript error capture script below, gated on
-      `javascript_errors.enabled`;
+    - the JavaScript error capture script below, gated on the same answer the
+      service provider mounts its relay route on (the master switch and
+      `javascript_errors.enabled`), because the script calls `route()` for
+      that relay and an unmounted route would throw on every page;
     - the analytics human-verification beacon, gated on
       `website_analytics.beacon.enabled` and on this view having been handed a
       token, in `analytics-beacon.blade.php`.
@@ -30,7 +32,7 @@
     resolved once, here, and handed to both scripts.
 --}}
 @php($ranetraceNonce = \Illuminate\Support\Facades\Vite::cspNonce())
-@if(config('ranetrace.javascript_errors.enabled'))
+@if(\Ranetrace\Laravel\Http\Controllers\JavaScriptErrorController::isMounted())
 <script @if($ranetraceNonce) nonce="{{ $ranetraceNonce }}" @endif>
 {!! \Ranetrace\Php\JavaScript\CaptureScript::withConfig([
     'endpoint' => route('ranetrace.javascript-errors.store'),

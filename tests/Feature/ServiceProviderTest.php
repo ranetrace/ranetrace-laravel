@@ -63,6 +63,18 @@ test('javascript error route is registered when enabled', function (): void {
     expect($routes)->not->toBeEmpty();
 });
 
+test('javascript error route is not registered while the master switch is off', function (): void {
+    // The error-tracker view reads the same gate before it calls route() for
+    // this endpoint, so the two must agree.
+    $this->configOverrides = [
+        'ranetrace.enabled' => false,
+        'ranetrace.javascript_errors.enabled' => true,
+    ];
+    $this->reloadApplication();
+
+    expect(app('router')->has('ranetrace.javascript-errors.store'))->toBeFalse();
+});
+
 /**
  * Mounted on the analytics flag, not the beacon flag, so a beacon from a page
  * served before the beacon was switched off meets the controller's 403 rather
