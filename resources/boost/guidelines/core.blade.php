@@ -6,7 +6,7 @@ Ranetrace is an all-in-one monitoring package for Laravel providing error tracki
 
 - Config: `config/ranetrace.php` (publish with `php artisan vendor:publish --tag=ranetrace-laravel-config`)
 - All env vars are prefixed with `RANETRACE_`
-- Required: set `RANETRACE_KEY` and `RANETRACE_ENABLED=true` in `.env`
+- Required: set `RANETRACE_KEY` in `.env`; without it nothing is captured. `RANETRACE_ENABLED` is the master switch over every feature and defaults to `true`
 - Each feature has its own `enabled` toggle and can run via queue or synchronously
 - **`RANETRACE_KEY` is the ingest key and nothing else.** It writes captured telemetry in and belongs on every server, in `.env`. Reading data back out is the MCP server's job, and it uses its own credential, held by the MCP client rather than by the application: an OAuth connection the user approves in the browser. Sending the ingest key to an MCP endpoint returns a 401 with `error_code: MCP_OAUTH_REQUIRED`. Never put an MCP credential in `.env`.
 
@@ -35,7 +35,7 @@ use Ranetrace\Laravel\Facades\Ranetrace;
 </code-snippet>
 @endverbatim
 
-Without this line, unhandled exceptions are NOT captured (though `Ranetrace::report($exception)` still works for in-flow calls). `Ranetrace::handles()` preserves Laravel's own default logging.
+`Ranetrace::report($exception)` works for in-flow calls without this line, and `Ranetrace::handles()` preserves Laravel's own default logging.
 
 ### Key Facades
 
@@ -54,13 +54,15 @@ Add `@ranetraceErrorTracking` before `</body>`. It enables client-side JavaScrip
 
 ### Queue & Batch Processing
 
-All features use queue-based processing by default. Captured items are buffered locally and sent to the API in batches by the batch worker:
+All features use queue-based processing by default. Captured items are buffered in the cache store and sent to the API in batches by `ranetrace:work`, which the package does not schedule for you: until it runs on the scheduler, with a queue worker processing the jobs it dispatches, nothing leaves the application. Schedule it every minute in `routes/console.php`:
 
 @verbatim
-<code-snippet name="Run the Ranetrace batch worker" lang="bash">
-php artisan ranetrace:work
+<code-snippet name="Schedule the Ranetrace batch worker" lang="php">
+Schedule::command('ranetrace:work')->everyMinute()->withoutOverlapping()->runInBackground();
 </code-snippet>
 @endverbatim
+
+For queue names, pauses and a buffer that does not drain, activate the `ranetrace-worker` skill.
 
 ### Logging Channel
 
@@ -83,7 +85,7 @@ Individual test commands: `ranetrace:test-errors`, `ranetrace:test-events`, `ran
 
 ### Common Pitfalls
 
-- Both `RANETRACE_ENABLED=true` and the feature-specific env var must be set for any feature to work.
+- A feature runs only while the master switch `RANETRACE_ENABLED` and its own flag are both on. Errors and events are on by default; logging, analytics and JavaScript errors stay off until their flag is set to `true`.
 - Error tracking requires the `Ranetrace::handles($exceptions)` wiring in `bootstrap/app.php` (see *Error Tracking* above). Without it, unhandled exceptions are not captured.
 - Batch buffering uses your app's cache store by default (`RANETRACE_BATCH_CACHE_DRIVER`, falling back to `CACHE_STORE`/`CACHE_DRIVER` → `file`). For production / multi-worker setups, point it at a shared, lock-capable store (`redis`, `memcached`, or `database`), never `array` (per-process).
 - The logging channel name `ranetrace_internal` is reserved for internal diagnostics: do not use it in your application. Self-logging is handled internally (the package writes its own diagnostics to that separate channel), so you do NOT need to add anything to `excluded_channels` to prevent loops.

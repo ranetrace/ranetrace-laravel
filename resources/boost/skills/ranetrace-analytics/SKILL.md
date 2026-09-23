@@ -64,7 +64,7 @@ How it works: the capture middleware mints a token for the view, hands it to the
 
 Two constraints:
 
-- **It needs a real queue connection.** A `sync` queue runs the job before the response leaves the server, so there is no wait and no beacon. In that case the visit goes out with no `verified_human` field rather than a false one.
+- **It needs a real queue connection.** With `QUEUE_CONNECTION=sync` the delayed job runs at once, before any beacon can arrive, so every visit is reported with `verified_human` false. With `RANETRACE_WEBSITE_ANALYTICS_QUEUE=false` the visit is sent straight away with no `verified_human` field at all.
 - **Keep it off behind a full-page cache** (Cloudflare cache-everything, a static export). The token is printed into the HTML, so a cached page hands one token to many visitors.
 
 `delay_ms` is what filters instant bounces and prerenders. `wait_seconds` is how long the visit is held before it is reported; the mark outlives it by a minute so a busy queue running the job late does not read a beacon that did arrive as absent.
@@ -133,7 +133,6 @@ Each page visit includes:
 - Privacy-safe user agent hash and daily-rotating session ID hash
 - Human probability score
 - `verified_human`, only when the beacon is enabled
-- Country code (when available)
 
 ## Testing
 

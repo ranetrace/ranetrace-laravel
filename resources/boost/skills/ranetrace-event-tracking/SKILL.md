@@ -95,6 +95,8 @@ Event names are validated by default and must:
 - Start with a letter
 - Only contain letters, numbers, and underscores
 
+An invalid name throws an `InvalidArgumentException`. `RanetraceEvents::custom()` checks on every call, but `Ranetrace::trackEvent()` checks only where capture is on (events enabled and `RANETRACE_KEY` set), so a bad name passed to it can pass locally and throw in production.
+
 Valid: `user_registered`, `checkout_completed`, `feature_toggled`
 Invalid: `UserRegistered`, `a`, `123_event`, `my-event`
 

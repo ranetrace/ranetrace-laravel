@@ -43,7 +43,7 @@ The same directive also renders the website analytics human-verification beacon 
 - **Unhandled promise rejections**
 - **Console errors** (optional, off by default)
 - **Breadcrumbs** for debugging context:
-  - Page navigation
+  - Page load (the URL the page opened on)
   - User clicks (tag, id, class, text)
   - Form submissions
   - XHR and fetch requests (method, URL, status)

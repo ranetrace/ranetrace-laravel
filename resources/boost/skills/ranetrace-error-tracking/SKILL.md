@@ -109,8 +109,8 @@ Resolving an error, end to end:
 // 1. search_tools arguments
 {"query": "resolve error"}
 
-// 2. what search_tools answers, shortened to the one match and its schema
-{"ok":true,"tools":[{"name":"resolve-error-tool","description":"Mark an error as resolved. This is an idempotent operation - resolving an already resolved error succeeds silently.","inputSchema":{"type":"object","properties":{"error_id":{"type":"string","description":"The error ID (with or without err_ prefix)."},"type":{"type":"string","enum":["php","javascript","js"]}},"required":["error_id","type"]}}],"hasMore":false}
+// 2. what search_tools answers, shortened to the one match, its descriptions elided
+{"ok":true,"tools":[{"name":"resolve-error-tool","description":"...","inputSchema":{"type":"object","properties":{"error_id":{"type":"string","description":"..."},"type":{"type":"string","description":"...","enum":["php","javascript","js"]}},"required":["error_id","type"]}}],"hasMore":false}
 
 // 3. execute_tools arguments, using that exact name
 {"calls":[{"name":"resolve-error-tool","arguments":{"error_id":"err_123","type":"php"}}]}
@@ -120,7 +120,7 @@ Resolving an error, end to end:
 
 A client that sends a static MCP token as a bearer header gets a 401 with `error_code: MCP_OAUTH_REQUIRED` and instructions to remove the header and reconnect over OAuth, as above.
 
-The MCP credential is never `RANETRACE_KEY` and never lives in `.env`. The key writes captured telemetry in and lives on every server; the MCP credential reads data back out and belongs on the machine running the MCP client. An ingest key, or an old MCP token, sent to an MCP endpoint returns that same 401 with `error_code: MCP_OAUTH_REQUIRED`, and every tool surfaces it as instructions rather than a generic failure.
+The MCP credential is never `RANETRACE_KEY` and never lives in `.env`. The key writes captured telemetry in and lives on every server; the MCP credential reads data back out and belongs on the machine running the MCP client. An ingest key, or an old MCP token, sent to an MCP endpoint returns that same 401 with `error_code: MCP_OAUTH_REQUIRED` before any tool runs, and its message says how to reconnect.
 
 An application with `RANETRACE_MCP_TOKEN` in `.env` is on a retired setup: there is no local MCP server to run. Point the client at the hosted URL above, approve the connection in the browser, and delete the variable from `.env`.
 
@@ -194,7 +194,7 @@ The same MCP server also answers for the website being monitored, not only the a
 
 The connection already scopes every call to one website, so none of them takes parameters, with one exception. A list of broken links can be longer than one answer should be, so `GetBrokenLinksTool` lists 100 links per call and takes three optional parameters: `status_code` (only links that answered with this HTTP status, 0 for a link that gave no HTTP answer), `source_page` (only links found on this page URL) and `cursor` (the next-cursor value of the previous answer, to walk the rest of the list with the same filters). The filters narrow the list only: the verdict and the counts always describe the whole audit.
 
-Each answers **verdict first**: what we found, why it matters, what to do, the same guidance a human reads on the dashboard, with the raw measurements following as its evidence. Read the verdict before the numbers, and pass its wording on rather than re-deriving your own conclusion from the data. A monitor that is switched off answers 409 `MONITOR_DISABLED` instead of returning stale figures, and the tool surfaces that message as-is.
+Each answers **verdict first**: what we found, why it matters, what to do, the same guidance a human reads on the dashboard, with the raw measurements following as its evidence. Read the verdict before the numbers, and pass its wording on rather than re-deriving your own conclusion from the data. A monitor that is switched off answers with an error saying its monitoring is disabled for this website, instead of returning stale figures; pass that message on as-is. `GetMonitorStatusTool` lists such monitors as not running.
 
 ## Notification rules
 
