@@ -102,13 +102,17 @@ return [
         // the app (Cloudflare cache-everything, a static export) serves one
         // token to many visitors and the beacon must stay off there.
         //
-        // `delay_ms` is how long the browser waits before posting, which
-        // filters instant bounces and prerenders. `throttle` is the rate limit
-        // on the beacon route, in Laravel's `requests,minutes` form.
+        // `delay_ms` is how long the browser waits after the first painted
+        // frame before posting. It defaults to 0: prerenders and background
+        // tabs are already filtered because the beacon only posts once the page
+        // is visible, and a delay is a minimum time on page. A visitor who
+        // leaves before it elapses still posts on the way out, once the page
+        // was seen. `throttle` is the rate limit on the beacon route, in
+        // Laravel's `requests,minutes` form.
         'beacon' => [
             'enabled' => env('RANETRACE_WEBSITE_ANALYTICS_BEACON_ENABLED', false),
             'wait_seconds' => env('RANETRACE_WEBSITE_ANALYTICS_BEACON_WAIT_SECONDS', 15),
-            'delay_ms' => env('RANETRACE_WEBSITE_ANALYTICS_BEACON_DELAY_MS', 1500),
+            'delay_ms' => env('RANETRACE_WEBSITE_ANALYTICS_BEACON_DELAY_MS', 0),
             'throttle' => env('RANETRACE_WEBSITE_ANALYTICS_BEACON_THROTTLE', '120,1'),
         ],
 

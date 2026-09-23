@@ -42,7 +42,7 @@ Analytics is privacy-first: no cookies, no fingerprinting, no consent banner, an
     'beacon' => [
         'enabled' => env('RANETRACE_WEBSITE_ANALYTICS_BEACON_ENABLED', false),
         'wait_seconds' => env('RANETRACE_WEBSITE_ANALYTICS_BEACON_WAIT_SECONDS', 15),
-        'delay_ms' => env('RANETRACE_WEBSITE_ANALYTICS_BEACON_DELAY_MS', 1500),
+        'delay_ms' => env('RANETRACE_WEBSITE_ANALYTICS_BEACON_DELAY_MS', 0),
         'throttle' => env('RANETRACE_WEBSITE_ANALYTICS_BEACON_THROTTLE', '120,1'),
     ],
 ],
@@ -60,14 +60,16 @@ RANETRACE_WEBSITE_ANALYTICS_BEACON_ENABLED=true
 
 Then keep `@ranetraceErrorTracking` just before `</body>` in your layout. That directive renders the beacon as well as the JavaScript error script, so a layout that already has it needs nothing else, and a layout that does not needs one line.
 
-How it works: the capture middleware mints a token for the view, hands it to the page, and dispatches the page visit job with a delay of `wait_seconds`. In the browser the beacon waits for `load`, one animation frame and `delay_ms`, checks the page is still visible, and posts the token to `POST ranetrace/analytics/verify` (rate limited by `beacon.throttle`, in Laravel's `requests,minutes` form). The endpoint leaves a mark in Ranetrace's own cache store. When the job runs it reads that mark and ships the visit with `verified_human` true or false. A visit is never lost to a missing beacon: it is only reported unverified. Ranetrace's traffic pages then show verified visits, and how many were kept out.
+How it works: the capture middleware mints a token for the view, hands it to the page, and dispatches the page visit job with a delay of `wait_seconds`. In the browser the beacon starts at once: after one painted animation frame and `delay_ms` (default 0) it checks the page is visible and posts the token to `POST ranetrace/analytics/verify` (rate limited by `beacon.throttle`, in Laravel's `requests,minutes` form). The endpoint leaves a mark in Ranetrace's own cache store. When the job runs it reads that mark and ships the visit with `verified_human` true or false. A visit is never lost to a missing beacon: it is only reported unverified. Ranetrace's traffic pages then show verified visits, and how many were kept out.
 
 Two constraints:
 
 - **It needs a real queue connection.** On a connection that runs jobs at once (`QUEUE_CONNECTION=sync`, `deferred` or `background`), and with `RANETRACE_WEBSITE_ANALYTICS_QUEUE=false`, the visit cannot be held while the beacon answers, so it is sent with no `verified_human` field at all and the page gets no beacon. The beacon only verifies anything on a real queue connection.
 - **Keep it off behind a full-page cache** (Cloudflare cache-everything, a static export). The token is printed into the HTML, so a cached page hands one token to many visitors.
 
-`delay_ms` is what filters instant bounces and prerenders. `wait_seconds` is how long the visit is held before it is reported; the mark outlives it by a minute so a busy queue running the job late does not read a beacon that did arrive as absent.
+A page that is hidden when the beacon is due (a background tab, a prerender) is waited on, and the beacon posts once it is shown. Leaving the page posts too, once it has been visible, so a non-zero `delay_ms` never drops a visitor who leaves before it elapses. Prerenders and background tabs are filtered by the visibility check, not by the delay, which is why `delay_ms` defaults to 0: a delay is a minimum time on page. One gap remains by design: a page opened in a background tab and first looked at after `wait_seconds` is reported unverified, because the visit job has already run.
+
+`wait_seconds` is how long the visit is held before it is reported; the mark outlives it by a minute so a busy queue running the job late does not read a beacon that did arrive as absent.
 
 ## Excluded Paths
 

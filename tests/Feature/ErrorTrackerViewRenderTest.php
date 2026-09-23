@@ -224,8 +224,35 @@ test('the beacon renders with its endpoint, token and a keepalive post', functio
         ->toMatchArray([
             'endpoint' => route('ranetrace.analytics.verify'),
             'token' => $token,
-            'delayMs' => 1500,
+            // No delay by default: a delay is a minimum time on page, and a
+            // visitor who leaves before it elapses would be reported unverified.
+            'delayMs' => 0,
         ]);
+});
+
+test('the beacon delay falls back to none when the config key is missing', function (): void {
+    // A published config from before the option existed carries no delay_ms.
+    config(['ranetrace.website_analytics.beacon' => ['enabled' => true]]);
+
+    expect(renderedBeaconConfig(renderWithViewToken('3f1b0c7e-1f4a-4a2b-9a2f-0d7f1a4b8c9d'))['delayMs'])
+        ->toBe(0);
+});
+
+test('the beacon starts at once, retries once the page is shown and posts on leaving', function (): void {
+    config([
+        'ranetrace.javascript_errors.enabled' => false,
+        'ranetrace.website_analytics.beacon.enabled' => true,
+    ]);
+
+    $html = renderWithViewToken('3f1b0c7e-1f4a-4a2b-9a2f-0d7f1a4b8c9d');
+
+    // The browser tests prove the timing; these pin the three hooks it rests
+    // on, so a render-only run catches the script sliding back to waiting for
+    // `load` (a de facto minimum time on page) or giving up on a hidden tab.
+    expect($html)
+        ->not->toContain("'load'")
+        ->toContain("'visibilitychange'")
+        ->toContain("'pagehide'");
 });
 
 test('the beacon delay comes from config', function (): void {
