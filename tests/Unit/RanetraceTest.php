@@ -173,6 +173,30 @@ test('trackEvent does not throw on an invalid event name when validation is disa
         ->not->toThrow(Throwable::class);
 });
 
+test('trackEvent throws on an invalid event name while capture is off', function (string $setting, mixed $value): void {
+    // A developer machine typically has no RANETRACE_KEY, so a check that
+    // only ran where capture is on would first fire in production.
+    Config::set($setting, $value);
+
+    expect(fn () => (new Ranetrace)->trackEvent('Invalid Name!!'))
+        ->toThrow(InvalidArgumentException::class);
+
+    Queue::assertNothingPushed();
+})->with([
+    'no API key' => ['ranetrace.key', null],
+    'events disabled' => ['ranetrace.events.enabled', false],
+    'package disabled' => ['ranetrace.enabled', false],
+]);
+
+test('trackEvent with validation disabled stays a silent no-op while capture is off', function (): void {
+    Config::set('ranetrace.key', null);
+
+    expect(fn () => (new Ranetrace)->trackEvent('Invalid Name!!', validate: false))
+        ->not->toThrow(Throwable::class);
+
+    Queue::assertNothingPushed();
+});
+
 // --- header allowlist + bounded shape ---
 //
 // The allowlist itself, the per-value truncation and the fifty-header cap are

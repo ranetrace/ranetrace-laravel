@@ -67,14 +67,17 @@ class Ranetrace
 
     public function trackEvent(string $eventName, array $properties = [], int|string|null $userId = null, bool $validate = true): void
     {
-        if (! $this->isCaptureEnabled('events')) {
-            return;
-        }
-
-        // Validation stays OUTSIDE the try/catch: an invalid event name is a
-        // developer mistake and should fail loudly during development.
+        // Validation runs BEFORE the capture gate and OUTSIDE the try/catch: an
+        // invalid event name is a developer mistake and should fail loudly
+        // during development, which is exactly where capture is usually off (no
+        // RANETRACE_KEY). Checked only past the gate, a bad name would first
+        // throw in production. RanetraceEvents::custom() checks at the same point.
         if ($validate) {
             EventTracker::ensureValidEventName($eventName);
+        }
+
+        if (! $this->isCaptureEnabled('events')) {
+            return;
         }
 
         // Everything past validation must never throw into the caller's
