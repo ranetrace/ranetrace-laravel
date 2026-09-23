@@ -116,9 +116,9 @@ Resolving an error, end to end:
 {"calls":[{"name":"resolve-error-tool","arguments":{"error_id":"err_123","type":"php"}}]}
 ```
 
-### MCP tokens are retired
+### Static tokens are refused
 
-Before connections, the tools authenticated with a static MCP token sent as a bearer header. Those tokens are no longer accepted: a client still sending one gets a 401 with `error_code: MCP_OAUTH_REQUIRED` and instructions to remove the header and reconnect over OAuth, as above.
+A client that sends a static MCP token as a bearer header gets a 401 with `error_code: MCP_OAUTH_REQUIRED` and instructions to remove the header and reconnect over OAuth, as above.
 
 The MCP credential is never `RANETRACE_KEY` and never lives in `.env`. The key writes captured telemetry in and lives on every server; the MCP credential reads data back out and belongs on the machine running the MCP client. An ingest key, or an old MCP token, sent to an MCP endpoint returns that same 401 with `error_code: MCP_OAUTH_REQUIRED`, and every tool surfaces it as instructions rather than a generic failure.
 
