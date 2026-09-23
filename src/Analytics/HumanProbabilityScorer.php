@@ -256,7 +256,24 @@ class HumanProbabilityScorer
     }
 
     /**
-     * Score based on request frequency (throttling detection)
+     * Score based on request frequency: more than 10 earlier requests from
+     * the same IP inside one fixed one-minute window, which puts the penalty
+     * on the 12th request of a window and every one after it.
+     *
+     * The window is fixed from its first request. It used to slide: every
+     * request rewrote the counter with a fresh one-minute expiry, so the count
+     * only reset after a full quiet minute, and an IP that kept coming back at
+     * least once a minute took the penalty on every request after its eleventh
+     * forever. That pushed browsers with weaker signals (no Sec-Fetch, no
+     * cookie on a first view, no Sec-CH-UA outside Chromium) under the
+     * `min_human_score` floor, worst on a shared IP where many people add up.
+     *
+     * `add()` is an atomic put-if-absent and sets the expiry once, when the
+     * window opens; `increment()` is atomic and leaves the expiry alone on the
+     * stores Laravel ships (array and database update the value only, redis
+     * and memcached keep the key's TTL, the file store rewrites the payload
+     * with its remaining seconds). That replaces the old get-then-put, which
+     * also lost counts to concurrent requests.
      */
     protected function scoreRequestFrequency(Request $request, int $score): int
     {
@@ -266,15 +283,31 @@ class HumanProbabilityScorer
         $store = Cache::store(config('ranetrace.batch.cache_driver', 'file'));
 
         $cacheKey = 'ranetrace:request_frequency:'.$request->ip();
-        $requestCount = $store->get($cacheKey, 0);
+        $window = now()->addMinute();
 
-        if ($requestCount > 10) {
+        if ($store->add($cacheKey, 1, $window)) {
+            $requestCount = 1;
+        } else {
+            $requestCount = $store->increment($cacheKey);
+
+            // The window can expire between the add() above and this
+            // increment(). Array, file and redis then recreate the key at 1
+            // with NO expiry (database answers false instead), and a counter
+            // without an expiry would never reset again. A 1 here can only
+            // mean that, since a live window already held at least 1, so the
+            // window is reopened with its expiry.
+            if ($requestCount === false || (int) $requestCount === 1) {
+                $store->put($cacheKey, 1, $window);
+                $requestCount = 1;
+            }
+        }
+
+        // Counted including this request, so "more than 10 before it" is
+        // "more than 11 with it".
+        if ((int) $requestCount > 11) {
             $this->reasons[] = 'High request frequency detected';
             $score += self::DEFAULT_WEIGHTS['request_frequency'];
         }
-
-        // Increment the request count for this IP
-        $store->put($cacheKey, $requestCount + 1, now()->addMinutes(1));
 
         return $score;
     }

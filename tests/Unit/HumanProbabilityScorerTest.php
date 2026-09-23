@@ -176,3 +176,87 @@ test('it never writes to the host session', function (): void {
 
     expect($session->all())->toBe([]);
 });
+
+/*
+ * The request-frequency penalty is meant for more than 10 requests from one IP
+ * within one minute. Every request used to rewrite the counter with a fresh
+ * one-minute expiry, so the count only reset after a full quiet minute: an IP
+ * that kept coming back at least once a minute took the penalty on every
+ * request after its eleventh, which drops real visitors on a shared IP.
+ */
+
+/**
+ * Score one request from the given IP and say whether it took the penalty.
+ */
+function tookFrequencyPenalty(string $ip): bool
+{
+    $request = Illuminate\Http\Request::create('/', 'GET');
+    $request->headers->set('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
+    $request->server->set('REMOTE_ADDR', $ip);
+
+    return in_array('High request frequency detected', HumanProbabilityScorer::score($request)['reasons'], true);
+}
+
+test('an IP that keeps returning within a minute is not penalised once its window has passed', function (): void {
+    Illuminate\Support\Facades\Cache::flush();
+    $this->travelTo(Illuminate\Support\Carbon::create(2026, 1, 1, 10, 0, 0));
+
+    // Thirty requests ten seconds apart: each within a minute of the previous,
+    // never more than six inside any one minute.
+    $penalised = [];
+
+    for ($request = 1; $request <= 30; $request++) {
+        if (tookFrequencyPenalty('198.51.100.20')) {
+            $penalised[] = $request;
+        }
+
+        $this->travel(10)->seconds();
+    }
+
+    expect($penalised)->toBe([]);
+
+    $this->travelBack();
+});
+
+test('more than eleven requests inside one minute are still penalised from the twelfth', function (): void {
+    Illuminate\Support\Facades\Cache::flush();
+    $this->travelTo(Illuminate\Support\Carbon::create(2026, 1, 1, 10, 0, 0));
+
+    $penalised = [];
+
+    for ($request = 1; $request <= 13; $request++) {
+        if (tookFrequencyPenalty('198.51.100.21')) {
+            $penalised[] = $request;
+        }
+
+        $this->travel(2)->seconds();
+    }
+
+    expect($penalised)->toBe([12, 13]);
+
+    // The window is fixed from its first request, so the next one opens fresh.
+    $this->travelTo(Illuminate\Support\Carbon::create(2026, 1, 1, 10, 1, 1));
+
+    expect(tookFrequencyPenalty('198.51.100.21'))->toBeFalse();
+
+    $this->travelBack();
+});
+
+test('a counter that lost its expiry is given one back rather than counting forever', function (): void {
+    Illuminate\Support\Facades\Cache::flush();
+    $this->travelTo(Illuminate\Support\Carbon::create(2026, 1, 1, 10, 0, 0));
+
+    // What an increment leaves behind when the window expired between the
+    // add() and the increment(): the stores recreate the key with no expiry.
+    $store = Illuminate\Support\Facades\Cache::store(config('ranetrace.batch.cache_driver'));
+    $store->forget('ranetrace:request_frequency:198.51.100.22');
+    $store->increment('ranetrace:request_frequency:198.51.100.22', 0);
+
+    tookFrequencyPenalty('198.51.100.22');
+
+    $this->travel(61)->seconds();
+
+    expect($store->has('ranetrace:request_frequency:198.51.100.22'))->toBeFalse();
+
+    $this->travelBack();
+});
