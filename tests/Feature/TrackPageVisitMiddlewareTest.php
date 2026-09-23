@@ -638,6 +638,9 @@ test('with the beacon on, the visit is delayed and carries the view token unveri
     $this->travelTo(Carbon::create(2026, 1, 1, 10, 0, 0));
 
     config([
+        // A connection that honours a delay. Testbench defaults to `sync`,
+        // which cannot hold the visit and so gets no token at all.
+        'queue.default' => 'database',
         'ranetrace.website_analytics.queue' => true,
         'ranetrace.website_analytics.beacon.enabled' => true,
         'ranetrace.website_analytics.beacon.wait_seconds' => 15,
@@ -713,11 +716,81 @@ test('a sync visit carries no beacon token even with the beacon on', function ()
     });
 });
 
+test('a visit on a connection that runs jobs at once carries no flag and no token even with the beacon on', function (string $driver): void {
+    Bus::fake();
+    Cache::flush();
+
+    config([
+        'queue.connections.immediate' => ['driver' => $driver],
+        'queue.default' => 'immediate',
+        'ranetrace.website_analytics.queue' => true,
+        'ranetrace.website_analytics.beacon.enabled' => true,
+    ]);
+
+    Route::get('/beacon-immediate-probe', fn () => response(
+        (string) request()->attributes->get('ranetrace_view_token')
+    ))->middleware(['web', TrackPageVisit::class]);
+
+    $response = $this->withHeaders(humanBrowserHeaders())->get('/beacon-immediate-probe');
+
+    // Such a connection ignores the delay and runs the job before any beacon
+    // can arrive, so a token would only ever produce `verified_human: false`.
+    expect($response->getContent())->toBe('');
+
+    Bus::assertDispatched(HandlePageVisitJob::class, function ($job): bool {
+        $data = $job->getVisitData();
+
+        return ! array_key_exists('verified_human', $data)
+            && ! array_key_exists('view_token', $data)
+            && $job->delay === null;
+    });
+})->with([
+    'sync' => 'sync',
+    // Both extend SyncQueue and inherit the later() that drops the delay.
+    'deferred' => 'deferred',
+    'background' => 'background',
+]);
+
+test('a queue route to a connection that runs jobs at once wins over a delaying default', function (): void {
+    Bus::fake();
+    Cache::flush();
+
+    config([
+        'queue.default' => 'database',
+        'queue.connections.immediate' => ['driver' => 'sync'],
+        'ranetrace.website_analytics.queue' => true,
+        'ranetrace.website_analytics.beacon.enabled' => true,
+    ]);
+
+    // The bus sends the job where the host routed it, not to the default, so
+    // judging the default alone would hand out a token that can never verify.
+    app('queue.routes')->set(HandlePageVisitJob::class, connection: 'immediate');
+
+    Route::get('/beacon-routed-probe', fn () => response(
+        (string) request()->attributes->get('ranetrace_view_token')
+    ))->middleware(['web', TrackPageVisit::class]);
+
+    $response = $this->withHeaders(humanBrowserHeaders())->get('/beacon-routed-probe');
+
+    expect($response->getContent())->toBe('');
+
+    Bus::assertDispatched(HandlePageVisitJob::class, function ($job): bool {
+        $data = $job->getVisitData();
+
+        return ! array_key_exists('verified_human', $data)
+            && ! array_key_exists('view_token', $data)
+            && $job->delay === null;
+    });
+});
+
 test('a throttled repeat visit gets no token, because there is no visit to verify', function (): void {
     Bus::fake();
     Cache::flush();
 
-    config(['ranetrace.website_analytics.beacon.enabled' => true]);
+    config([
+        'queue.default' => 'database',
+        'ranetrace.website_analytics.beacon.enabled' => true,
+    ]);
 
     Route::get('/beacon-throttle-probe', fn () => response(
         (string) request()->attributes->get('ranetrace_view_token')

@@ -93,9 +93,10 @@ return [
         // The beacon rides the existing `@ranetraceErrorTracking` directive, so
         // a layout that already has it needs only the env var.
         //
-        // It requires a real queue connection: a `sync` queue ignores the
-        // delay, so with `QUEUE_CONNECTION=sync` visits go out without the flag
-        // rather than late.
+        // It requires a real queue connection: `sync`, `deferred` and
+        // `background` run the job at once and ignore the delay, so on those
+        // (and with `queue` above off) visits go out without the flag at all
+        // rather than late, and the page gets no beacon.
         //
         // The token is printed into the HTML, so a full-page cache in front of
         // the app (Cloudflare cache-everything, a static export) serves one

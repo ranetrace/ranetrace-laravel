@@ -6,6 +6,7 @@ namespace Ranetrace\Laravel\Analytics\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Queue\SyncQueue;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use Jaybizzle\CrawlerDetect\CrawlerDetect;
@@ -301,18 +302,29 @@ class TrackPageVisit
      */
     private function dispatchVisit(Request $request, array $visitData): void
     {
-        // A synchronous send happens before the response leaves the server, so
-        // there is no beacon to wait for and no delay to wait in: `sync` runs
-        // the job at once and would report every visit unverified. Such a visit
-        // therefore carries no flag at all rather than a false one.
+        // Two paths lead to a visit that carries no `verified_human` field at
+        // all, rather than a false one, and to a view with no token (so the
+        // directive renders no beacon for it). Both are cases where the visit
+        // cannot be held while the beacon has time to answer:
+        //
+        // - `website_analytics.queue` is off: the job runs inline, before the
+        //   response has even left the server.
+        // - the connection the job goes to runs jobs at once (`sync`, and
+        //   `deferred` and `background`, which inherit its `later()` and so
+        //   ignore the delay): the job would read an absent mark every time
+        //   and report every visit unverified.
         if (! config('ranetrace.website_analytics.queue', true)) {
             HandlePageVisitJob::dispatchSync($visitData);
 
             return;
         }
 
-        if (! config('ranetrace.website_analytics.beacon.enabled', false)) {
-            HandlePageVisitJob::dispatch($visitData);
+        $job = new HandlePageVisitJob($visitData);
+
+        if (! config('ranetrace.website_analytics.beacon.enabled', false) || ! $this->canHoldVisit($job)) {
+            // Dispatched onto the host's own connection even when it runs jobs
+            // at once, so `deferred` and `background` keep their semantics.
+            dispatch($job);
 
             return;
         }
@@ -329,6 +341,29 @@ class TrackPageVisit
         HandlePageVisitJob::dispatch($visitData)->delay(
             now()->addSeconds((int) config('ranetrace.website_analytics.beacon.wait_seconds', 15))
         );
+    }
+
+    /**
+     * Whether the connection the visit job will be dispatched on honours a
+     * delay, which is what the beacon needs to have time to answer.
+     *
+     * The connection is resolved the way the bus dispatcher resolves it: the
+     * job's own connection if one is set, else a queue route the host
+     * registered for the job, else the default connection. The check is on the
+     * resolved instance rather than on the configured driver name, because
+     * `DeferredQueue` and `BackgroundQueue` both extend `SyncQueue` and inherit
+     * the `later()` that ignores the delay, so one instanceof also covers any
+     * future driver built the same way. Resolving is not an extra cost: the
+     * queue manager caches the instance and the dispatch reuses it, and a
+     * connection that cannot be resolved would have failed the dispatch anyway
+     * (inside the capture try/catch in handle()).
+     */
+    private function canHoldVisit(HandlePageVisitJob $job): bool
+    {
+        $connectionName = $job->connection
+            ?? (app()->bound('queue.routes') ? app('queue.routes')->getConnection($job) : null);
+
+        return ! app('queue')->connection($connectionName) instanceof SyncQueue;
     }
 
     /**
