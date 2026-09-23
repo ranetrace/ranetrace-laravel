@@ -167,7 +167,7 @@ In the catalog too, same route in.
 
 ### Investigation Notes
 
-Reading notes is listed directly; writing them is in the catalog.
+Reading notes is listed directly; writing them is in the catalog. Notes work on PHP and JavaScript errors alike, so every note call names the error's `type` (`php`, or `javascript` or `js`), the same required argument the error state tools take in the example above.
 
 | Tool | Description | Where |
 |---|---|---|
