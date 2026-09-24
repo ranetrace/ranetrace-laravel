@@ -46,7 +46,7 @@ use Ranetrace\Laravel\Facades\Ranetrace;
 
 The `TrackPageVisit` middleware is auto-registered on the `web` middleware group when analytics is enabled. Analytics is privacy-first: no cookies, no fingerprinting, no consent banner, and an optional beacon that sends one opaque token and nothing else. Visitors are identified only by salted, one-way HMAC hashes, never raw identifiers and never across sites.
 
-The human-verification beacon is opt-in (`RANETRACE_WEBSITE_ANALYTICS_BEACON_ENABLED=true`). It requires a real queue connection, because the visit is held for a few seconds to wait for the beacon and a `sync` queue cannot hold it, and it must stay off behind a full-page cache, which would serve one token to many visitors. For how the beacon works, bot detection and request filters, activate the `ranetrace-analytics` skill.
+The human-verification beacon is opt-in (`RANETRACE_WEBSITE_ANALYTICS_BEACON_ENABLED=true`). It requires a real queue connection, because the visit is held for a few seconds to wait for the beacon and a connection that runs jobs at once (`sync`, `deferred`, `background`) cannot hold it, and it must stay off behind a full-page cache, which would serve one token to many visitors. For how the beacon works, bot detection and request filters, activate the `ranetrace-analytics` skill.
 
 ### Blade Directive
 

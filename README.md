@@ -197,10 +197,11 @@ RANETRACE_WEBSITE_ANALYTICS_BEACON_ENABLED=true
 
 Keep the `@ranetraceErrorTracking` directive just before `</body>` in your layout: it renders the beacon too, so a layout that already has it needs nothing else. The beacon posts one opaque token and nothing else, which is why it needs no consent banner.
 
-Two things to know before turning it on:
+Three things to know before turning it on:
 
-- It needs a real queue connection. The visit job waits a few seconds for the beacon, and a `sync` queue ignores that wait, so visits would go out with no verification either way.
+- It needs a real queue connection. The visit job waits a few seconds for the beacon, and `sync`, `deferred` and `background` connections cannot hold it, so there the visit is sent with no `verified_human` field (not a false one) and the page gets no beacon. The same goes for `RANETRACE_WEBSITE_ANALYTICS_QUEUE=false`. A `failover` connection that falls through to one of those is caught in the job, which carries the moment its hold ends (`held_until`), and its visit is sent without the flag too.
 - Keep it off behind a full-page cache (Cloudflare cache-everything, a static export). The token is printed into the HTML, so a cached page hands the same token to every visitor.
+- The beacon fires on the first painted frame (`RANETRACE_WEBSITE_ANALYTICS_BEACON_DELAY_MS` defaults to 0). A hidden page posts once it is shown, and leaving a page that was seen posts too. One gap remains: a page opened in a background tab and first looked at after `RANETRACE_WEBSITE_ANALYTICS_BEACON_WAIT_SECONDS` (default 15) is reported unverified, because its visit has already been sent.
 
 See the [Ranetrace website](https://ranetrace.com) for dashboard setup and configuration details.
 
