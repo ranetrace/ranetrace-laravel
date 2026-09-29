@@ -1,6 +1,6 @@
 ---
 name: ranetrace-error-tracking
-description: Track, investigate, and manage application errors with Ranetrace, and work with the hosted Ranetrace MCP server, including connecting an MCP client over OAuth and fixing a connection that fails, the tools for AI-assisted debugging, the search_tools and execute_tools flow for state changes, the monitored website's verdicts (uptime, performance, Lighthouse, certificate, domain, broken links) and the notification rules.
+description: Track, investigate, and manage application errors with Ranetrace, and work with the hosted Ranetrace MCP server, including connecting an MCP client over OAuth and fixing a connection that fails, the tools for AI-assisted debugging, the search_tools and execute_tools flow for state changes, the monitored website's verdicts (uptime, performance, Lighthouse, certificate, domain, broken links, DNS) and the notification rules.
 ---
 
 # Ranetrace Error Tracking
@@ -184,7 +184,7 @@ The same MCP server also answers for the website being monitored, not only the a
 
 | Tool | Description |
 |---|---|
-| `GetMonitorStatusTool` | Which of my monitors needs a look: every enabled monitor with its verdict |
+| `GetMonitorStatusTool` | Which of my monitors needs a look: every enabled monitor with its verdict. DNS is reported here only, with no detail tool: a failed lookup is a warning, otherwise it gives the record count |
 | `GetUptimeStatusTool` | Up or down, 24h uptime, and the recent outages |
 | `GetPerformanceStatsTool` | 24h average response time and where that time goes |
 | `GetLighthouseAuditTool` | Latest Lighthouse scores, metrics, trend, and ranked opportunities |
