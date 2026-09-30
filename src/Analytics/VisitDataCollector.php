@@ -7,6 +7,7 @@ namespace Ranetrace\Laravel\Analytics;
 use Illuminate\Http\Request;
 use Ranetrace\Laravel\Support\Core;
 use Ranetrace\Laravel\Utilities\RouteSecretResolver;
+use Ranetrace\Php\Support\BrowserIdentity;
 
 class VisitDataCollector
 {
@@ -128,32 +129,17 @@ class VisitDataCollector
         return 'desktop';
     }
 
+    /**
+     * A user agent that names no browser BrowserIdentity knows is 'Other', while no
+     * user agent at all is null: the app keeps "a browser we do not name" apart from "unknown".
+     */
     protected static function detectBrowser(?string $userAgent): ?string
     {
-        if (! $userAgent) {
+        if ($userAgent === null || $userAgent === '') {
             return null;
         }
 
-        // Define browser patterns in order of precedence
-        $patterns = [
-            'Edge' => '/Edge?\//i',
-            'Opera' => '/(Opera|OPR)\//i',
-            'Samsung' => '/SamsungBrowser\//i',
-            'Firefox' => '/Firefox\//i',
-            'Chrome' => '/Chrome\//i',
-            'Safari' => '/Version\/.*Safari/i',
-            'IE' => '/(MSIE |Trident\/.*rv:)/i',
-            'UCBrowser' => '/UCBrowser\//i',
-        ];
-
-        foreach ($patterns as $browser => $pattern) {
-            if (preg_match($pattern, $userAgent)) {
-                // Return browser name only
-                return $browser;
-            }
-        }
-
-        return 'Other';
+        return BrowserIdentity::fromUserAgent($userAgent)->name ?? 'Other';
     }
 
     protected static function resolveCountryFromIp(?string $ip): ?string

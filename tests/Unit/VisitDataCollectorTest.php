@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Illuminate\Http\Request;
 use Illuminate\Routing\Route;
 use Ranetrace\Laravel\Analytics\VisitDataCollector;
+use Ranetrace\Php\Support\BrowserIdentity;
 
 /**
  * A request with a resolved route bound to it, mirroring what the collector
@@ -100,23 +101,63 @@ test('it detects desktop devices correctly', function (): void {
     }
 });
 
-test('it detects browsers correctly', function (): void {
-    $tests = [
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36' => 'Chrome',
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:89.0) Gecko/20100101 Firefox/89.0' => 'Firefox',
-        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.1.1 Safari/605.1.15' => 'Safari',
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36 Edg/91.0.864.59' => 'Edge',
-    ];
+/**
+ * The browser name the collector reports for a request carrying this User-Agent
+ * header, or none at all when null.
+ */
+function browserNameFor(?string $userAgent): ?string
+{
+    $request = Request::create('/', 'GET');
+    $request->headers->remove('User-Agent');
 
-    foreach ($tests as $ua => $expectedBrowser) {
-        $request = Request::create('/', 'GET');
-        $request->headers->set('User-Agent', $ua);
-        $request->server->set('REMOTE_ADDR', '127.0.0.1');
-
-        $data = VisitDataCollector::collect($request);
-
-        expect($data['browser_name'])->toBe($expectedBrowser);
+    if ($userAgent !== null) {
+        $request->headers->set('User-Agent', $userAgent);
     }
+
+    $request->server->set('REMOTE_ADDR', '127.0.0.1');
+
+    return VisitDataCollector::collect($request)['browser_name'];
+}
+
+test('it reports the browser name the user agent names', function (string $userAgent, string $expectedBrowser): void {
+    expect(browserNameFor($userAgent))->toBe($expectedBrowser);
+})->with([
+    'desktop Chrome' => ['Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36', 'Chrome'],
+    'Chrome on iOS' => ['Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/128.0.6613.98 Mobile/15E148 Safari/604.1', 'Chrome'],
+    'desktop Firefox' => ['Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:130.0) Gecko/20100101 Firefox/130.0', 'Firefox'],
+    'Firefox on iOS' => ['Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) FxiOS/130.0 Mobile/15E148 Safari/605.1.15', 'Firefox'],
+    'desktop Safari' => ['Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Safari/605.1.15', 'Safari'],
+    'desktop Edge' => ['Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36 Edg/128.0.2739.54', 'Edge'],
+    'Edge on Android' => ['Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Mobile Safari/537.36 EdgA/128.0.2739.60', 'Edge'],
+    'Edge on iOS' => ['Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 EdgiOS/128.2739.60 Mobile/15E148 Safari/605.1.15', 'Edge'],
+    'Opera' => ['Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36 OPR/113.0.0.0', 'Opera'],
+    'Samsung Internet' => ['Mozilla/5.0 (Linux; Android 14; SM-S918B) AppleWebKit/537.36 (KHTML, like Gecko) SamsungBrowser/25.0 Chrome/121.0.0.0 Mobile Safari/537.36', 'Samsung Internet'],
+]);
+
+test('it reports Other for a user agent that names no browser', function (string $userAgent): void {
+    expect(browserNameFor($userAgent))->toBe('Other');
+})->with([
+    'Internet Explorer 11' => ['Mozilla/5.0 (Windows NT 10.0; WOW64; Trident/7.0; rv:11.0) like Gecko'],
+    'unknown client' => ['Test Browser'],
+    // Bots never reach the collector through the middleware; called directly,
+    // a present user agent is still a visitor the app counts, not an unknown.
+    'bot claiming Chrome' => ['Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html) Chrome/128.0.0.0 Safari/537.36'],
+    'headless Chrome' => ['Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/128.0.0.0 Safari/537.36'],
+    'whitespace only' => [' '],
+]);
+
+test('it reports no browser when there is no user agent', function (?string $userAgent): void {
+    expect(browserNameFor($userAgent))->toBeNull();
+})->with([
+    'header absent' => [null],
+    'header empty' => [''],
+]);
+
+test('it reads a browser token only within the first 1024 characters of the user agent', function (): void {
+    $padding = str_repeat('x', BrowserIdentity::MAX_USER_AGENT_LENGTH);
+
+    expect(browserNameFor('Mozilla/5.0 Chrome/128.0.0.0 '.$padding))->toBe('Chrome')
+        ->and(browserNameFor('Mozilla/5.0 '.$padding.' Chrome/128.0.0.0'))->toBe('Other');
 });
 
 test('it collects utm parameters', function (): void {
