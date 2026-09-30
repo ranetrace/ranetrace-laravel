@@ -6,9 +6,18 @@ namespace Ranetrace\Laravel\Commands;
 
 use Illuminate\Console\Command;
 use Ranetrace\Laravel\Jobs\HandleJavaScriptErrorJob;
+use Ranetrace\Laravel\Support\Core;
+use Ranetrace\Laravel\Support\CoreConfig;
+use Ranetrace\Php\JavaScript\ErrorItemBuilder;
 
 class RanetraceJavaScriptErrorTestCommand extends Command
 {
+    /**
+     * A real desktop Chrome user agent, so the test item carries the browser
+     * `name` and `version` a real report derives from it.
+     */
+    private const string TEST_USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36';
+
     protected $signature = 'ranetrace:test-javascript-errors';
 
     protected $description = 'Display JavaScript error tracking configuration and usage instructions';
@@ -59,31 +68,27 @@ class RanetraceJavaScriptErrorTestCommand extends Command
         // Dispatch a synthetic JavaScript error so the user can verify the
         // job → buffer → API path end-to-end without a browser. Mirrors the
         // behavior of ranetrace:test-errors, test-events, and test-logging.
-        HandleJavaScriptErrorJob::dispatch([
-            'message' => 'Test JavaScript error from ranetrace:test-javascript-errors',
-            'stack' => "TestError: Test JavaScript error from ranetrace:test-javascript-errors\n    at ranetrace:test-javascript-errors (artisan)",
-            'type' => 'TestError',
-            'filename' => 'artisan',
-            'line' => 0,
-            'column' => 0,
-            'user_agent' => 'Ranetrace-CLI/Test',
-            'url' => 'cli://ranetrace:test-javascript-errors',
-            'timestamp' => now()->format('c'),
-            'environment' => config('app.env'),
-            'user_id' => null,
-            'session_id' => null,
-            'breadcrumbs' => [],
-            'context' => ['source' => 'cli-test'],
-            'browser_info' => [
-                'screen_width' => null,
-                'screen_height' => null,
-                'viewport_width' => null,
-                'viewport_height' => null,
-                'device_memory' => null,
-                'hardware_concurrency' => null,
-                'connection_type' => null,
+        $errorData = (new ErrorItemBuilder(CoreConfig::make(), Core::scrubber()))->build(
+            payload: [
+                'message' => 'Test JavaScript error from ranetrace:test-javascript-errors',
+                'stack' => "TestError: Test JavaScript error from ranetrace:test-javascript-errors\n    at ranetrace:test-javascript-errors (artisan)",
+                'type' => 'TestError',
+                'filename' => 'artisan',
+                'line' => 0,
+                'column' => 0,
+                'url' => 'cli://ranetrace:test-javascript-errors',
+                'breadcrumbs' => [],
+                'context' => ['source' => 'cli-test'],
             ],
-        ]);
+            userAgent: self::TEST_USER_AGENT,
+            userId: null,
+            sessionId: null,
+            sensitivePathValues: null,
+            // Carbon rather than the builder's own clock, so a frozen clock is honored.
+            timestampFallback: now()->format('c'),
+        );
+
+        HandleJavaScriptErrorJob::dispatch($errorData);
 
         if (config('ranetrace.javascript_errors.queue', true)) {
             $this->info('✅ Test JavaScript error queued for Ranetrace.');
