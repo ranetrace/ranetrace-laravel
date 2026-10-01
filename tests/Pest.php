@@ -17,18 +17,21 @@ uses(TestCase::class)->in('Browser', 'Contract', 'Feature', 'Unit');
  * TIA: the files are read as text, never executed, so the coverage driver
  * records no edge to them. Each one is linked by hand, or a TIA run replays
  * this sweep's cached pass while the prose it guards changes underneath it.
- * Outside a TIA run the recorder is inactive and the link is a no-op.
+ * Outside a TIA run the recorder is inactive and the link is a no-op. The
+ * Laravel 12 lane resolves Pest 4, which has no TIA plugin and so no recorder.
  *
  * @return list<string>
  */
 function boostResourceFiles(): array
 {
-    $recorder = Container::getInstance()->get(Recorder::class);
+    $recorder = class_exists(Recorder::class)
+        ? Container::getInstance()->get(Recorder::class)
+        : null;
 
     $paths = [];
 
     foreach (File::allFiles(dirname(__DIR__).'/resources/boost') as $file) {
-        $recorder->linkSource($file->getPathname());
+        $recorder?->linkSource($file->getPathname());
 
         $paths[] = $file->getPathname();
     }

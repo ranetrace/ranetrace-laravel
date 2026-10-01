@@ -813,7 +813,10 @@ test('a queue route to a connection that runs jobs at once wins over a delaying 
             && ! array_key_exists('view_token', $data)
             && $job->delay === null;
     });
-});
+})->skip(
+    fn (): bool => ! app()->bound('queue.routes'),
+    'Queue routes arrived in Laravel 13, so on Laravel 12 no host can route the job away from the default.',
+);
 
 test('a failover connection that falls through to a target running jobs at once ships no flag', function (): void {
     Cache::flush();
