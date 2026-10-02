@@ -314,3 +314,31 @@ test('it hashes user agent', function (): void {
     expect($data['user_agent_hash'])->toHaveLength(64); // SHA256
     expect($data['user_agent_hash'])->not->toBe('Test Browser'); // Should be hashed
 });
+
+test('it replaces invalid UTF-8 from the request with U+FFFD, so the visit encodes as JSON', function (): void {
+    // `/caf%E9` is a latin1-encoded path: decoding it for the report yields a
+    // byte that is not UTF-8, and one such byte fails the JSON encode of the
+    // whole batch the visit is sent in.
+    $request = Request::create('https://example.com/caf%E9?utm_source=%B1', 'GET');
+    $request->headers->set('User-Agent', 'Mozilla/5.0');
+    $request->headers->set('Referer', "https://example.com/caf\xE9");
+    $request->server->set('REMOTE_ADDR', '127.0.0.1');
+
+    $data = VisitDataCollector::collect($request);
+
+    expect($data['path'])->toBe("/caf\u{FFFD}")
+        ->and($data['utm_source'])->toBe("\u{FFFD}")
+        ->and($data['referrer'])->toBe("https://example.com/caf\u{FFFD}")
+        ->and(json_encode($data))->toBeString();
+});
+
+test('it caps a campaign parameter of invalid bytes inside the cap', function (): void {
+    $request = Request::create('/', 'GET', ['utm_campaign' => str_repeat("\xB1", 300)]);
+    $request->headers->set('User-Agent', 'Test Browser');
+    $request->server->set('REMOTE_ADDR', '127.0.0.1');
+
+    $campaign = VisitDataCollector::collect($request)['utm_campaign'];
+
+    expect(mb_strlen($campaign))->toBe(255)
+        ->and($campaign)->toBe(str_repeat("\u{FFFD}", 255));
+});

@@ -10,7 +10,10 @@ This file starts at 1.0.0. The package was re-versioned to share a major with `r
 - Error items carry the exception's own `context()` array as `exception_context`, the context Laravel's log reporter already merges into the log entry. It is scrubbed for secrets and bounded in keys, depth and size by `ranetrace/ranetrace-php`, and null when the exception has no `context()`, returns nothing usable, or throws, in which case the error is still captured
 
 ### Changed
-- The package now requires `ranetrace/ranetrace-php` ^1.0.7, the release whose error payload builder adds `exception_context`
+- The package now requires `ranetrace/ranetrace-php` ^1.0.7, the release whose error payload builder adds `exception_context` and whose shared item builders replace invalid UTF-8 with U+FFFD
+
+### Fixed
+- **A captured string that is not valid UTF-8 no longer costs a batch.** One invalid byte, such as a database driver message in latin1, made the JSON encode of the whole batch fail when it was sent, so the batch was retried and paused while the item stayed in it. Error, log, event and JavaScript error items get each invalid sequence replaced by U+FFFD through `ranetrace/ranetrace-php`'s shared builders, and an analytics visit now does the same for what it takes from the request: its url, path, referrer, user agent and campaign parameters, so a request for `/caf%E9` is a visit to `/caf�` rather than a byte the batch cannot carry. Nothing to do on upgrade
 
 ## [1.1.14] - 2026-10-02
 

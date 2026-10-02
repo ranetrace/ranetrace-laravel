@@ -9,7 +9,14 @@ use Ranetrace\Laravel\Support\Core;
 use Ranetrace\Laravel\Utilities\RouteSecretResolver;
 use Ranetrace\Php\Support\BrowserIdentity;
 use Ranetrace\Php\Support\DeviceType;
+use Ranetrace\Php\Support\Utf8;
 
+/**
+ * Every string a visit takes from the request goes through ranetrace-php's
+ * `Utf8` before it is scrubbed or capped. A request is visitor-controlled, and
+ * one invalid byte (`/%E9`, a latin1 `Referer`) fails the JSON encode of the
+ * batch the visit is sent in.
+ */
 class VisitDataCollector
 {
     /**
@@ -20,7 +27,7 @@ class VisitDataCollector
     public static function collect(Request $request): array
     {
         $userAgent = $request->userAgent();
-        $url = $request->fullUrl();
+        $url = Utf8::repair($request->fullUrl());
         $parsedPath = parse_url($url, PHP_URL_PATH);
         $path = is_string($parsedPath) && $parsedPath !== '' ? $parsedPath : '/';
 
@@ -38,7 +45,7 @@ class VisitDataCollector
         // navigations send the full URL by default, which is exactly how a live
         // reset token reaches us one page after `/reset-password/{token}` was
         // itself redacted; that URL gets its own route lookup.
-        $referrer = $request->headers->get('referer');
+        $referrer = Utf8::repairNullable($request->headers->get('referer'));
 
         return [
             'url' => $scrubber->scrubUrlPath($scrubber->scrubUrl($url), $sensitiveValues),
@@ -50,9 +57,9 @@ class VisitDataCollector
             // resolved from the route are compared against rawurldecoded
             // segments, so decoding up front would stop a token that itself
             // contains a `%` from matching.
-            'path' => rawurldecode($scrubber->scrubPathSegments($path, $sensitiveValues)),
+            'path' => Utf8::repair(rawurldecode($scrubber->scrubPathSegments($path, $sensitiveValues))),
             'ip' => $request->ip(), // Only used internally to resolve geo
-            'user_agent' => $userAgent,
+            'user_agent' => Utf8::repairNullable($userAgent),
             'user_agent_hash' => $fingerprints->generateUserAgentHash($userAgent),
 
             'referrer' => $scrubber->scrubUrlPath(
@@ -95,7 +102,7 @@ class VisitDataCollector
     {
         $value = $request->query($key);
 
-        return is_string($value) ? mb_substr($value, 0, self::MAX_UTM_LENGTH) : null;
+        return is_string($value) ? mb_substr(Utf8::repair($value), 0, self::MAX_UTM_LENGTH) : null;
     }
 
     /**
