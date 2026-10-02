@@ -6,12 +6,19 @@ This file starts at 1.0.0. The package was re-versioned to share a major with `r
 
 ## [Unreleased]
 
+## [1.1.14] - 2026-10-02
+
 ### Changed
 - `ranetrace:test-analytics` builds its test visit the way the `TrackPageVisit` middleware builds a real one, where it used to hand-build the array. A synthetic desktop Chrome navigation to `/ranetrace-test-analytics` on the host of `app.url` goes through the collector and the human probability scorer, so the test visit names its browser Chrome where it said "Other", its url is a real page URL instead of `cli://ranetrace:test-analytics`, and its human probability score and reasons are the scorer's real answer instead of a fixed 100 and `cli-test`. That score clears the default `min_human_score`. The visit cannot drift from the middleware's key set again, and it still carries no beacon fields, even with the beacon enabled
 - **The package now requires `ranetrace/ranetrace-php` ^1.0.6, and a visit's `device_type` now comes from its `DeviceType`, so a future analytics feature in the PHP SDK classifies devices with the same rules.** The analytics collector's own pattern list is gone. What a site's device breakdown shows differently: tokens are matched case-sensitively and never inside a longer word, so a desktop user agent with `silk` or `mobile` somewhere inside another word is no longer counted as a tablet or a phone, and Kindle is recognised by its `Silk/` token; consoles are checked first, so Edge on the Xbox One, which also sends `Windows Phone`, `Android` and `Mobile Safari`, is a console instead of a phone; Opera Mini on an Android phone is a phone instead of a tablet; and a user agent of `"0"`, which had no device type, is now a desktop. An iPad on iPadOS 13 or later is still a desktop, because its browser sends the same user agent as Safari on a Mac; the analytics skill now says so. A visit with no user agent still has no device type
 
 ### Fixed
 - `ranetrace:test-analytics` and `ranetrace:test-javascript-errors` handle their test item the way the real capture path does when the feature's queue is off (`RANETRACE_WEBSITE_ANALYTICS_QUEUE=false`, `RANETRACE_JAVASCRIPT_ERRORS_QUEUE=false`): the job runs at once and buffers the item, where both commands pushed it onto the host's queue regardless, so it sat waiting for a worker the setting says is not used. Neither command claims any more that the item was sent: it is queued, or buffered, until `ranetrace:work` sends it, and the output says so
+
+## [1.1.13] - 2026-10-01
+
+### Changed
+- The package's own test suite runs on the Laravel 12 lane again, which resolves Pest 4: the Boost file sweep links its files only where the TIA recorder exists, and the test that sets a queue route is skipped where Laravel has no queue routes. Test suite only; no code, config value, env var or route moved
 
 ## [1.1.12] - 2026-10-01
 
