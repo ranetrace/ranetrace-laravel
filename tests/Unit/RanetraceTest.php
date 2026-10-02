@@ -236,10 +236,10 @@ test('error payload no longer contains the always-null `console_options` field',
     expect($payload)->not->toHaveKey('console_options');
 });
 
-test('error payload has exactly 19 fields', function (): void {
+test('error payload has exactly 20 fields', function (): void {
     $payload = invokeBuildErrorPayload(new RuntimeException('boom'));
 
-    expect(count($payload))->toBe(19);
+    expect(count($payload))->toBe(20);
 });
 
 test('error payload sends the generic framework pair instead of laravel_version', function (): void {

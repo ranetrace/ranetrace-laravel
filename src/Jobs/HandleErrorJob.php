@@ -52,6 +52,7 @@ class HandleErrorJob extends BaseRanetraceJob
             'is_console',
             'console_command',
             'console_arguments',
+            'exception_context',
         ];
     }
 }

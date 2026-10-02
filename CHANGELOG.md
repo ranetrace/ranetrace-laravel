@@ -6,6 +6,12 @@ This file starts at 1.0.0. The package was re-versioned to share a major with `r
 
 ## [Unreleased]
 
+### Added
+- Error items carry the exception's own `context()` array as `exception_context`, the context Laravel's log reporter already merges into the log entry. It is scrubbed for secrets and bounded in keys, depth and size by `ranetrace/ranetrace-php`, and null when the exception has no `context()`, returns nothing usable, or throws, in which case the error is still captured
+
+### Changed
+- The package now requires `ranetrace/ranetrace-php` ^1.0.7, the release whose error payload builder adds `exception_context`
+
 ## [1.1.14] - 2026-10-02
 
 ### Changed
