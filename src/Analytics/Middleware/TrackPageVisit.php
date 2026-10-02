@@ -96,6 +96,24 @@ class TrackPageVisit
      */
     private static ?CrawlerDetect $crawlerDetect = null;
 
+    /**
+     * The visit a request produces, before any beacon handle is added.
+     *
+     * Public so `ranetrace:test-analytics` builds its test visit through this
+     * same step: a key added here reaches the test visit too.
+     *
+     * @param  array{score: int, reasons: array<int, string>}  $humanScore  The answer of HumanProbabilityScorer::score() for the same request.
+     * @return array<string, mixed>
+     */
+    public static function buildVisitData(Request $request, array $humanScore): array
+    {
+        $visitData = VisitDataCollector::collect($request);
+        $visitData['human_probability_score'] = $humanScore['score'];
+        $visitData['human_probability_reasons'] = $humanScore['reasons'];
+
+        return $visitData;
+    }
+
     public function handle(Request $request, Closure $next): Response
     {
         // The middleware sits in every web request's path. It MUST NEVER throw
@@ -251,9 +269,7 @@ class TrackPageVisit
             return;
         }
 
-        $visitData = VisitDataCollector::collect($request);
-        $visitData['human_probability_score'] = $humanScore['score'];
-        $visitData['human_probability_reasons'] = $humanScore['reasons'];
+        $visitData = self::buildVisitData($request, $humanScore);
 
         // Throttle to one capture per IP + user agent + path per
         // throttle_seconds window. Cache::add is atomic (put-if-absent), so

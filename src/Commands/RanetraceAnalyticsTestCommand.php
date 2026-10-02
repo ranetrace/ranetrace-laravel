@@ -5,11 +5,39 @@ declare(strict_types=1);
 namespace Ranetrace\Laravel\Commands;
 
 use Illuminate\Console\Command;
+use Illuminate\Http\Request;
+use Ranetrace\Laravel\Analytics\HumanProbabilityScorer;
+use Ranetrace\Laravel\Analytics\Middleware\TrackPageVisit;
 use Ranetrace\Laravel\Jobs\HandlePageVisitJob;
-use Ranetrace\Laravel\Support\Core;
 
 class RanetraceAnalyticsTestCommand extends Command
 {
+    private const string TEST_PATH = '/ranetrace-test-analytics';
+
+    /**
+     * The headers desktop Chrome sends when a page is typed into the address
+     * bar. The Sec-Fetch and client hint headers among them are what lift the
+     * scorer's answer over `min_human_score`, the floor the middleware drops
+     * a visit under.
+     *
+     * @var array<string, string>
+     */
+    private const array DESKTOP_CHROME_HEADERS = [
+        'User-Agent' => 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36',
+        'Accept' => 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+        'Accept-Language' => 'en-US,en;q=0.9',
+        'Accept-Encoding' => 'gzip, deflate, br, zstd',
+        'Connection' => 'keep-alive',
+        'Upgrade-Insecure-Requests' => '1',
+        'Sec-Fetch-Site' => 'none',
+        'Sec-Fetch-Mode' => 'navigate',
+        'Sec-Fetch-User' => '?1',
+        'Sec-Fetch-Dest' => 'document',
+        'Sec-CH-UA' => '"Chromium";v="140", "Not=A?Brand";v="24", "Google Chrome";v="140"',
+        'Sec-CH-UA-Mobile' => '?0',
+        'Sec-CH-UA-Platform' => '"macOS"',
+    ];
+
     protected $signature = 'ranetrace:test-analytics';
 
     protected $description = 'Display website analytics configuration and usage instructions';
@@ -58,27 +86,14 @@ class RanetraceAnalyticsTestCommand extends Command
         $this->info('✅ Website analytics is enabled and configured!');
         $this->newLine();
 
-        // Dispatch a synthetic page visit so the user can verify the
-        // job → buffer → API path without a browser, mirroring the other
-        // test commands (test-errors/events/logging/javascript-errors).
-        HandlePageVisitJob::dispatch([
-            'url' => 'cli://ranetrace:test-analytics',
-            'path' => '/ranetrace-test-analytics',
-            'timestamp' => now()->toIso8601String(),
-            'referrer' => null,
-            'country_code' => null,
-            'device_type' => 'desktop',
-            'browser_name' => 'Other',
-            'utm_source' => null,
-            'utm_medium' => null,
-            'utm_campaign' => null,
-            'utm_content' => null,
-            'utm_term' => null,
-            'session_id_hash' => Core::fingerprints()->hash('ranetrace:test-analytics'),
-            'user_agent_hash' => Core::fingerprints()->hash('Ranetrace-CLI/Test'),
-            'human_probability_score' => 100,
-            'human_probability_reasons' => ['cli-test'],
-        ]);
+        // A synthetic browser request taken through the middleware's own
+        // build step, so the test visit carries every key a real one does and
+        // names the browser the way a real one is named.
+        $request = $this->desktopChromeNavigation();
+
+        HandlePageVisitJob::dispatch(
+            TrackPageVisit::buildVisitData($request, HumanProbabilityScorer::score($request))
+        );
 
         if (config('ranetrace.website_analytics.queue', true)) {
             $this->info('✅ Test page visit queued for Ranetrace. Run php artisan ranetrace:work to send it.');
@@ -194,5 +209,33 @@ class RanetraceAnalyticsTestCommand extends Command
         $this->line(']</>');
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Only the scheme, host and port of `app.url` are used. An `app.url` that
+     * names no host (empty, or written without a scheme) leaves the request on
+     * the framework's default `http://localhost` rather than turning the host
+     * into part of the path.
+     */
+    private function desktopChromeNavigation(): Request
+    {
+        $appUrl = parse_url((string) config('app.url'));
+        $origin = '';
+
+        if (is_array($appUrl) && isset($appUrl['host'])) {
+            $origin = ($appUrl['scheme'] ?? 'http').'://'.$appUrl['host'];
+
+            if (isset($appUrl['port'])) {
+                $origin .= ':'.$appUrl['port'];
+            }
+        }
+
+        $request = Request::create($origin.self::TEST_PATH);
+
+        foreach (self::DESKTOP_CHROME_HEADERS as $name => $value) {
+            $request->headers->set($name, $value);
+        }
+
+        return $request;
     }
 }

@@ -6,6 +6,9 @@ This file starts at 1.0.0. The package was re-versioned to share a major with `r
 
 ## [Unreleased]
 
+### Changed
+- `ranetrace:test-analytics` builds its test visit the way the `TrackPageVisit` middleware builds a real one, where it used to hand-build the array. A synthetic desktop Chrome navigation to `/ranetrace-test-analytics` on the host of `app.url` goes through the collector and the human probability scorer, so the test visit names its browser Chrome where it said "Other", its url is a real page URL instead of `cli://ranetrace:test-analytics`, and its human probability score and reasons are the scorer's real answer instead of a fixed 100 and `cli-test`. That score clears the default `min_human_score`. The visit cannot drift from the middleware's key set again, and it still carries no beacon fields, even with the beacon enabled
+
 ## [1.1.12] - 2026-10-01
 
 ### Changed
