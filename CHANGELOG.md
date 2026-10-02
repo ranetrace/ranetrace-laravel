@@ -9,6 +9,9 @@ This file starts at 1.0.0. The package was re-versioned to share a major with `r
 ### Changed
 - `ranetrace:test-analytics` builds its test visit the way the `TrackPageVisit` middleware builds a real one, where it used to hand-build the array. A synthetic desktop Chrome navigation to `/ranetrace-test-analytics` on the host of `app.url` goes through the collector and the human probability scorer, so the test visit names its browser Chrome where it said "Other", its url is a real page URL instead of `cli://ranetrace:test-analytics`, and its human probability score and reasons are the scorer's real answer instead of a fixed 100 and `cli-test`. That score clears the default `min_human_score`. The visit cannot drift from the middleware's key set again, and it still carries no beacon fields, even with the beacon enabled
 
+### Fixed
+- `ranetrace:test-analytics` and `ranetrace:test-javascript-errors` handle their test item the way the real capture path does when the feature's queue is off (`RANETRACE_WEBSITE_ANALYTICS_QUEUE=false`, `RANETRACE_JAVASCRIPT_ERRORS_QUEUE=false`): the job runs at once and buffers the item, where both commands pushed it onto the host's queue regardless, so it sat waiting for a worker the setting says is not used. Neither command claims any more that the item was sent: it is queued, or buffered, until `ranetrace:work` sends it, and the output says so
+
 ## [1.1.12] - 2026-10-01
 
 ### Changed

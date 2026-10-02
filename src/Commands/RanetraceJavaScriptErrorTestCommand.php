@@ -88,14 +88,15 @@ class RanetraceJavaScriptErrorTestCommand extends Command
             timestampFallback: now()->format('c'),
         );
 
-        HandleJavaScriptErrorJob::dispatch($errorData);
-
         if (config('ranetrace.javascript_errors.queue', true)) {
+            HandleJavaScriptErrorJob::dispatch($errorData);
             $this->info('✅ Test JavaScript error queued for Ranetrace.');
-            $this->info('It will be sent the next time the ranetrace:work command runs.');
-            $this->info('To send it immediately, run: php artisan ranetrace:work');
+            $this->info('Once a queue worker runs it, it will be sent the next time the ranetrace:work command runs.');
+            $this->info('To send it immediately after that, run: php artisan ranetrace:work');
         } else {
-            $this->info('✅ Test JavaScript error sent to Ranetrace.');
+            HandleJavaScriptErrorJob::dispatchSync($errorData);
+            $this->info('✅ Test JavaScript error buffered for Ranetrace.');
+            $this->info('To send it now, run: php artisan ranetrace:work');
         }
         $this->newLine();
 

@@ -58,6 +58,25 @@ test('ranetrace:test-javascript-errors reports the browser name and version a re
         ->and($browserInfo['version'])->toMatch('/^\d+$/');
 });
 
+test('ranetrace:test-javascript-errors queues its item when the JavaScript errors queue is on, like the relay', function (): void {
+    $this->artisan('ranetrace:test-javascript-errors')
+        ->expectsOutputToContain('queued')
+        ->assertSuccessful();
+
+    Bus::assertNotDispatchedSync(HandleJavaScriptErrorJob::class);
+});
+
+test('ranetrace:test-javascript-errors buffers its item at once when the JavaScript errors queue is off, like the relay', function (): void {
+    Config::set('ranetrace.javascript_errors.queue', false);
+
+    $this->artisan('ranetrace:test-javascript-errors')
+        ->expectsOutputToContain('php artisan ranetrace:work')
+        ->doesntExpectOutputToContain('Test JavaScript error sent to Ranetrace')
+        ->assertSuccessful();
+
+    Bus::assertDispatchedSync(HandleJavaScriptErrorJob::class);
+});
+
 test('ranetrace:test-javascript-errors dispatches nothing when JavaScript error tracking is disabled', function (): void {
     Config::set('ranetrace.javascript_errors.enabled', false);
 

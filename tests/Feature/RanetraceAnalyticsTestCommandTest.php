@@ -145,6 +145,25 @@ test('ranetrace:test-analytics keeps the test path when app.url carries a port, 
     'sub-path' => ['https://example.com/app', 'https://example.com/ranetrace-test-analytics'],
 ]);
 
+test('ranetrace:test-analytics queues its visit when the analytics queue is on, like the middleware', function (): void {
+    $this->artisan('ranetrace:test-analytics')
+        ->expectsOutputToContain('queued')
+        ->assertSuccessful();
+
+    Bus::assertNotDispatchedSync(HandlePageVisitJob::class);
+});
+
+test('ranetrace:test-analytics buffers its visit at once when the analytics queue is off, like the middleware', function (): void {
+    Config::set('ranetrace.website_analytics.queue', false);
+
+    $this->artisan('ranetrace:test-analytics')
+        ->expectsOutputToContain('Run php artisan ranetrace:work to send it')
+        ->doesntExpectOutputToContain('Test page visit sent to Ranetrace')
+        ->assertSuccessful();
+
+    Bus::assertDispatchedSync(HandlePageVisitJob::class);
+});
+
 test('ranetrace:test-analytics is a no-op when analytics is disabled', function (): void {
     Config::set('ranetrace.website_analytics.enabled', false);
 

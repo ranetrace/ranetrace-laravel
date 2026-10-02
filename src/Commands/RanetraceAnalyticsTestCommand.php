@@ -91,14 +91,14 @@ class RanetraceAnalyticsTestCommand extends Command
         // names the browser the way a real one is named.
         $request = $this->desktopChromeNavigation();
 
-        HandlePageVisitJob::dispatch(
-            TrackPageVisit::buildVisitData($request, HumanProbabilityScorer::score($request))
-        );
+        $visitData = TrackPageVisit::buildVisitData($request, HumanProbabilityScorer::score($request));
 
         if (config('ranetrace.website_analytics.queue', true)) {
-            $this->info('✅ Test page visit queued for Ranetrace. Run php artisan ranetrace:work to send it.');
+            HandlePageVisitJob::dispatch($visitData);
+            $this->info('✅ Test page visit queued for Ranetrace. Once a queue worker runs it, run php artisan ranetrace:work to send it.');
         } else {
-            $this->info('✅ Test page visit sent to Ranetrace.');
+            HandlePageVisitJob::dispatchSync($visitData);
+            $this->info('✅ Test page visit buffered for Ranetrace. Run php artisan ranetrace:work to send it.');
         }
         $this->newLine();
 
