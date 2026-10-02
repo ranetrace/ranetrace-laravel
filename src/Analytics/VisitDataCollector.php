@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Ranetrace\Laravel\Support\Core;
 use Ranetrace\Laravel\Utilities\RouteSecretResolver;
 use Ranetrace\Php\Support\BrowserIdentity;
+use Ranetrace\Php\Support\DeviceType;
 
 class VisitDataCollector
 {
@@ -59,7 +60,7 @@ class VisitDataCollector
                 RouteSecretResolver::forUrl($referrer)
             ),
 
-            'device_type' => self::detectDeviceType($userAgent),
+            'device_type' => DeviceType::fromUserAgent($userAgent)?->value,
             'browser_name' => self::detectBrowser($userAgent),
 
             'utm_source' => self::campaignParameter($request, 'utm_source'),
@@ -95,38 +96,6 @@ class VisitDataCollector
         $value = $request->query($key);
 
         return is_string($value) ? mb_substr($value, 0, self::MAX_UTM_LENGTH) : null;
-    }
-
-    protected static function detectDeviceType(?string $userAgent): ?string
-    {
-        if (! $userAgent) {
-            return null;
-        }
-
-        $ua = mb_strtolower($userAgent);
-
-        // Check for tablets first (more specific)
-        if (
-            preg_match('/(ipad|tablet|playbook|silk)/i', $ua) ||
-            (preg_match('/android/i', $ua) && ! preg_match('/mobile/i', $ua))
-        ) {
-            return 'tablet';
-        }
-
-        // Check for mobile devices with more comprehensive patterns
-        if (preg_match('/(android|iphone|ipod|blackberry|iemobile|opera mini|opera mobi|webos|mobile safari|samsung.+mobile)/i', $ua) ||
-            (str_contains($ua, 'mobile') && ! str_contains($ua, 'ipad'))
-        ) {
-            return 'mobile';
-        }
-
-        // Check for gaming consoles
-        if (preg_match('/(nintendo|playstation|xbox)/i', $ua)) {
-            return 'console';
-        }
-
-        // Default to desktop
-        return 'desktop';
     }
 
     /**

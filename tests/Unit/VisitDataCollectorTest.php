@@ -49,56 +49,44 @@ test('it collects basic visit data', function (): void {
     expect($data['utm_source'])->toBe('google');
 });
 
-test('it detects mobile devices correctly', function (): void {
-    $userAgents = [
-        'Mozilla/5.0 (iPhone; CPU iPhone OS 14_6 like Mac OS X) AppleWebKit/605.1.15',
-        'Mozilla/5.0 (Linux; Android 11; SM-G991B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.210 Mobile Safari/537.36',
-        'Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36',
-    ];
+/**
+ * The device type the collector reports for a request carrying this User-Agent header.
+ */
+function deviceTypeFor(string $userAgent): ?string
+{
+    $request = Request::create('/', 'GET');
+    $request->headers->set('User-Agent', $userAgent);
+    $request->server->set('REMOTE_ADDR', '127.0.0.1');
 
-    foreach ($userAgents as $ua) {
-        $request = Request::create('/', 'GET');
-        $request->headers->set('User-Agent', $ua);
-        $request->server->set('REMOTE_ADDR', '127.0.0.1');
+    return VisitDataCollector::collect($request)['device_type'];
+}
 
-        $data = VisitDataCollector::collect($request);
+test('it reports the device type the user agent names', function (string $userAgent, string $expectedDeviceType): void {
+    expect(deviceTypeFor($userAgent))->toBe($expectedDeviceType);
+})->with([
+    'iPhone Safari' => ['Mozilla/5.0 (iPhone; CPU iPhone OS 18_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.6 Mobile/15E148 Safari/604.1', 'mobile'],
+    'Chrome on an Android phone' => ['Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Mobile Safari/537.36', 'mobile'],
+    'iPad on iPadOS 12' => ['Mozilla/5.0 (iPad; CPU OS 12_5_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/12.1.2 Mobile/15E148 Safari/604.1', 'tablet'],
+    'Chrome on an Android tablet' => ['Mozilla/5.0 (Linux; Android 14; SM-X710) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36', 'tablet'],
+    'Windows Chrome' => ['Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36', 'desktop'],
+    'Linux Firefox' => ['Mozilla/5.0 (X11; Linux x86_64; rv:131.0) Gecko/20100101 Firefox/131.0', 'desktop'],
+    'PlayStation 5' => ['Mozilla/5.0 (PlayStation; PlayStation 5/2.26) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.0 Safari/605.1.15', 'console'],
+]);
 
-        expect($data['device_type'])->toBe('mobile');
-    }
+test('an iPad on iPadOS 13 or later is reported as a desktop because it sends a Mac user agent', function (): void {
+    expect(deviceTypeFor('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.6 Safari/605.1.15'))
+        ->toBe('desktop');
 });
 
-test('it detects tablets correctly', function (): void {
-    $userAgents = [
-        'Mozilla/5.0 (iPad; CPU OS 14_6 like Mac OS X) AppleWebKit/605.1.15',
-        'Mozilla/5.0 (Linux; Android 11; SM-T870) AppleWebKit/537.36', // Android tablet
-    ];
+test('a user agent of "0" is a desktop with no browser the parser knows', function (): void {
+    $request = Request::create('/', 'GET');
+    $request->headers->set('User-Agent', '0');
+    $request->server->set('REMOTE_ADDR', '127.0.0.1');
 
-    foreach ($userAgents as $ua) {
-        $request = Request::create('/', 'GET');
-        $request->headers->set('User-Agent', $ua);
-        $request->server->set('REMOTE_ADDR', '127.0.0.1');
+    $data = VisitDataCollector::collect($request);
 
-        $data = VisitDataCollector::collect($request);
-
-        expect($data['device_type'])->toBe('tablet');
-    }
-});
-
-test('it detects desktop devices correctly', function (): void {
-    $userAgents = [
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/91.0.4472.124',
-        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) Safari/605.1.15',
-    ];
-
-    foreach ($userAgents as $ua) {
-        $request = Request::create('/', 'GET');
-        $request->headers->set('User-Agent', $ua);
-        $request->server->set('REMOTE_ADDR', '127.0.0.1');
-
-        $data = VisitDataCollector::collect($request);
-
-        expect($data['device_type'])->toBe('desktop');
-    }
+    expect($data['device_type'])->toBe('desktop')
+        ->and($data['browser_name'])->toBe('Other');
 });
 
 /**

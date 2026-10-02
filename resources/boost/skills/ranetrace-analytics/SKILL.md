@@ -130,7 +130,7 @@ Requests from the same IP and the same browser to the same path are throttled to
 
 Each page visit includes:
 - Path, referrer, and UTM parameters (source, medium, campaign, term, content)
-- Device type (mobile, tablet, desktop, console)
+- Device type (mobile, tablet, desktop, console); an iPad on iPadOS 13 or later is counted as desktop, because its browser sends a Mac user agent
 - Browser detection (Chrome, Firefox, Safari, Edge, Opera, etc.)
 - Privacy-safe user agent hash and daily-rotating session ID hash
 - Human probability score
