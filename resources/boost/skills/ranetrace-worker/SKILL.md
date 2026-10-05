@@ -106,4 +106,5 @@ php artisan ranetrace:pause-clear --all
 
 **Cache driver not available:**
 - The batch buffer uses the cache store set by `RANETRACE_BATCH_CACHE_DRIVER` (defaults to your app's cache store: `CACHE_STORE`/`CACHE_DRIVER`, i.e. `file` unless you've changed it)
+- Set to null or left blank (`RANETRACE_BATCH_CACHE_DRIVER=`), it means the store `cache.default` names; `ranetrace:status` shows that store's name followed by "(the app's default store)"
 - For production / multi-worker setups, point it at a shared, lock-capable store (`redis`, `memcached`, or `database`) and make sure that store is configured in `config/cache.php`
