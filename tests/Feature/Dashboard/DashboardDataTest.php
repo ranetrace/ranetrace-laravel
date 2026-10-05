@@ -65,6 +65,25 @@ test('a numeric-string last-batch timestamp (Redis-style) counts as a recent dra
         ->and($status['drain']['stalled'])->not->toContain('events');
 });
 
+test('a buffer left alone for hours is still reported as stalled, with its items dated when they were captured', function (): void {
+    // The worker stopped right after its last drain: nothing drains the buffer
+    // and nothing writes to it, which is when an expiring buffer used to vanish
+    // and take the stalled signal with it.
+    $this->freezeTime();
+    $capturedAt = now()->timestamp;
+    $buffer = app(RanetraceBatchBuffer::class);
+    $buffer->addItems('events', [['event_name' => 'e1'], ['event_name' => 'e2']]);
+    Cache::store('array')->put(SendBatchToRanetraceJob::LAST_BATCH_PREFIX.'events', $capturedAt, 3600);
+
+    $this->travel(2)->hours();
+
+    $status = app(DashboardData::class)->collectStatus();
+
+    expect($status['drain']['stalled'])->toBe(['events'])
+        ->and($status['buffers']['features']['events'])->toBe(2)
+        ->and(now()->timestamp - $buffer->oldestTimestamp('events'))->toBe(2 * 3600);
+});
+
 test('the Ranetrace log channel surface reports wired even when logging is disabled', function (): void {
     // The channel is registered unconditionally (so a committed stack that
     // references `ranetrace` stays valid everywhere); the handler short-circuits

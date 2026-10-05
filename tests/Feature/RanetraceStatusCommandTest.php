@@ -43,6 +43,16 @@ test('status warns about a stalled drain when buffered items wait past the drain
         ->assertSuccessful();
 });
 
+test('status still warns about a stalled drain after hours with no drain and no writes', function (): void {
+    app(RanetraceBatchBuffer::class)->addItem('events', ['event_name' => 'e1']);
+
+    $this->travel(2)->hours();
+
+    $this->artisan('ranetrace:status')
+        ->expectsOutputToContain('No recent batch drain for: events')
+        ->assertSuccessful();
+});
+
 test('status reports the ingest key as configured without naming its value', function (): void {
     Config::set('ranetrace.key', 'ingest-key');
 
