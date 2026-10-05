@@ -30,8 +30,6 @@ class RanetraceBatchBuffer
 
     protected string $cacheDriver;
 
-    protected int $ttl;
-
     /**
      * Seconds to block waiting for a buffer's cache lock before giving up.
      * The critical sections are sub-millisecond, so a short wait lets concurrent
@@ -42,7 +40,6 @@ class RanetraceBatchBuffer
     public function __construct()
     {
         $this->cacheDriver = config('ranetrace.batch.cache_driver', 'file');
-        $this->ttl = config('ranetrace.batch.buffer_ttl', 3600);
         $this->lockWait = (float) config('ranetrace.batch.lock_wait', 1);
     }
 
@@ -177,7 +174,7 @@ class RanetraceBatchBuffer
                 if (empty($buffer)) {
                     Cache::store($this->cacheDriver)->forget($cacheKey);
                 } else {
-                    Cache::store($this->cacheDriver)->put($cacheKey, $buffer, $this->ttl);
+                    Cache::store($this->cacheDriver)->forever($cacheKey, $buffer);
                 }
 
                 return $itemsToProcess;
@@ -255,8 +252,10 @@ class RanetraceBatchBuffer
     }
 
     /**
-     * Store the buffer, keeping only its newest max_buffer_size items. Overflow
-     * drops data by design, so it is logged, once per overflow cycle.
+     * Store the buffer, keeping only its newest max_buffer_size items. It is
+     * stored without expiry: a buffer waits for its drain however long that
+     * takes, so max_buffer_size is its only bound. Overflow drops data by
+     * design, so it is logged, once per overflow cycle.
      *
      * @param  array<int, array{id: string, data: array, timestamp: int}>  $buffer
      */
@@ -271,7 +270,7 @@ class RanetraceBatchBuffer
             $this->logOverflowOnce($type, $dropped, $maxSize);
         }
 
-        Cache::store($this->cacheDriver)->put($cacheKey, $buffer, $this->ttl);
+        Cache::store($this->cacheDriver)->forever($cacheKey, $buffer);
     }
 
     /**
@@ -287,7 +286,7 @@ class RanetraceBatchBuffer
             return;
         }
 
-        Cache::store($this->cacheDriver)->put($flagKey, true, $this->ttl);
+        Cache::store($this->cacheDriver)->forever($flagKey, true);
 
         InternalLogger::warning('Ranetrace buffer overflow, oldest items dropped', [
             'type' => $type,

@@ -47,7 +47,7 @@
         @endif
 
         <div class="rt-footnote">
-            Capacity {{ number_format($max) }} items/feature · buffer TTL {{ (int) config('ranetrace.batch.buffer_ttl', 3600) }}s · oldest items drop on overflow.
+            Capacity {{ number_format($max) }} items/feature · oldest items drop on overflow.
         </div>
     </div>
 </section>

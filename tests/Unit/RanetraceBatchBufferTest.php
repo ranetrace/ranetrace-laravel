@@ -11,7 +11,6 @@ use Ranetrace\Laravel\Services\RanetraceBatchBuffer;
 
 beforeEach(function (): void {
     Config::set('ranetrace.batch.cache_driver', 'array');
-    Config::set('ranetrace.batch.buffer_ttl', 3600);
     Config::set('ranetrace.batch.max_buffer_size', 1000);
 
     // Clear cache before each test
@@ -378,8 +377,58 @@ test('returning an empty list leaves the buffer as it was', function (): void {
     expect(Cache::store('array')->get('ranetrace:buffer:events'))->toBe($before);
 });
 
-test('a returned item captured longer ago than the buffer ttl is kept for a full ttl from its return', function (): void {
-    Config::set('ranetrace.batch.buffer_ttl', 3600);
+// --- keeping items until they are delivered ---
+
+/**
+ * Point the buffer at the given store. The file store gets a directory of its
+ * own inside this test's private storage, so nothing outlives the test.
+ */
+function useBufferStore(string $store): void
+{
+    if ($store === 'file') {
+        Config::set('cache.stores.ranetrace_buffer_file', [
+            'driver' => 'file',
+            'path' => storage_path('framework/cache/ranetrace-buffer'),
+            'lock_path' => storage_path('framework/cache/ranetrace-buffer'),
+        ]);
+        $store = 'ranetrace_buffer_file';
+    }
+
+    Config::set('ranetrace.batch.cache_driver', $store);
+}
+
+test('a buffer nothing writes to keeps its items', function (string $store, int $quietHours): void {
+    useBufferStore($store);
+    $buffer = new RanetraceBatchBuffer;
+
+    $this->freezeTime();
+    $capturedAt = now()->timestamp;
+    $buffer->addItems('events', [['event_name' => 'first'], ['event_name' => 'second']]);
+
+    $this->travel($quietHours)->hours();
+
+    expect($buffer->count('events'))->toBe(2)
+        ->and($buffer->oldestTimestamp('events'))->toBe($capturedAt)
+        ->and(array_column(array_column($buffer->getItems('events', 10), 'data'), 'event_name'))->toBe(['first', 'second']);
+})->with(['array', 'file'])->with([
+    'two hours' => 2,
+    'thirty days' => 24 * 30,
+]);
+
+test('the items a drain leaves behind are kept however long the next drain takes', function (string $store): void {
+    useBufferStore($store);
+    $buffer = new RanetraceBatchBuffer;
+
+    $this->freezeTime();
+    $buffer->addItems('events', [['event_name' => 'sent'], ['event_name' => 'left']]);
+    $buffer->getItems('events', 1);
+
+    $this->travel(30)->days();
+
+    expect(array_column(array_column($buffer->getItems('events', 10), 'data'), 'event_name'))->toBe(['left']);
+})->with(['array', 'file']);
+
+test('a returned item is kept however long ago it was captured or returned', function (): void {
     $buffer = new RanetraceBatchBuffer;
 
     $this->freezeTime();
@@ -390,10 +439,25 @@ test('a returned item captured longer ago than the buffer ttl is kept for a full
     $this->travel(2)->hours();
     $buffer->returnItems('events', $taken);
 
-    $this->travel(59)->minutes();
+    $this->travel(30)->days();
 
     expect($buffer->count('events'))->toBe(1)
         ->and($buffer->oldestTimestamp('events'))->toBe($capturedAt);
+});
+
+test('an overflow that lasts longer than an hour is still logged only once', function (): void {
+    Config::set('ranetrace.batch.max_buffer_size', 2);
+    $buffer = new RanetraceBatchBuffer;
+
+    $logger = Mockery::mock(LoggerInterface::class);
+    $logger->shouldReceive('warning')->once()->with('Ranetrace buffer overflow, oldest items dropped', Mockery::any());
+    Log::shouldReceive('channel')->with('ranetrace_internal')->andReturn($logger);
+
+    $buffer->addItems('events', [['n' => 1], ['n' => 2], ['n' => 3]]);
+    $this->travel(2)->hours();
+    $buffer->addItem('events', ['n' => 4]);
+
+    expect($buffer->count('events'))->toBe(2);
 });
 
 // --- returning items past a held lock ---

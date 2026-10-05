@@ -15,7 +15,6 @@ use Ranetrace\Laravel\Services\RanetracePauseManager;
 beforeEach(function (): void {
     Config::set('ranetrace.key', 'test-api-key');
     Config::set('ranetrace.batch.cache_driver', 'array');
-    Config::set('ranetrace.batch.buffer_ttl', 3600);
     Config::set('ranetrace.batch.size', 100);
 
     Cache::store('array')->flush();

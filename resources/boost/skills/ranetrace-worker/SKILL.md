@@ -66,7 +66,6 @@ php artisan queue:work --queue=ranetrace
     // For production / multi-worker setups point this at a shared, lock-capable
     // store (redis, memcached, or database), never `array` (per-process).
     'cache_driver' => env('RANETRACE_BATCH_CACHE_DRIVER', env('CACHE_STORE', env('CACHE_DRIVER', 'file'))),
-    'buffer_ttl' => env('RANETRACE_BATCH_BUFFER_TTL', 3600),         // 1 hour
     'max_buffer_size' => env('RANETRACE_BATCH_MAX_BUFFER_SIZE', 5000),
 ],
 ```
@@ -75,7 +74,6 @@ php artisan queue:work --queue=ranetrace
 |---|---|---|
 | `RANETRACE_BATCH_QUEUE_NAME` | Queue name for batch jobs | `default` |
 | `RANETRACE_BATCH_CACHE_DRIVER` | Cache store for the buffer (use a shared, lock-capable store in production) | app cache store (`CACHE_STORE` → `file`) |
-| `RANETRACE_BATCH_BUFFER_TTL` | Buffer TTL in seconds before items expire | `3600` |
 | `RANETRACE_BATCH_MAX_BUFFER_SIZE` | Max items per feature buffer before oldest are dropped | `5000` |
 
 ## Monitoring
@@ -97,6 +95,7 @@ php artisan ranetrace:pause-clear --all
 - Verify `ranetrace:work` is scheduled in `routes/console.php`
 - Verify a queue worker is running: `php artisan queue:work`
 - Check for pauses: `php artisan ranetrace:status`
+- Nothing is lost by time alone: items wait in the buffer until they are sent, up to `RANETRACE_BATCH_MAX_BUFFER_SIZE` per feature, after which the oldest are dropped first. A cache store that evicts keys under memory pressure (Redis with an eviction `maxmemory-policy`, Memcached) can still drop a buffer, so use a lock-capable store with room to spare
 
 **Features paused:**
 - Check the reason in `ranetrace:status` output
