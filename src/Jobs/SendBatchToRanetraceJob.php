@@ -278,6 +278,9 @@ class SendBatchToRanetraceJob implements ShouldBeUnique, ShouldQueue
      * with backoff, or, once the retry envelope is exhausted, give up by
      * pausing the feature for 15 minutes.
      *
+     * The items go back to the buffer, which is their only owner: the released
+     * job carries none, and its next attempt takes them from the buffer again.
+     *
      * Retries are driven by release(), NOT by throwing. An exception that
      * escapes a queued job is reported through the HOST application's exception
      * handler (its logs, its failed_jobs table, and any error tracker) and is
