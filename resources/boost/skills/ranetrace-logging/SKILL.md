@@ -119,7 +119,7 @@ Each log entry includes:
 
 - Log level (emergency, alert, critical, error, warning, notice, info, debug)
 - Message (secrets redacted, then truncated to 50,000 characters)
-- Context data (secrets redacted, then capped at 50KB)
+- Context data (secrets redacted, then capped at 50KB; a float JSON cannot spell, INF, -INF or NAN, arrives as the string `"INF"`, `"-INF"` or `"NAN"`)
 - Channel name
 - ISO 8601 timestamp
 - Extra metadata: environment, Laravel version, PHP version

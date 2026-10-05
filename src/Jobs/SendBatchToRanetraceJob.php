@@ -96,6 +96,10 @@ class SendBatchToRanetraceJob implements ShouldBeUnique, ShouldQueue
             ]);
         }
 
+        if ($this->items === []) {
+            return;
+        }
+
         // Extract just the data payloads for the API. Where the batch goes is
         // the shared endpoint table's answer, so an unknown type throws there
         // rather than being addressed to a guess.
@@ -355,24 +359,54 @@ class SendBatchToRanetraceJob implements ShouldBeUnique, ShouldQueue
      * Always keeps at least one item: a single over-budget item can't be split
      * (per-field caps bound single items).
      *
+     * An item whose data cannot be JSON-encoded is dropped instead, with an
+     * internal log line, and does not count as the item kept. It is over every
+     * budget rather than zero bytes: kept, it would fail the encode of the whole
+     * request, and re-buffered, of every retry after it. The capture paths make
+     * such an item impossible; this also frees a buffer that holds one from an
+     * older version. Ported from `ranetrace/ranetrace-php`'s
+     * `Worker::trimToByteBudget()`, whose semantics this must not drift from.
+     *
      * @return array<int, array{id: string, data: array, timestamp: int}>
      */
     protected function trimToByteBudget(): array
     {
+        $kept = [];
+        $dropped = 0;
         $bytes = 0;
+        $deferred = [];
+        $items = array_values($this->items);
 
-        foreach ($this->items as $index => $item) {
-            $bytes += mb_strlen((string) json_encode($item['data']), '8bit');
+        foreach ($items as $index => $item) {
+            $encoded = json_encode($item['data']);
 
-            if ($index > 0 && $bytes > self::MAX_BATCH_BYTES) {
-                $deferred = array_slice($this->items, $index);
-                $this->items = array_slice($this->items, 0, $index);
+            if ($encoded === false) {
+                $dropped++;
 
-                return $deferred;
+                continue;
             }
+
+            $bytes += mb_strlen($encoded, '8bit');
+
+            if ($kept !== [] && $bytes > self::MAX_BATCH_BYTES) {
+                $deferred = array_slice($items, $index);
+
+                break;
+            }
+
+            $kept[] = $item;
         }
 
-        return [];
+        if ($dropped > 0) {
+            $this->logError('Dropped items that could not be encoded as JSON', [
+                'type' => $this->type,
+                'dropped' => $dropped,
+            ]);
+        }
+
+        $this->items = $kept;
+
+        return $deferred;
     }
 
     /**

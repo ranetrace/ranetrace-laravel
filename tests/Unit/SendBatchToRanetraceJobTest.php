@@ -85,6 +85,24 @@ test('the pre-flight size guard leaves an under-budget batch intact', function (
         ->and(count($itemsProp->getValue($job)))->toBe(10);
 });
 
+test('the pre-flight size guard drops an item it cannot encode and keeps at least one encodable item', function (): void {
+    $job = new SendBatchToRanetraceJob('errors');
+
+    $items = [
+        ['id' => 'poison', 'data' => ['message' => 'poison', 'line' => NAN], 'timestamp' => 0],
+        ['id' => 'big', 'data' => ['message' => 'big', 'blob' => str_repeat('x', 5_000_000)], 'timestamp' => 0],
+        ['id' => 'next', 'data' => ['message' => 'next'], 'timestamp' => 0],
+    ];
+
+    $itemsProp = new ReflectionProperty($job, 'items');
+    $itemsProp->setValue($job, $items);
+
+    $deferred = (new ReflectionMethod($job, 'trimToByteBudget'))->invoke($job);
+
+    expect(array_column($itemsProp->getValue($job), 'id'))->toBe(['big'])
+        ->and(array_column($deferred, 'id'))->toBe(['next']);
+});
+
 test('a successful batch records the last-batch timestamp for the type', function (): void {
     Http::fake([
         'api.ranetrace.com/*' => Http::response(['success' => true], 200),

@@ -10,6 +10,7 @@ use Ranetrace\Laravel\Jobs\BaseRanetraceJob;
 use Ranetrace\Laravel\Jobs\HandleErrorJob;
 use Ranetrace\Laravel\Jobs\HandleLogJob;
 use Ranetrace\Laravel\Services\RanetraceBatchBuffer;
+use Ranetrace\Php\Support\PayloadSizer;
 
 /**
  * Every capture path validates its own input, but a missing rule on any one of
@@ -123,6 +124,39 @@ test('the drop is recorded on the internal channel, distinctly from a shrink', f
 
     $logger->shouldHaveReceived('warning')->withArgs(
         fn (string $message, array $context): bool => str_contains($message, 'dropped')
+            && ($context['type'] ?? null) === HandleErrorJob::class
+    );
+});
+
+test('an item JSON cannot encode counts as over budget, so its unencodable array field is marked and the rest kept', function (): void {
+    $buffer = new RanetraceBatchBuffer;
+
+    (new HandleLogJob([
+        'level' => 'error',
+        'message' => 'Ratio computed',
+        'context' => ['ratio' => INF],
+    ]))->handle($buffer);
+
+    $item = bufferedLogItem($buffer);
+
+    expect($item)->toBe([
+        'level' => 'error',
+        'message' => 'Ratio computed',
+        'context' => ['_truncated' => PayloadSizer::UNENCODABLE_REASON],
+    ])
+        ->and(json_encode($item))->not->toBeFalse();
+});
+
+test('an item still unencodable after the shrink pass is dropped and logged, never measured as zero bytes', function (): void {
+    $logger = Mockery::spy(LoggerInterface::class);
+    Log::shouldReceive('channel')->with('ranetrace_internal')->andReturn($logger);
+
+    (new HandleErrorJob(['message' => 'boom', 'line' => NAN]))->handle(new RanetraceBatchBuffer);
+
+    expect(Cache::store('array')->get('ranetrace:buffer:errors'))->toBeNull();
+
+    $logger->shouldHaveReceived('warning')->withArgs(
+        fn (string $message, array $context): bool => $message === 'Captured item could not be encoded as JSON and was dropped'
             && ($context['type'] ?? null) === HandleErrorJob::class
     );
 });

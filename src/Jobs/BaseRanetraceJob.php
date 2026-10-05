@@ -134,14 +134,25 @@ abstract class BaseRanetraceJob implements ShouldQueue
      * over budget after both is dropped outright: losing one item beats losing
      * the batch it would have poisoned.
      *
+     * An item JSON cannot encode is over every budget, never zero bytes, so it
+     * takes the same path: an unencodable array field gets the `_truncated`
+     * marker from {@see PayloadSizer::capBytes()}, and an item that still
+     * cannot be encoded after that is dropped. Kept, it would fail the encode
+     * of the batch it is sent in. Ported from `ranetrace/ranetrace-php`'s
+     * `ItemByteBudget::cap()`, whose semantics this must not drift from.
+     *
      * @param  array<string, mixed>  $payload
      * @return array<string, mixed>|null Null when the item is irreducibly over budget and must not be buffered.
      */
     protected function capItemBytes(array $payload): ?array
     {
-        if (self::encodedBytes($payload) <= self::MAX_ITEM_BYTES) {
+        $bytes = self::encodedBytes($payload);
+
+        if ($bytes !== null && $bytes <= self::MAX_ITEM_BYTES) {
             return $payload;
         }
+
+        $encodable = $bytes !== null;
 
         foreach ($payload as $key => $value) {
             if (is_string($value) && mb_strlen($value, '8bit') > self::MAX_ITEM_FIELD_BYTES) {
@@ -166,13 +177,31 @@ abstract class BaseRanetraceJob implements ShouldQueue
         // pausing the type, which is precisely the failure this budget exists
         // to prevent. Dropping loses one item and nothing else, and the internal
         // log keeps that loss visible.
-        if (self::encodedBytes($payload) > self::MAX_ITEM_BYTES) {
+        $bytes = self::encodedBytes($payload);
+
+        if ($bytes === null) {
+            InternalLogger::warning('Captured item could not be encoded as JSON and was dropped', [
+                'type' => static::class,
+            ]);
+
+            return null;
+        }
+
+        if ($bytes > self::MAX_ITEM_BYTES) {
             InternalLogger::warning('Captured item exceeded the per-item byte budget and was dropped', [
                 'type' => static::class,
                 'max_bytes' => self::MAX_ITEM_BYTES,
             ]);
 
             return null;
+        }
+
+        if (! $encodable) {
+            InternalLogger::warning('Captured item could not be encoded as JSON and a field was removed', [
+                'type' => static::class,
+            ]);
+
+            return $payload;
         }
 
         InternalLogger::warning('Captured item exceeded the per-item byte budget and was shrunk', [
@@ -193,10 +222,16 @@ abstract class BaseRanetraceJob implements ShouldQueue
     }
 
     /**
+     * Byte size, measured with `mb_strlen(..., '8bit')` (NOT `strlen`: Pint's
+     * `mb_str_functions` rule would rewrite `strlen` to a char-counting
+     * `mb_strlen`). Null when the payload cannot be encoded at all.
+     *
      * @param  array<string, mixed>  $payload
      */
-    private static function encodedBytes(array $payload): int
+    private static function encodedBytes(array $payload): ?int
     {
-        return mb_strlen((string) json_encode($payload), '8bit');
+        $encoded = json_encode($payload);
+
+        return $encoded === false ? null : mb_strlen($encoded, '8bit');
     }
 }

@@ -6,6 +6,9 @@ This file starts at 1.0.0. The package was re-versioned to share a major with `r
 
 ## [Unreleased]
 
+### Fixed
+- **A float JSON cannot spell no longer holds up a batch.** INF, -INF or NAN in a log record's context or extra, as a ratio divided by zero puts there, got into the buffer, which does not encode, and then made the JSON encode of the whole batch fail when it was sent: the job retried after 60, 300 and 900 seconds and then paused the feature, with up to a thousand good items still buffered behind it. Such a float in a log record's context or extra, an event's properties, an exception's `context()` or a JavaScript error's context is now sent as the string `"INF"`, `"-INF"` or `"NAN"`, through `ranetrace/ranetrace-php`'s shared builders. As a backstop, the send job now drops an item it cannot encode from its batch, with an internal log line naming the type and the count, and sends the rest instead of retrying and pausing the batch, and a capture job treats an item it cannot encode as over the per-item budget, so an unencodable array field is replaced by a `_truncated` marker and an item still unencodable after that is dropped. This also frees a buffer that already holds such an item from an earlier version: the next `ranetrace:work` run drops it and delivers the rest. An `exception_context` holding one is now sent with the string instead of as null. Nothing to do on upgrade
+
 ## [1.1.15] - 2026-10-02
 
 ### Added
