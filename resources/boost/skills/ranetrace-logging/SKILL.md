@@ -122,7 +122,7 @@ Each log entry includes:
 - Context data (secrets redacted, then capped at 50KB; a float JSON cannot spell, INF, -INF or NAN, arrives as the string `"INF"`, `"-INF"` or `"NAN"`)
 - Channel name
 - ISO 8601 timestamp
-- Extra metadata: environment, Laravel version, PHP version
+- Extra data: the record's own `extra` (capped at 10KB), plus `environment`, `php_version`, `framework` (`laravel`) and `framework_version` (the Laravel version)
 
 Values stored under sensitive keys (`password`, `token`, `api_key`, `secret`,
 `authorization`, …), and `key=value` secrets written into the message string,
