@@ -102,7 +102,7 @@ class TestCase extends Orchestra
         $app['config']->set('ranetrace.javascript_errors.queue', true);
         $app['config']->set('ranetrace.javascript_errors.sample_rate', 1.0);
         $app['config']->set('ranetrace.website_analytics.enabled', true);
-        $app['config']->set('ranetrace.website_analytics.queue', 'default');
+        $app['config']->set('ranetrace.website_analytics.queue', true);
 
         // Apply per-test overrides last so they take precedence.
         foreach ($this->configOverrides as $key => $value) {
