@@ -6,6 +6,8 @@ This file starts at 1.0.0. The package was re-versioned to share a major with `r
 
 ## [Unreleased]
 
+## [1.1.17] - 2026-10-05
+
 ### Changed
 - The package now requires `ranetrace/ranetrace-php` ^1.0.9, the release whose `BatchOutcome::unprocessedItems()` the send job now uses to pick the items a 200 response left unprocessed, in place of its own copy of the same logic. Behaviour is unchanged
 - **A buffer is now kept until it is delivered.** Each feature's buffer was stored with a one-hour expiry that only a write refreshed, so a buffer nothing wrote to for an hour, as in a quiet application whose `ranetrace:work` schedule or queue worker had stopped, expired whole: every item in it was lost, nothing was logged, and the stalled-drain warning in `ranetrace:status` and on the dashboard went with it, because nothing was left to be stale. The buffer is now stored without expiry and waits for its drain however long that takes, bounded only by `max_buffer_size`, which keeps the newest items and logs the overflow once. Items sent late keep their capture time. `RANETRACE_BATCH_BUFFER_TTL` and `ranetrace.batch.buffer_ttl` are removed. Breaking: a published config may still carry the `buffer_ttl` key, which is now ignored and can be deleted; remove the env var
