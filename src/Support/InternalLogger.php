@@ -109,7 +109,9 @@ class InternalLogger
         }
 
         try {
-            $formattedContext = empty($context) ? '' : ' | Context: '.json_encode($context);
+            // Partial output, so one value JSON cannot encode (INF, an invalid
+            // byte) costs that value rather than the whole context.
+            $formattedContext = empty($context) ? '' : ' | Context: '.json_encode($context, JSON_PARTIAL_OUTPUT_ON_ERROR);
             $channelErrorMsg = ' | Channel Error: '.$channelError->getMessage();
 
             error_log(sprintf(
