@@ -181,7 +181,7 @@ class SendBatchToRanetraceJob implements ShouldBeUnique, ShouldQueue
         }
 
         if ($outcome->counters?->hasUnprocessed() === true) {
-            $buffer->returnItems($this->type, $this->unprocessedItems($outcome));
+            $buffer->returnItems($this->type, $outcome->unprocessedItems($this->items));
         }
 
         $seconds = $outcome->pauseSeconds ?? ResponsePolicy::PAUSE_SECONDS;
@@ -326,18 +326,6 @@ class SendBatchToRanetraceJob implements ShouldBeUnique, ShouldQueue
     protected function returnBatchToBuffer(RanetraceBatchBuffer $buffer): void
     {
         $buffer->returnItems($this->type, $this->items);
-    }
-
-    /**
-     * The items of the batch the server named as unprocessed, each once and in
-     * batch order, so the oldest stays at the head of the buffer. A position
-     * outside the batch names nothing.
-     *
-     * @return list<array{id: string, data: array, timestamp: int}>
-     */
-    protected function unprocessedItems(BatchOutcome $outcome): array
-    {
-        return array_values(array_intersect_key($this->items, array_flip($outcome->unprocessedIndexes)));
     }
 
     /**
