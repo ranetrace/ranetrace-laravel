@@ -285,6 +285,21 @@ test('draining the buffer below capacity clears the overflow flag', function ():
     expect(Cache::store('array')->get('ranetrace:buffer:events:overflow'))->toBeNull();
 });
 
+test('clearing a buffer ends its overflow cycle, so the next overflow is logged again', function (): void {
+    Config::set('ranetrace.batch.max_buffer_size', 2);
+    $buffer = new RanetraceBatchBuffer;
+
+    $logger = Mockery::mock(LoggerInterface::class);
+    $logger->shouldReceive('warning')->twice()->with('Ranetrace buffer overflow, oldest items dropped', Mockery::any());
+    Log::shouldReceive('channel')->with('ranetrace_internal')->andReturn($logger);
+
+    $buffer->addItems('events', [['n' => 1], ['n' => 2], ['n' => 3]]);
+    $buffer->clear('events');
+    $buffer->addItems('events', [['n' => 4], ['n' => 5], ['n' => 6]]);
+
+    expect($buffer->count('events'))->toBe(2);
+});
+
 test('the overflow warning speaks in one comma-joined sentence, with no em-dash', function (): void {
     // The house writing rule keeps the dash out of anything the package says,
     // and this warning is what an operator reads in the internal log tail.

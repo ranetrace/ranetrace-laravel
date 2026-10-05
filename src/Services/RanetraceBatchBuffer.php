@@ -222,12 +222,14 @@ class RanetraceBatchBuffer
     }
 
     /**
-     * Clear all items from the buffer for a specific type.
+     * Clear all items from the buffer for a specific type. That ends its
+     * overflow cycle too, so the next overflow is logged again.
      */
     public function clear(string $type): void
     {
         $cacheKey = $this->getCacheKey($type);
         Cache::store($this->cacheDriver)->forget($cacheKey);
+        Cache::store($this->cacheDriver)->forget($cacheKey.':overflow');
     }
 
     /**
