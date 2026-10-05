@@ -8,6 +8,7 @@ use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use Psr\SimpleCache\InvalidArgumentException;
+use Ranetrace\Laravel\Support\BatchConfig;
 use Ranetrace\Laravel\Support\InternalLogger;
 
 class RanetraceBatchBuffer
@@ -39,7 +40,7 @@ class RanetraceBatchBuffer
 
     public function __construct()
     {
-        $this->cacheDriver = config('ranetrace.batch.cache_driver', 'file');
+        $this->cacheDriver = BatchConfig::cacheStoreName();
         $this->lockWait = (float) config('ranetrace.batch.lock_wait', 1);
     }
 

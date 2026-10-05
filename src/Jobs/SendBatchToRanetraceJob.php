@@ -10,10 +10,10 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Cache;
 use Ranetrace\Laravel\Services\RanetraceApiClient;
 use Ranetrace\Laravel\Services\RanetraceBatchBuffer;
 use Ranetrace\Laravel\Services\RanetracePauseManager;
+use Ranetrace\Laravel\Support\BatchConfig;
 use Ranetrace\Laravel\Support\InternalLogger;
 use Ranetrace\Php\Http\BatchOutcome;
 use Ranetrace\Php\Http\PauseScope;
@@ -60,8 +60,7 @@ class SendBatchToRanetraceJob implements ShouldBeUnique, ShouldQueue
         public string $type,
         public ?int $maxItems = null
     ) {
-        $queueName = config('ranetrace.batch.queue_name', 'default');
-        $this->onQueue($queueName);
+        $this->onQueue(BatchConfig::queueName());
     }
 
     /**
@@ -335,9 +334,7 @@ class SendBatchToRanetraceJob implements ShouldBeUnique, ShouldQueue
      */
     protected function recordLastBatch(): void
     {
-        $cacheDriver = config('ranetrace.batch.cache_driver', 'file');
-
-        Cache::store($cacheDriver)->put(
+        BatchConfig::cacheStore()->put(
             self::LAST_BATCH_PREFIX.$this->type,
             now()->timestamp,
             now()->addWeek()

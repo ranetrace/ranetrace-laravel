@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Ranetrace\Laravel\Analytics;
 
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
+use Ranetrace\Laravel\Support\BatchConfig;
 
 class HumanProbabilityScorer
 {
@@ -280,7 +280,7 @@ class HumanProbabilityScorer
         // Use the Ranetrace cache store (same as the buffer/pause manager and the
         // page-visit throttle) so the per-IP frequency counter is shared across
         // workers: the host's default cache may be `array`, a per-process no-op.
-        $store = Cache::store(config('ranetrace.batch.cache_driver', 'file'));
+        $store = BatchConfig::cacheStore();
 
         $cacheKey = 'ranetrace:request_frequency:'.$request->ip();
         $window = now()->addMinute();

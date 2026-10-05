@@ -7,7 +7,6 @@ namespace Ranetrace\Laravel\Analytics\Middleware;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Queue\SyncQueue;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use Jaybizzle\CrawlerDetect\CrawlerDetect;
 use Ranetrace\Laravel\Analytics\BotSignals;
@@ -15,6 +14,7 @@ use Ranetrace\Laravel\Analytics\Contracts\RequestFilter;
 use Ranetrace\Laravel\Analytics\HumanProbabilityScorer;
 use Ranetrace\Laravel\Analytics\VisitDataCollector;
 use Ranetrace\Laravel\Jobs\HandlePageVisitJob;
+use Ranetrace\Laravel\Support\BatchConfig;
 use Ranetrace\Laravel\Support\InternalLogger;
 use Symfony\Component\HttpFoundation\Response;
 use Throwable;
@@ -299,7 +299,7 @@ class TrackPageVisit
         // Use the Ranetrace cache store (same as the buffer/pause manager) so the
         // throttle is consistent and actually shared across workers: the host's
         // default cache may be `array`, which would make this a per-process no-op.
-        $throttleStore = Cache::store(config('ranetrace.batch.cache_driver', 'file'));
+        $throttleStore = BatchConfig::cacheStore();
 
         if ($throttleStore->add($cacheKey, true, now()->addSeconds($throttleSeconds))) {
             $this->dispatchVisit($request, $visitData);

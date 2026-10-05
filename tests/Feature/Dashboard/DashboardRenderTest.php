@@ -94,21 +94,15 @@ test('the page speaks its warnings and its log panel with no em-dash anywhere', 
         ->not->toContain("\u{2014}");
 });
 
-test('the configuration panel reads not set for a batch cache driver and queue name nobody set', function (?string $unsetValue): void {
-    // An env var set empty (RANETRACE_BATCH_CACHE_DRIVER=) arrives as '', a
-    // published config with the key nulled out as null: both are the same gap.
+test('the configuration panel names the batch cache store and queue it was given', function (): void {
     $html = view('ranetrace::dashboard.panels._config', [
-        'status' => ['config' => ['cache_driver' => $unsetValue, 'queue_name' => $unsetValue]],
+        'status' => ['config' => ['cache_driver' => 'redis', 'cache_driver_is_app_default' => false, 'queue_name' => 'ranetrace']],
     ])->render();
 
     expect($html)
-        ->toMatch('/Cache driver<\/span>\s*<span class="rt-kv__val rt-kv__val--mono">not set<\/span>/')
-        ->toMatch('/Batch queue<\/span>\s*<span class="rt-kv__val rt-kv__val--mono">not set<\/span>/')
-        ->not->toContain("\u{2014}");
-})->with([
-    'null' => [null],
-    'blank' => [''],
-]);
+        ->toMatch('/Cache driver<\/span>\s*<span class="rt-kv__val rt-kv__val--mono">redis<\/span>/')
+        ->toMatch('/Batch queue<\/span>\s*<span class="rt-kv__val rt-kv__val--mono">ranetrace<\/span>/');
+});
 
 test('a dashboard whose batch cache driver and queue name are blank has no em-dash anywhere', function (): void {
     Config::set('ranetrace.batch.cache_driver', '');
@@ -117,10 +111,7 @@ test('a dashboard whose batch cache driver and queue name are blank has no em-da
     $response = $this->get('/ranetrace');
 
     $response->assertOk();
-    expect($response->getContent())
-        ->toMatch('/Cache driver<\/span>\s*<span class="rt-kv__val rt-kv__val--mono">not set<\/span>/')
-        ->toMatch('/Batch queue<\/span>\s*<span class="rt-kv__val rt-kv__val--mono">not set<\/span>/')
-        ->not->toContain("\u{2014}");
+    expect($response->getContent())->not->toContain("\u{2014}");
 });
 
 test('the environment panel reads unknown for every value it was not given', function (): void {

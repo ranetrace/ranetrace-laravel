@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Ranetrace\Laravel\Support;
 
 use Illuminate\Contracts\Cache\Repository;
-use Illuminate\Support\Facades\Cache;
 
 /**
  * The one cache key the human-verification beacon writes and the delayed page
@@ -18,10 +17,11 @@ use Illuminate\Support\Facades\Cache;
  * rather than in both: a rename or a store change on one side would otherwise
  * be a silent, always-unverified mismatch that nothing throws on.
  *
- * The store is Ranetrace's own (`ranetrace.batch.cache_driver`), the same one
- * the buffer, the pause manager and the capture throttle use, and NOT the
- * host's default: the default may be `array`, which is per-process, and the
- * beacon's POST and the queued job are never the same process.
+ * The store is Ranetrace's batch store (`BatchConfig::cacheStore()`), the same
+ * one the buffer, the pause manager and the capture throttle use. It is the
+ * host's default only when `ranetrace.batch.cache_driver` is unset, and a
+ * per-process store such as `array` loses the mark, because the beacon's POST
+ * and the queued job are never the same process.
  */
 final class VisitVerificationMark
 {
@@ -76,7 +76,7 @@ final class VisitVerificationMark
 
     private static function store(): Repository
     {
-        return Cache::store(config('ranetrace.batch.cache_driver', 'file'));
+        return BatchConfig::cacheStore();
     }
 
     private static function waitSeconds(): int

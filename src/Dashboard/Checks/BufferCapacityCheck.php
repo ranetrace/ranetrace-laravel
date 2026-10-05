@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Ranetrace\Laravel\Dashboard\Checks;
 
-use Illuminate\Support\Facades\Cache;
 use Ranetrace\Laravel\Dashboard\DashboardData;
+use Ranetrace\Laravel\Support\BatchConfig;
 use Throwable;
 
 /**
@@ -63,8 +63,7 @@ class BufferCapacityCheck implements Check
     protected function overflowingFeatures(array $features): array
     {
         try {
-            $driver = config('ranetrace.batch.cache_driver', 'file');
-            $store = Cache::store($driver);
+            $store = BatchConfig::cacheStore();
 
             return array_values(array_filter(
                 $features,

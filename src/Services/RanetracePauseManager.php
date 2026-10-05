@@ -6,6 +6,7 @@ namespace Ranetrace\Laravel\Services;
 
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Cache;
+use Ranetrace\Laravel\Support\BatchConfig;
 
 class RanetracePauseManager
 {
@@ -17,7 +18,7 @@ class RanetracePauseManager
 
     public function __construct()
     {
-        $this->cacheDriver = config('ranetrace.batch.cache_driver', 'file');
+        $this->cacheDriver = BatchConfig::cacheStoreName();
     }
 
     /**

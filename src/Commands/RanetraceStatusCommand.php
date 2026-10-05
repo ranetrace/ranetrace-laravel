@@ -7,6 +7,7 @@ namespace Ranetrace\Laravel\Commands;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Route;
 use Ranetrace\Laravel\Dashboard\DashboardData;
+use Ranetrace\Laravel\Support\BatchConfig;
 use Throwable;
 
 class RanetraceStatusCommand extends Command
@@ -59,8 +60,8 @@ class RanetraceStatusCommand extends Command
         $this->line('─────────────────────────────────────────────────────────────');
         $this->line('Enabled: '.($status['config']['enabled'] ? '<fg=green>Yes</>' : '<fg=red>No</>'));
         $this->line('Ingest API Key: '.($status['config']['api_key_configured'] ? '<fg=green>Configured</>' : '<fg=red>Not Configured</>'));
-        $this->line('Cache Driver: '.$status['config']['cache_driver']);
-        $this->line('Queue Name: '.$status['config']['queue_name']);
+        $this->line('Cache Driver: '.BatchConfig::describeCacheStore($status['config']['cache_driver'], $status['config']['cache_driver_is_app_default']));
+        $this->line('Queue Name: '.BatchConfig::describeQueue($status['config']['queue_name']));
         $this->newLine();
 
         // Global pause

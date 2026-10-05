@@ -7,7 +7,6 @@ namespace Ranetrace\Laravel\Dashboard;
 use Carbon\Carbon;
 use Composer\InstalledVersions;
 use Illuminate\Support\Facades\Blade;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 use Ranetrace\Laravel\Analytics\Middleware\TrackPageVisit;
@@ -22,6 +21,7 @@ use Ranetrace\Laravel\Dashboard\Checks\QueueWorkerCheck;
 use Ranetrace\Laravel\Jobs\SendBatchToRanetraceJob;
 use Ranetrace\Laravel\Services\RanetraceBatchBuffer;
 use Ranetrace\Laravel\Services\RanetracePauseManager;
+use Ranetrace\Laravel\Support\BatchConfig;
 use Throwable;
 
 /**
@@ -202,8 +202,9 @@ class DashboardData
                 // value. The MCP tools use an OAuth connection, a different
                 // credential entirely, held by the MCP client, not by this application.
                 'api_key_configured' => ! empty(config('ranetrace.key')),
-                'cache_driver' => config('ranetrace.batch.cache_driver', 'file'),
-                'queue_name' => config('ranetrace.batch.queue_name', 'default'),
+                'cache_driver' => BatchConfig::cacheStoreName(),
+                'cache_driver_is_app_default' => BatchConfig::cacheStoreIsAppDefault(),
+                'queue_name' => BatchConfig::queueName(),
             ],
         ];
     }
@@ -424,8 +425,7 @@ class DashboardData
     protected function getLastBatchTimestamp(string $feature): ?int
     {
         try {
-            $cacheDriver = config('ranetrace.batch.cache_driver', 'file');
-            $value = Cache::store($cacheDriver)->get(SendBatchToRanetraceJob::LAST_BATCH_PREFIX.$feature);
+            $value = BatchConfig::cacheStore()->get(SendBatchToRanetraceJob::LAST_BATCH_PREFIX.$feature);
 
             return is_numeric($value) ? (int) $value : null;
         } catch (Throwable) {
