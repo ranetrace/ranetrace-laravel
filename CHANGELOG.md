@@ -6,6 +6,8 @@ This file starts at 1.0.0. The package was re-versioned to share a major with `r
 
 ## [Unreleased]
 
+## [1.1.18] - 2026-10-05
+
 ### Fixed
 - **A batch cache driver set to nothing now means the app's default cache store.** `RANETRACE_BATCH_CACHE_DRIVER=null` reaches the config as null, which the buffer and the pause manager could not hold: every capture that buffered an item, every `ranetrace:work` run, `ranetrace:status` and the diagnostics dashboard failed with a TypeError. `RANETRACE_BATCH_CACHE_DRIVER=` reaches it as an empty string, a store Laravel does not know, so every read and write of the buffers, pauses, capture throttle and beacon marks failed, while the cache driver check passed it as `Cache driver "" persists between requests` and `ranetrace:status` printed an empty `Cache Driver:`. Both now resolve, in one place every reader uses, to the store `cache.default` names. `ranetrace:status`, the dashboard's Configuration panel and the cache driver check show that store by its name followed by "(the app's default store)", so the check now also flags a default store that is volatile, such as `array`. The `--json` output carries the resolved name in `config.cache_driver`, with `config.cache_driver_is_app_default` beside it. A batch queue name set to nothing, which already sent batches to the connection's default queue, now reads "the connection's default queue" where `ranetrace:status` printed an empty `Queue Name:` and the dashboard printed "not set", and is null in the `--json` output. Nothing to do on upgrade
 
