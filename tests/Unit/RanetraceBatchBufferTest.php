@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Sleep;
 use Psr\Log\LoggerInterface;
 use Ranetrace\Laravel\Services\RanetraceBatchBuffer;
 
@@ -393,4 +394,58 @@ test('a returned item captured longer ago than the buffer ttl is kept for a full
 
     expect($buffer->count('events'))->toBe(1)
         ->and($buffer->oldestTimestamp('events'))->toBe($capturedAt);
+});
+
+// --- returning items past a held lock ---
+
+test('returnItems waits out a lock left by a holder that crashed', function (): void {
+    Sleep::fake(syncWithCarbon: true);
+    Config::set('ranetrace.batch.lock_wait', 0);
+    $buffer = new RanetraceBatchBuffer;
+
+    $buffer->addItems('events', [['event_name' => 'first'], ['event_name' => 'second']]);
+    $taken = $buffer->getItems('events', 10);
+
+    expect(Cache::store('array')->lock('ranetrace:buffer:events:lock', 10)->acquire())->toBeTrue();
+
+    $buffer->returnItems('events', $taken);
+
+    expect($buffer->getItems('events', 10))->toBe($taken);
+});
+
+test('returnItems honors a configured lock wait longer than its own', function (): void {
+    Sleep::fake(syncWithCarbon: true);
+    Config::set('ranetrace.batch.lock_wait', 30);
+    $buffer = new RanetraceBatchBuffer;
+
+    $buffer->addItem('events', ['event_name' => 'first']);
+    $taken = $buffer->getItems('events', 10);
+
+    expect(Cache::store('array')->lock('ranetrace:buffer:events:lock', 20)->acquire())->toBeTrue();
+
+    $buffer->returnItems('events', $taken);
+
+    expect($buffer->getItems('events', 10))->toBe($taken);
+});
+
+test('returnItems logs the items as lost when the lock never frees, without throwing', function (): void {
+    Sleep::fake(syncWithCarbon: true);
+    $buffer = new RanetraceBatchBuffer;
+
+    $buffer->addItems('events', [['event_name' => 'first'], ['event_name' => 'second']]);
+    $taken = $buffer->getItems('events', 10);
+
+    // A lock taken for 0 seconds never expires.
+    expect(Cache::store('array')->lock('ranetrace:buffer:events:lock', 0)->acquire())->toBeTrue();
+
+    $logger = Mockery::mock(LoggerInterface::class);
+    $logger->shouldReceive('error')->once()->with('Could not return items to the buffer, items lost', [
+        'type' => 'events',
+        'count' => 2,
+    ]);
+    Log::shouldReceive('channel')->with('ranetrace_internal')->andReturn($logger);
+
+    $buffer->returnItems('events', $taken);
+
+    expect($buffer->count('events'))->toBe(0);
 });

@@ -7,6 +7,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Sleep;
 use Ranetrace\Laravel\Jobs\SendBatchToRanetraceJob;
 use Ranetrace\Laravel\Services\RanetraceApiClient;
 use Ranetrace\Laravel\Services\RanetraceBatchBuffer;
@@ -359,4 +360,21 @@ test('on the sync queue, where a release puts nothing back on the queue, a faile
 
     expect(array_slice(bufferedEvents(), 0, 2))->toBe($captured)
         ->and(count(bufferedEvents()))->toBe(3);
+});
+
+test('a batch that fails while a crashed process holds the buffer lock is still put back whole', function (): void {
+    Sleep::fake(syncWithCarbon: true);
+    $buffer = app(RanetraceBatchBuffer::class);
+    $buffer->addItems('events', [['event_name' => 'first'], ['event_name' => 'second']]);
+    $captured = bufferedEvents();
+
+    Http::fake(['api.ranetrace.com/*' => function () {
+        Cache::store('array')->lock('ranetrace:buffer:events:lock', 10)->acquire();
+
+        return Http::response(['message' => 'Server error'], 500);
+    }]);
+
+    runEventsBatchJob();
+
+    expect(bufferedEvents())->toBe($captured);
 });

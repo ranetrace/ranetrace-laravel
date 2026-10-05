@@ -22,6 +22,12 @@ class RanetraceBatchBuffer
 
     protected const string BUFFER_PREFIX = 'ranetrace:buffer:';
 
+    /**
+     * Seconds a buffer's cache lock is held before it frees itself, which
+     * bounds how long a process that crashed while holding it blocks others.
+     */
+    protected const int LOCK_SECONDS = 10;
+
     protected string $cacheDriver;
 
     protected int $ttl;
@@ -72,7 +78,7 @@ class RanetraceBatchBuffer
         // dropping their item on the first collision. The wait is short (see
         // $lockWait) because the critical section below is sub-millisecond.
         try {
-            Cache::store($this->cacheDriver)->lock($cacheKey.':lock', 10)->block($this->lockWait, function () use ($type, $cacheKey, $dataItems) {
+            Cache::store($this->cacheDriver)->lock($cacheKey.':lock', self::LOCK_SECONDS)->block($this->lockWait, function () use ($type, $cacheKey, $dataItems) {
                 $buffer = Cache::store($this->cacheDriver)->get($cacheKey, []);
 
                 foreach ($dataItems as $data) {
@@ -107,20 +113,23 @@ class RanetraceBatchBuffer
      * A buffer over max_buffer_size keeps its newest items, so the returned
      * ones are dropped first.
      *
+     * The caller has nowhere else to keep the items, so this waits for the
+     * lock longer than any holder can keep it. When even that runs out the
+     * items are lost and the loss is logged here, which is why nothing is
+     * returned.
+     *
      * @param  array<int, array{id: string, data: array, timestamp: int}>  $envelopes
-     * @return bool True when the items were returned, false when the cache lock
-     *              could not be acquired within the wait window (items not returned).
      */
-    public function returnItems(string $type, array $envelopes): bool
+    public function returnItems(string $type, array $envelopes): void
     {
         if ($envelopes === []) {
-            return true;
+            return;
         }
 
         $cacheKey = $this->getCacheKey($type);
 
         try {
-            Cache::store($this->cacheDriver)->lock($cacheKey.':lock', 10)->block($this->lockWait, function () use ($type, $cacheKey, $envelopes) {
+            Cache::store($this->cacheDriver)->lock($cacheKey.':lock', self::LOCK_SECONDS)->block(max($this->lockWait, self::LOCK_SECONDS + 1), function () use ($type, $cacheKey, $envelopes) {
                 $buffer = [
                     ...array_values($envelopes),
                     ...Cache::store($this->cacheDriver)->get($cacheKey, []),
@@ -129,15 +138,11 @@ class RanetraceBatchBuffer
                 $this->putWithinMaxSize($type, $cacheKey, $buffer);
             });
         } catch (LockTimeoutException) {
-            InternalLogger::warning('Could not acquire cache lock to return items to buffer', [
+            InternalLogger::error('Could not return items to the buffer, items lost', [
                 'type' => $type,
                 'count' => count($envelopes),
             ]);
-
-            return false;
         }
-
-        return true;
     }
 
     /**
@@ -153,7 +158,7 @@ class RanetraceBatchBuffer
         $cacheKey = $this->getCacheKey($type);
 
         try {
-            $itemsToProcess = Cache::store($this->cacheDriver)->lock($cacheKey.':lock', 10)->block($this->lockWait, function () use ($cacheKey, $limit) {
+            $itemsToProcess = Cache::store($this->cacheDriver)->lock($cacheKey.':lock', self::LOCK_SECONDS)->block($this->lockWait, function () use ($cacheKey, $limit) {
                 $buffer = Cache::store($this->cacheDriver)->get($cacheKey, []);
 
                 // Get items to process
