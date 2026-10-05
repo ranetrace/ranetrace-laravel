@@ -308,3 +308,89 @@ test('the overflow warning speaks in one comma-joined sentence, with no em-dash'
         expect($message)->not->toContain("\u{2014}");
     }
 });
+
+// --- returning taken items ---
+
+test('a returned item still reports its capture time as the oldest timestamp', function (): void {
+    $buffer = new RanetraceBatchBuffer;
+
+    $this->freezeTime();
+    $capturedAt = now()->timestamp;
+    $buffer->addItem('events', ['event_name' => 'stuck']);
+
+    $this->travel(30)->minutes();
+    $buffer->returnItems('events', $buffer->getItems('events', 10));
+
+    expect($buffer->oldestTimestamp('events'))->toBe($capturedAt);
+});
+
+test('returned items keep their envelopes and go ahead of an item captured while they were out, in their original order', function (): void {
+    $buffer = new RanetraceBatchBuffer;
+
+    $buffer->addItems('events', [['event_name' => 'first'], ['event_name' => 'second']]);
+    $taken = $buffer->getItems('events', 10);
+
+    $buffer->addItem('events', ['event_name' => 'captured during the send']);
+    $buffer->returnItems('events', $taken);
+
+    $items = $buffer->getItems('events', 10);
+
+    expect(array_slice($items, 0, 2))->toBe($taken)
+        ->and(array_column(array_column($items, 'data'), 'event_name'))
+        ->toBe(['first', 'second', 'captured during the send']);
+});
+
+test('returning items into a full buffer drops the returned items first and flags the overflow', function (): void {
+    Config::set('ranetrace.batch.max_buffer_size', 3);
+    $buffer = new RanetraceBatchBuffer;
+
+    $buffer->addItems('events', [['event_name' => 'a'], ['event_name' => 'b'], ['event_name' => 'c']]);
+    $taken = $buffer->getItems('events', 2);
+    $buffer->addItems('events', [['event_name' => 'd'], ['event_name' => 'e']]);
+
+    $buffer->returnItems('events', $taken);
+
+    expect(Cache::store('array')->get('ranetrace:buffer:events:overflow'))->toBeTrue()
+        ->and(array_column(array_column($buffer->getItems('events', 10), 'data'), 'event_name'))->toBe(['c', 'd', 'e']);
+});
+
+test('a returned list larger than the buffer keeps its newest items', function (): void {
+    Config::set('ranetrace.batch.max_buffer_size', 5);
+    $buffer = new RanetraceBatchBuffer;
+
+    $buffer->addItems('events', array_map(fn (int $i): array => ['event_name' => "e{$i}"], range(1, 5)));
+    $taken = $buffer->getItems('events', 10);
+
+    Config::set('ranetrace.batch.max_buffer_size', 3);
+    $buffer->returnItems('events', $taken);
+
+    expect($buffer->getItems('events', 10))->toBe(array_slice($taken, 2));
+});
+
+test('returning an empty list leaves the buffer as it was', function (): void {
+    $buffer = new RanetraceBatchBuffer;
+    $buffer->addItem('events', ['event_name' => 'kept']);
+    $before = Cache::store('array')->get('ranetrace:buffer:events');
+
+    $buffer->returnItems('events', []);
+
+    expect(Cache::store('array')->get('ranetrace:buffer:events'))->toBe($before);
+});
+
+test('a returned item captured longer ago than the buffer ttl is kept for a full ttl from its return', function (): void {
+    Config::set('ranetrace.batch.buffer_ttl', 3600);
+    $buffer = new RanetraceBatchBuffer;
+
+    $this->freezeTime();
+    $capturedAt = now()->timestamp;
+    $buffer->addItem('events', ['event_name' => 'old']);
+    $taken = $buffer->getItems('events', 10);
+
+    $this->travel(2)->hours();
+    $buffer->returnItems('events', $taken);
+
+    $this->travel(59)->minutes();
+
+    expect($buffer->count('events'))->toBe(1)
+        ->and($buffer->oldestTimestamp('events'))->toBe($capturedAt);
+});

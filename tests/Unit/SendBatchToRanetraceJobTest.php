@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Illuminate\Http\Client\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Config;
@@ -209,4 +210,153 @@ test('a 422 pauses the feature and drops the invalid batch', function (): void {
 
     expect($pauseManager->isFeaturePaused('events'))->toBeTrue()
         ->and($buffer->count('events'))->toBe(0); // invalid items are NOT re-buffered
+});
+
+// --- putting a batch back ---
+
+/**
+ * Fake the events endpoint so that, while the batch is out, a new item is
+ * captured into the buffer, and then answer with $answer: a status code, the
+ * string "network" for a connection that never reached the API, or a list of
+ * positions a 200 reports as unprocessed.
+ *
+ * @param  int|string|list<int>  $answer
+ */
+function fakeEventsApiCapturingDuringSend(int|string|array $answer): void
+{
+    Http::fake(['api.ranetrace.com/*' => function (Request $request) use ($answer) {
+        app(RanetraceBatchBuffer::class)->addItem('events', ['event_name' => 'captured during the send']);
+
+        if ($answer === 'network') {
+            return (Http::failedConnection())($request);
+        }
+
+        if (is_int($answer)) {
+            return Http::response(['message' => 'No'], $answer);
+        }
+
+        $received = count($request->data()['events']);
+
+        return Http::response([
+            'items' => [
+                'received' => $received,
+                'processed' => $received - count(array_unique($answer)),
+                'unprocessed' => count(array_unique($answer)),
+            ],
+            'unprocessed_indexes' => $answer,
+        ], 200);
+    }]);
+}
+
+/**
+ * @return list<array{id: string, data: array, timestamp: int}>
+ */
+function bufferedEvents(): array
+{
+    return Cache::store('array')->get('ranetrace:buffer:events', []);
+}
+
+function runEventsBatchJob(): void
+{
+    (new SendBatchToRanetraceJob('events', 10))->handle(
+        app(RanetraceApiClient::class),
+        app(RanetraceBatchBuffer::class),
+        app(RanetracePauseManager::class),
+    );
+}
+
+test('a batch put back after a send that did not deliver it keeps its envelopes, ahead of newer items', function (int|string|array $answer): void {
+    $this->freezeTime();
+    $buffer = app(RanetraceBatchBuffer::class);
+    $buffer->addItems('events', [['event_name' => 'first'], ['event_name' => 'second']]);
+    $captured = bufferedEvents();
+
+    $this->travel(30)->minutes();
+    fakeEventsApiCapturingDuringSend($answer);
+
+    runEventsBatchJob();
+
+    $buffered = bufferedEvents();
+
+    expect(array_slice($buffered, 0, 2))->toBe($captured)
+        ->and($buffered[2]['data']['event_name'])->toBe('captured during the send')
+        ->and($buffered[2]['timestamp'])->toBe(now()->timestamp)
+        ->and($buffer->oldestTimestamp('events'))->toBe(now()->subMinutes(30)->timestamp);
+})->with([
+    'a network error' => ['network'],
+    'a server error' => [500],
+    'an unexpected status' => [418],
+    'a rejected key' => [401],
+    'a rate limit' => [429],
+    'items left unprocessed' => [[0, 1]],
+]);
+
+test('items deferred to keep the batch under the size limit keep their envelopes, ahead of newer items', function (): void {
+    $this->freezeTime();
+    $buffer = app(RanetraceBatchBuffer::class);
+    $buffer->addItems('events', array_map(
+        fn (int $i): array => ['event_name' => "e{$i}", 'blob' => str_repeat('a', 1_000_000)],
+        range(1, 5),
+    ));
+    $captured = bufferedEvents();
+
+    $this->travel(30)->minutes();
+    fakeEventsApiCapturingDuringSend([]);
+
+    runEventsBatchJob();
+
+    $buffered = bufferedEvents();
+    $deferredCount = count($buffered) - 1;
+
+    expect($deferredCount)->toBeGreaterThan(0)
+        ->and(array_slice($buffered, 0, $deferredCount))->toBe(array_slice($captured, -$deferredCount))
+        ->and($buffered[$deferredCount]['data']['event_name'])->toBe('captured during the send');
+});
+
+test('a server error after deferring puts the sent items back ahead of the deferred ones', function (): void {
+    $buffer = app(RanetraceBatchBuffer::class);
+    $buffer->addItems('events', array_map(
+        fn (int $i): array => ['event_name' => "e{$i}", 'blob' => str_repeat('a', 1_000_000)],
+        range(1, 5),
+    ));
+    $captured = bufferedEvents();
+
+    fakeEventsApiCapturingDuringSend(500);
+
+    runEventsBatchJob();
+
+    $buffered = bufferedEvents();
+
+    expect(array_slice($buffered, 0, 5))->toBe($captured)
+        ->and($buffered[5]['data']['event_name'])->toBe('captured during the send');
+});
+
+test('unprocessed positions that repeat or fall outside the batch put each named item back once, in batch order', function (): void {
+    $buffer = app(RanetraceBatchBuffer::class);
+    $buffer->addItems('events', [['event_name' => 'first'], ['event_name' => 'second'], ['event_name' => 'third']]);
+    $captured = bufferedEvents();
+
+    fakeEventsApiCapturingDuringSend([2, 0, 2, 7, -1]);
+
+    runEventsBatchJob();
+
+    $buffered = bufferedEvents();
+
+    expect(array_slice($buffered, 0, 2))->toBe([$captured[0], $captured[2]])
+        ->and(array_column(array_column($buffered, 'data'), 'event_name'))
+        ->toBe(['first', 'third', 'captured during the send']);
+});
+
+test('on the sync queue, where a release puts nothing back on the queue, a failed batch stays buffered with its envelopes', function (): void {
+    Config::set('queue.default', 'sync');
+    $buffer = app(RanetraceBatchBuffer::class);
+    $buffer->addItems('events', [['event_name' => 'first'], ['event_name' => 'second']]);
+    $captured = bufferedEvents();
+
+    fakeEventsApiCapturingDuringSend(500);
+
+    SendBatchToRanetraceJob::dispatch('events', 10);
+
+    expect(array_slice(bufferedEvents(), 0, 2))->toBe($captured)
+        ->and(count(bufferedEvents()))->toBe(3);
 });

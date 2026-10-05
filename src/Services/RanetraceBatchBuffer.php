@@ -52,9 +52,9 @@ class RanetraceBatchBuffer
     }
 
     /**
-     * Add multiple items to the buffer for a specific type in a single locked
-     * cache operation. Used for both single adds and bulk failure re-queues so
-     * a failed batch is re-buffered with one get/put instead of N.
+     * Add multiple captured items to the tail of the buffer for a specific type
+     * in a single locked cache operation, each in a new envelope stamped with
+     * the current time.
      *
      * @param  array<int, array>  $dataItems
      * @return bool True when the items were buffered, false when the cache lock
@@ -83,20 +83,7 @@ class RanetraceBatchBuffer
                     ];
                 }
 
-                // Check max buffer size
-                $maxSize = $this->getMaxBufferSize();
-                if (count($buffer) > $maxSize) {
-                    $dropped = count($buffer) - $maxSize;
-
-                    // Keep only the most recent items (FIFO, oldest dropped first)
-                    $buffer = array_slice($buffer, -$maxSize);
-
-                    // Buffer overflow drops data by design. Log it so the loss is
-                    // visible, but only once per overflow cycle (see logOverflowOnce).
-                    $this->logOverflowOnce($type, $dropped, $maxSize);
-                }
-
-                Cache::store($this->cacheDriver)->put($cacheKey, $buffer, $this->ttl);
+                $this->putWithinMaxSize($type, $cacheKey, $buffer);
             });
         } catch (LockTimeoutException) {
             // Lock not acquired within the wait window. Callers re-queue rather
@@ -105,6 +92,46 @@ class RanetraceBatchBuffer
             InternalLogger::warning('Could not acquire cache lock to add items to buffer', [
                 'type' => $type,
                 'count' => count($dataItems),
+            ]);
+
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Put envelopes taken with getItems() back at the head of the buffer, in
+     * the order given and unchanged, so a batch that was not delivered keeps
+     * its ids and capture times and is sent before anything captured since.
+     * A buffer over max_buffer_size keeps its newest items, so the returned
+     * ones are dropped first.
+     *
+     * @param  array<int, array{id: string, data: array, timestamp: int}>  $envelopes
+     * @return bool True when the items were returned, false when the cache lock
+     *              could not be acquired within the wait window (items not returned).
+     */
+    public function returnItems(string $type, array $envelopes): bool
+    {
+        if ($envelopes === []) {
+            return true;
+        }
+
+        $cacheKey = $this->getCacheKey($type);
+
+        try {
+            Cache::store($this->cacheDriver)->lock($cacheKey.':lock', 10)->block($this->lockWait, function () use ($type, $cacheKey, $envelopes) {
+                $buffer = [
+                    ...array_values($envelopes),
+                    ...Cache::store($this->cacheDriver)->get($cacheKey, []),
+                ];
+
+                $this->putWithinMaxSize($type, $cacheKey, $buffer);
+            });
+        } catch (LockTimeoutException) {
+            InternalLogger::warning('Could not acquire cache lock to return items to buffer', [
+                'type' => $type,
+                'count' => count($envelopes),
             ]);
 
             return false;
@@ -175,8 +202,10 @@ class RanetraceBatchBuffer
 
     /**
      * Timestamp of the oldest item currently buffered for a type, or null when
-     * the buffer is empty or unreadable. Items are appended in arrival order and
-     * drained FIFO, so the first element is always the oldest. Lets the dashboard
+     * the buffer is empty or unreadable. Captured items are appended and drained
+     * from the head, and the send job (one per type at a time) returns what it
+     * took to the head, which is older than anything still buffered, so the
+     * first element is always the oldest. Lets the dashboard
      * tell a buffer that is simply waiting for its next drain apart from one that
      * is genuinely stalled.
      */
@@ -218,6 +247,26 @@ class RanetraceBatchBuffer
     protected function getCacheKey(string $type): string
     {
         return self::BUFFER_PREFIX.$type;
+    }
+
+    /**
+     * Store the buffer, keeping only its newest max_buffer_size items. Overflow
+     * drops data by design, so it is logged, once per overflow cycle.
+     *
+     * @param  array<int, array{id: string, data: array, timestamp: int}>  $buffer
+     */
+    protected function putWithinMaxSize(string $type, string $cacheKey, array $buffer): void
+    {
+        $maxSize = $this->getMaxBufferSize();
+
+        if (count($buffer) > $maxSize) {
+            $dropped = count($buffer) - $maxSize;
+            $buffer = array_slice($buffer, -$maxSize);
+
+            $this->logOverflowOnce($type, $dropped, $maxSize);
+        }
+
+        Cache::store($this->cacheDriver)->put($cacheKey, $buffer, $this->ttl);
     }
 
     /**

@@ -32,9 +32,9 @@ class SendBatchToRanetraceJob implements ShouldBeUnique, ShouldQueue
 
     /**
      * Soft byte budget for one batch request. The API hard-limits requests to
-     * 5MB; we trim to ~4.5MB and re-buffer the rest, leaving headroom for the
-     * JSON envelope so an oversize 413 (whole-batch discard + 15-min pause) is
-     * impossible. Single items are separately bounded by the per-field caps in
+     * 5MB; we trim to ~4.5MB and return the rest to the buffer, leaving
+     * headroom for the JSON envelope so an oversize 413 (whole-batch discard +
+     * 15-min pause) is impossible. Single items are separately bounded by the per-field caps in
      * Ranetrace / RanetraceLogHandler.
      */
     protected const int MAX_BATCH_BYTES = 4_500_000;
@@ -83,12 +83,12 @@ class SendBatchToRanetraceJob implements ShouldBeUnique, ShouldQueue
             return;
         }
 
-        // Pre-flight size guard: trim the batch to the byte budget and re-buffer
+        // Pre-flight size guard: trim the batch to the byte budget and return
         // the overflow so an oversize request (413 → whole-batch discard + pause)
         // is impossible. The remainder drains on the next ranetrace:work run.
         $deferred = $this->trimToByteBudget();
         if ($deferred !== []) {
-            $buffer->addItems($this->type, array_map(fn (array $item): array => $item['data'], $deferred));
+            $buffer->returnItems($this->type, $deferred);
             $this->logInfo('Deferred items to keep the batch under the size limit', [
                 'type' => $this->type,
                 'sent' => count($this->items),
@@ -177,11 +177,11 @@ class SendBatchToRanetraceJob implements ShouldBeUnique, ShouldQueue
         }
 
         if ($outcome->rebuffer) {
-            $this->reAddAllItemsToBuffer($buffer);
+            $this->returnBatchToBuffer($buffer);
         }
 
         if ($outcome->counters?->hasUnprocessed() === true) {
-            $buffer->addItems($this->type, $outcome->unprocessedPayloads($this->items));
+            $buffer->returnItems($this->type, $this->unprocessedItems($outcome));
         }
 
         $seconds = $outcome->pauseSeconds ?? ResponsePolicy::PAUSE_SECONDS;
@@ -294,7 +294,7 @@ class SendBatchToRanetraceJob implements ShouldBeUnique, ShouldQueue
      */
     protected function retryWithBackoffOrPause(RanetraceBatchBuffer $buffer, RanetracePauseManager $pauseManager, string $reason): void
     {
-        $this->reAddAllItemsToBuffer($buffer);
+        $this->returnBatchToBuffer($buffer);
 
         $backoff = $this->backoff();
 
@@ -319,14 +319,25 @@ class SendBatchToRanetraceJob implements ShouldBeUnique, ShouldQueue
     }
 
     /**
-     * Re-add all items to the buffer in a single locked operation.
+     * Return the whole batch to the head of the buffer, envelopes unchanged.
+     * Anything deferred by trimToByteBudget() is already there, and lands
+     * behind the batch, where it was before.
      */
-    protected function reAddAllItemsToBuffer(RanetraceBatchBuffer $buffer): void
+    protected function returnBatchToBuffer(RanetraceBatchBuffer $buffer): void
     {
-        $buffer->addItems(
-            $this->type,
-            array_map(fn (array $item): array => $item['data'], $this->items)
-        );
+        $buffer->returnItems($this->type, $this->items);
+    }
+
+    /**
+     * The items of the batch the server named as unprocessed, each once and in
+     * batch order, so the oldest stays at the head of the buffer. A position
+     * outside the batch names nothing.
+     *
+     * @return list<array{id: string, data: array, timestamp: int}>
+     */
+    protected function unprocessedItems(BatchOutcome $outcome): array
+    {
+        return array_values(array_intersect_key($this->items, array_flip($outcome->unprocessedIndexes)));
     }
 
     /**
@@ -355,7 +366,7 @@ class SendBatchToRanetraceJob implements ShouldBeUnique, ShouldQueue
 
     /**
      * Trim items off the tail of $this->items so the serialized batch stays
-     * within MAX_BATCH_BYTES, returning the removed items for re-buffering.
+     * within MAX_BATCH_BYTES, returning the removed items for the buffer.
      * Always keeps at least one item: a single over-budget item can't be split
      * (per-field caps bound single items).
      *
