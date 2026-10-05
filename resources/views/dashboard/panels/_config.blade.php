@@ -29,11 +29,11 @@
         </div>
         <div class="rt-kv">
             <span class="rt-kv__key">Cache driver</span>
-            <span class="rt-kv__val rt-kv__val--mono">{{ $cfg['cache_driver'] ?? '—' }}</span>
+            <span class="rt-kv__val rt-kv__val--mono">{{ filled($cfg['cache_driver'] ?? null) ? $cfg['cache_driver'] : 'not set' }}</span>
         </div>
         <div class="rt-kv">
             <span class="rt-kv__key">Batch queue</span>
-            <span class="rt-kv__val rt-kv__val--mono">{{ $cfg['queue_name'] ?? '—' }}</span>
+            <span class="rt-kv__val rt-kv__val--mono">{{ filled($cfg['queue_name'] ?? null) ? $cfg['queue_name'] : 'not set' }}</span>
         </div>
 
         @foreach ($features as $name => $configKey)

@@ -6,6 +6,9 @@ This file starts at 1.0.0. The package was re-versioned to share a major with `r
 
 ## [Unreleased]
 
+### Fixed
+- The diagnostics dashboard's Configuration and Environment panels name a missing value in words where they showed a dash: a batch cache driver or batch queue nobody set reads "not set", including one set to an empty string, which showed an empty cell, and an environment value the panel could not read reads "unknown"
+
 ## [1.1.16] - 2026-10-05
 
 ### Changed

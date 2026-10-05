@@ -94,6 +94,47 @@ test('the page speaks its warnings and its log panel with no em-dash anywhere', 
         ->not->toContain("\u{2014}");
 });
 
+test('the configuration panel reads not set for a batch cache driver and queue name nobody set', function (?string $unsetValue): void {
+    // An env var set empty (RANETRACE_BATCH_CACHE_DRIVER=) arrives as '', a
+    // published config with the key nulled out as null: both are the same gap.
+    $html = view('ranetrace::dashboard.panels._config', [
+        'status' => ['config' => ['cache_driver' => $unsetValue, 'queue_name' => $unsetValue]],
+    ])->render();
+
+    expect($html)
+        ->toMatch('/Cache driver<\/span>\s*<span class="rt-kv__val rt-kv__val--mono">not set<\/span>/')
+        ->toMatch('/Batch queue<\/span>\s*<span class="rt-kv__val rt-kv__val--mono">not set<\/span>/')
+        ->not->toContain("\u{2014}");
+})->with([
+    'null' => [null],
+    'blank' => [''],
+]);
+
+test('a dashboard whose batch cache driver and queue name are blank has no em-dash anywhere', function (): void {
+    Config::set('ranetrace.batch.cache_driver', '');
+    Config::set('ranetrace.batch.queue_name', '');
+
+    $response = $this->get('/ranetrace');
+
+    $response->assertOk();
+    expect($response->getContent())
+        ->toMatch('/Cache driver<\/span>\s*<span class="rt-kv__val rt-kv__val--mono">not set<\/span>/')
+        ->toMatch('/Batch queue<\/span>\s*<span class="rt-kv__val rt-kv__val--mono">not set<\/span>/')
+        ->not->toContain("\u{2014}");
+});
+
+test('the environment panel reads unknown for every value it was not given', function (): void {
+    $html = view('ranetrace::dashboard.panels._environment')->render();
+
+    foreach (['App environment', 'Laravel', 'PHP', 'Queue connection', 'Cache store'] as $label) {
+        expect($html)->toMatch('/'.preg_quote($label, '/').'<\/span>\s*<span class="rt-kv__val rt-kv__val--mono">unknown<\/span>/');
+    }
+
+    expect($html)
+        ->toMatch('/Package<\/span>\s*<span class="rt-kv__val rt-kv__val--mono">dev<\/span>/')
+        ->not->toContain("\u{2014}");
+});
+
 test('a freshly buffered item is shown as waiting, not stalled', function (): void {
     // The exact false-positive reported in production: an item placed in the
     // buffer and waiting for the next ranetrace:work run must not read as stalled.
