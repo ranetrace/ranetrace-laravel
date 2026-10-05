@@ -13,7 +13,6 @@ beforeEach(function (): void {
     config([
         'ranetrace.logging.enabled' => true,
         'ranetrace.logging.queue' => true,
-        'ranetrace.logging.queue_name' => 'default',
         'logging.channels.ranetrace' => [
             'driver' => 'ranetrace',
             'level' => 'debug',

@@ -127,6 +127,39 @@ test('queue worker check warns when a non-default queue is configured', function
     expect(runChecks()['queue_worker']->level)->toBe(CheckLevel::Warn);
 });
 
+test('queue worker check passes when no queue name is configured', function (): void {
+    expect(runChecks()['queue_worker']->level)->toBe(CheckLevel::Pass);
+});
+
+test('queue worker check passes when a set queue name is the connection default queue', function (): void {
+    Config::set('queue.default', 'database');
+    Config::set('queue.connections.database.queue', 'jobs');
+    Config::set('ranetrace.batch.queue_name', 'jobs');
+    Config::set('ranetrace.errors.queue_name', 'jobs');
+
+    expect(runChecks()['queue_worker']->level)->toBe(CheckLevel::Pass);
+});
+
+test('queue worker check warns about a queue literally named default on a connection whose default queue is another', function (): void {
+    Config::set('queue.default', 'database');
+    Config::set('queue.connections.database.queue', 'jobs');
+    Config::set('ranetrace.events.queue_name', 'default');
+
+    $result = runChecks()['queue_worker'];
+
+    expect($result->level)->toBe(CheckLevel::Warn)
+        ->and($result->title)->toContain('default');
+});
+
+test('queue worker check judges a queue name against the default connection, not another connection', function (): void {
+    Config::set('queue.default', 'redis');
+    Config::set('queue.connections.redis.queue', 'high');
+    Config::set('queue.connections.database.queue', 'jobs');
+    Config::set('ranetrace.batch.queue_name', 'jobs');
+
+    expect(runChecks()['queue_worker']->level)->toBe(CheckLevel::Warn);
+});
+
 test('internal logging check warns when internal logging is disabled', function (): void {
     Config::set('ranetrace.internal_logging.enabled', false);
 

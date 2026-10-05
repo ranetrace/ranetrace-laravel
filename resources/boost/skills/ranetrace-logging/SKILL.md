@@ -77,7 +77,7 @@ rather than a permanent local setting.
 'logging' => [
     'enabled' => env('RANETRACE_LOGGING_ENABLED', false),
     'queue' => env('RANETRACE_LOGGING_QUEUE', true),
-    'queue_name' => env('RANETRACE_LOGGING_QUEUE_NAME', 'default'),
+    'queue_name' => env('RANETRACE_LOGGING_QUEUE_NAME', null), // unset: the connection's default queue
     'timeout' => env('RANETRACE_LOGGING_TIMEOUT', 10),
     'level' => env('RANETRACE_LOGGING_LEVEL', 'notice'),
     'excluded_channels' => [

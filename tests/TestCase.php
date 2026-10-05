@@ -96,13 +96,10 @@ class TestCase extends Orchestra
         // Enable features for testing
         $app['config']->set('ranetrace.events.enabled', true);
         $app['config']->set('ranetrace.events.queue', true); // Enable queue for testing Queue::fake()
-        $app['config']->set('ranetrace.events.queue_name', 'default');
         $app['config']->set('ranetrace.logging.enabled', true);
         $app['config']->set('ranetrace.logging.queue', true);
-        $app['config']->set('ranetrace.logging.queue_name', 'default');
         $app['config']->set('ranetrace.javascript_errors.enabled', true);
         $app['config']->set('ranetrace.javascript_errors.queue', true);
-        $app['config']->set('ranetrace.javascript_errors.queue_name', 'default');
         $app['config']->set('ranetrace.javascript_errors.sample_rate', 1.0);
         $app['config']->set('ranetrace.website_analytics.enabled', true);
         $app['config']->set('ranetrace.website_analytics.queue', 'default');

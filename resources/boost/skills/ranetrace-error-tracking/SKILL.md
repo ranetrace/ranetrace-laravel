@@ -54,7 +54,7 @@ Each error report includes:
 'errors' => [
     'enabled' => env('RANETRACE_ERRORS_ENABLED', true),
     'queue' => env('RANETRACE_ERRORS_QUEUE', true),       // async via queue
-    'queue_name' => env('RANETRACE_ERRORS_QUEUE_NAME', 'default'),
+    'queue_name' => env('RANETRACE_ERRORS_QUEUE_NAME', null), // unset: the connection's default queue
     'timeout' => env('RANETRACE_ERRORS_TIMEOUT', 10),
 ],
 ```

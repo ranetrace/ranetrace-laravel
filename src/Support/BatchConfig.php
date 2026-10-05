@@ -86,6 +86,19 @@ final class BatchConfig
     }
 
     /**
+     * The default queue of the connection Ranetrace jobs are dispatched on,
+     * which is the app's default connection: no job sets its own. Null when
+     * that connection names no queue.
+     */
+    public static function connectionDefaultQueueName(): ?string
+    {
+        $connection = config('queue.default');
+        $queue = config("queue.connections.{$connection}.queue");
+
+        return filled($queue) ? (string) $queue : null;
+    }
+
+    /**
      * A queue name as the status output and the dashboard print it.
      */
     public static function describeQueue(?string $name): string

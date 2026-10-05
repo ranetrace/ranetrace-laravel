@@ -107,7 +107,7 @@ Invalid: `UserRegistered`, `a`, `123_event`, `my-event`
 'events' => [
     'enabled' => env('RANETRACE_EVENTS_ENABLED', true),
     'queue' => env('RANETRACE_EVENTS_QUEUE', true),
-    'queue_name' => env('RANETRACE_EVENTS_QUEUE_NAME', 'default'),
+    'queue_name' => env('RANETRACE_EVENTS_QUEUE_NAME', null), // unset: the connection's default queue
     'timeout' => env('RANETRACE_EVENTS_TIMEOUT', 10),
 ],
 ```

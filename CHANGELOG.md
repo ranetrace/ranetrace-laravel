@@ -6,6 +6,9 @@ This file starts at 1.0.0. The package was re-versioned to share a major with `r
 
 ## [Unreleased]
 
+### Changed
+- **An unset queue name now means the connection's default queue, and that is the shipped default.** `RANETRACE_BATCH_QUEUE_NAME`, `RANETRACE_ERRORS_QUEUE_NAME`, `RANETRACE_EVENTS_QUEUE_NAME`, `RANETRACE_LOGGING_QUEUE_NAME`, `RANETRACE_WEBSITE_ANALYTICS_QUEUE_NAME` and `RANETRACE_JAVASCRIPT_ERRORS_QUEUE_NAME` defaulted to a queue literally named `default`, which is not the queue a plain `queue:work` listens on when the connection's default queue has another name, as on SQS or wherever `config/queue.php` gives the connection its own `queue`. They now default to null, so Ranetrace's jobs are dispatched with no queue and land on the connection's default queue, wherever that is. The queue worker check now judges a name against the default queue of the connection the jobs go to, `queue.default`, rather than against the word `default`: a name equal to that connection's queue passes, and any other name, `default` included when the connection's queue is another, warns that it needs a worker. Breaking: an app that has not published `config/ranetrace.php` and relies on a queue literally named `default` on a connection whose default queue has another name must now set the queue name env vars to `default`. An app that published `config/ranetrace.php` keeps its `'default'` values until it changes them to `null`
+
 ## [1.1.18] - 2026-10-05
 
 ### Fixed

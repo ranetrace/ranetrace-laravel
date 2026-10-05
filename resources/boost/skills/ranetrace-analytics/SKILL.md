@@ -22,7 +22,7 @@ Analytics is privacy-first: no cookies, no fingerprinting, no consent banner, an
 'website_analytics' => [
     'enabled' => env('RANETRACE_WEBSITE_ANALYTICS_ENABLED', false),
     'queue' => env('RANETRACE_WEBSITE_ANALYTICS_QUEUE', true),
-    'queue_name' => env('RANETRACE_WEBSITE_ANALYTICS_QUEUE_NAME', 'default'),
+    'queue_name' => env('RANETRACE_WEBSITE_ANALYTICS_QUEUE_NAME', null), // unset: the connection's default queue
     'timeout' => env('RANETRACE_WEBSITE_ANALYTICS_TIMEOUT', 10),
     'excluded_paths' => [
         'horizon', 'nova', 'telescope', 'admin', 'filament', 'api', 'debugbar',

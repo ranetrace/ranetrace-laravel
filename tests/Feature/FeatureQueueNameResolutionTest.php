@@ -14,6 +14,7 @@ use Ranetrace\Laravel\Jobs\HandleEventJob;
 use Ranetrace\Laravel\Jobs\HandleJavaScriptErrorJob;
 use Ranetrace\Laravel\Jobs\HandleLogJob;
 use Ranetrace\Laravel\Jobs\HandlePageVisitJob;
+use Ranetrace\Laravel\Jobs\SendBatchToRanetraceJob;
 
 /**
  * `RANETRACE_EVENTS_QUEUE_NAME=null` arrives as null and
@@ -66,6 +67,22 @@ test('every capture job uses its feature queue name as it is set', function (str
     expect((new $jobClass([]))->queue)->toBe('ranetrace');
 })->with('capture jobs');
 
+test('a captured event with no queue name configured is pushed to the connection default queue', function (): void {
+    Queue::fake();
+
+    Ranetrace::trackEvent('user_registered');
+
+    Queue::assertPushed(HandleEventJob::class, fn (HandleEventJob $job): bool => $job->queue === null);
+});
+
+test('every capture job with no queue name configured goes to the connection default queue', function (string $jobClass): void {
+    expect((new $jobClass([]))->queue)->toBeNull();
+})->with('capture jobs');
+
+test('a batch job with no queue name configured goes to the connection default queue', function (): void {
+    expect((new SendBatchToRanetraceJob('events'))->queue)->toBeNull();
+});
+
 test('ranetrace:test names the connection default queue for an unset feature queue name', function (?string $unsetValue): void {
     Config::set('ranetrace.errors.queue_name', $unsetValue);
 
@@ -91,11 +108,13 @@ test('ranetrace:test-javascript-errors names the connection default queue for an
 })->with('unset feature queue names');
 
 test('the queue worker check does not count an unset feature queue name as a queue', function (?string $unsetValue): void {
-    Config::set('ranetrace.batch.queue_name', 'default');
-    Config::set('ranetrace.errors.queue_name', 'default');
-    Config::set('ranetrace.events.queue_name', 'default');
-    Config::set('ranetrace.logging.queue_name', 'default');
-    Config::set('ranetrace.javascript_errors.queue_name', 'default');
+    Config::set('queue.default', 'database');
+    Config::set('queue.connections.database.queue', 'jobs');
+    Config::set('ranetrace.batch.queue_name', 'jobs');
+    Config::set('ranetrace.errors.queue_name', 'jobs');
+    Config::set('ranetrace.events.queue_name', 'jobs');
+    Config::set('ranetrace.logging.queue_name', 'jobs');
+    Config::set('ranetrace.javascript_errors.queue_name', 'jobs');
     Config::set('ranetrace.website_analytics.queue_name', $unsetValue);
 
     $result = (new QueueWorkerCheck)->run(app(DashboardData::class)->collectStatus());

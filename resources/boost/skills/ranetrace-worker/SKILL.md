@@ -47,10 +47,10 @@ php artisan horizon
 Alternatively, use the built-in queue worker:
 
 ```bash
-php artisan queue:work --queue=default
+php artisan queue:work
 ```
 
-If a custom queue name is configured via `RANETRACE_BATCH_QUEUE_NAME`, use that instead:
+Ranetrace's jobs go to the connection's default queue unless a queue name is set, so a plain worker drains them. If a custom queue name is configured via `RANETRACE_BATCH_QUEUE_NAME` (or a feature's own `RANETRACE_*_QUEUE_NAME`), a worker must listen on it:
 
 ```bash
 php artisan queue:work --queue=ranetrace
@@ -61,7 +61,7 @@ php artisan queue:work --queue=ranetrace
 ```php
 // config/ranetrace.php
 'batch' => [
-    'queue_name' => env('RANETRACE_BATCH_QUEUE_NAME', 'default'),
+    'queue_name' => env('RANETRACE_BATCH_QUEUE_NAME', null), // unset: the connection's default queue
     // Defaults to your app's cache store (CACHE_STORE / CACHE_DRIVER, → file).
     // For production / multi-worker setups point this at a shared, lock-capable
     // store (redis, memcached, or database), never `array` (per-process).
@@ -72,7 +72,7 @@ php artisan queue:work --queue=ranetrace
 
 | Env Var | Description | Default |
 |---|---|---|
-| `RANETRACE_BATCH_QUEUE_NAME` | Queue name for batch jobs | `default` |
+| `RANETRACE_BATCH_QUEUE_NAME` | Queue name for batch jobs | unset: the connection's default queue |
 | `RANETRACE_BATCH_CACHE_DRIVER` | Cache store for the buffer (use a shared, lock-capable store in production) | app cache store (`CACHE_STORE` → `file`) |
 | `RANETRACE_BATCH_MAX_BUFFER_SIZE` | Max items per feature buffer before oldest are dropped | `5000` |
 

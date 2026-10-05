@@ -7,8 +7,10 @@ namespace Ranetrace\Laravel\Dashboard\Checks;
 use Ranetrace\Laravel\Support\BatchConfig;
 
 /**
- * Non-default queue names need a worker explicitly configured to process them,
- * or jobs pile up unprocessed on a queue nobody is draining.
+ * A queue name other than the default queue of the connection the jobs go to
+ * needs a worker explicitly configured to process it, or jobs pile up
+ * unprocessed on a queue nobody is draining. An unset name, or one equal to
+ * that default queue, lands where a plain `queue:work` already listens.
  */
 class QueueWorkerCheck implements Check
 {
@@ -26,16 +28,18 @@ class QueueWorkerCheck implements Check
 
     public function run(array $status): CheckResult
     {
+        $connectionDefaultQueue = BatchConfig::connectionDefaultQueueName();
+
         $queues = [];
         foreach (self::FEATURE_CONFIG_PATHS as $path) {
             $name = BatchConfig::featureQueueName($path);
-            if ($name !== null && $name !== 'default') {
+            if ($name !== null && $name !== $connectionDefaultQueue) {
                 $queues[$name] = true;
             }
         }
 
         if ($queues === []) {
-            return CheckResult::pass('queue_worker', 'Using the default queue');
+            return CheckResult::pass('queue_worker', 'Using the connection\'s default queue');
         }
 
         $names = array_keys($queues);

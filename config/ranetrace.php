@@ -17,7 +17,7 @@ return [
     'errors' => [
         'enabled' => env('RANETRACE_ERRORS_ENABLED', true),
         'queue' => env('RANETRACE_ERRORS_QUEUE', true),
-        'queue_name' => env('RANETRACE_ERRORS_QUEUE_NAME', 'default'),
+        'queue_name' => env('RANETRACE_ERRORS_QUEUE_NAME', null), // unset: the connection's default queue
         'timeout' => env('RANETRACE_ERRORS_TIMEOUT', 10),
         'capture_user_email' => env('RANETRACE_ERRORS_CAPTURE_USER_EMAIL', false),
     ],
@@ -25,14 +25,14 @@ return [
     'events' => [
         'enabled' => env('RANETRACE_EVENTS_ENABLED', true),
         'queue' => env('RANETRACE_EVENTS_QUEUE', true),
-        'queue_name' => env('RANETRACE_EVENTS_QUEUE_NAME', 'default'),
+        'queue_name' => env('RANETRACE_EVENTS_QUEUE_NAME', null), // unset: the connection's default queue
         'timeout' => env('RANETRACE_EVENTS_TIMEOUT', 10),
     ],
 
     'logging' => [
         'enabled' => env('RANETRACE_LOGGING_ENABLED', false),
         'queue' => env('RANETRACE_LOGGING_QUEUE', true),
-        'queue_name' => env('RANETRACE_LOGGING_QUEUE_NAME', 'default'),
+        'queue_name' => env('RANETRACE_LOGGING_QUEUE_NAME', null), // unset: the connection's default queue
         'timeout' => env('RANETRACE_LOGGING_TIMEOUT', 10),
         'level' => env('RANETRACE_LOGGING_LEVEL', 'notice'),
         'excluded_channels' => [
@@ -43,7 +43,7 @@ return [
     'website_analytics' => [
         'enabled' => env('RANETRACE_WEBSITE_ANALYTICS_ENABLED', false),
         'queue' => env('RANETRACE_WEBSITE_ANALYTICS_QUEUE', true),
-        'queue_name' => env('RANETRACE_WEBSITE_ANALYTICS_QUEUE_NAME', 'default'),
+        'queue_name' => env('RANETRACE_WEBSITE_ANALYTICS_QUEUE_NAME', null), // unset: the connection's default queue
         'timeout' => env('RANETRACE_WEBSITE_ANALYTICS_TIMEOUT', 10),
         'excluded_paths' => [
             'horizon',
@@ -129,7 +129,7 @@ return [
     'javascript_errors' => [
         'enabled' => env('RANETRACE_JAVASCRIPT_ERRORS_ENABLED', false),
         'queue' => env('RANETRACE_JAVASCRIPT_ERRORS_QUEUE', true),
-        'queue_name' => env('RANETRACE_JAVASCRIPT_ERRORS_QUEUE_NAME', 'default'),
+        'queue_name' => env('RANETRACE_JAVASCRIPT_ERRORS_QUEUE_NAME', null), // unset: the connection's default queue
         'timeout' => env('RANETRACE_JAVASCRIPT_ERRORS_TIMEOUT', 10),
         'throttle' => env('RANETRACE_JAVASCRIPT_ERRORS_THROTTLE', '60,1'),
         'sample_rate' => env('RANETRACE_JAVASCRIPT_ERRORS_SAMPLE_RATE', 1.0), // 1.0 = 100%, 0.1 = 10%
@@ -168,7 +168,7 @@ return [
     ],
 
     'batch' => [
-        'queue_name' => env('RANETRACE_BATCH_QUEUE_NAME', 'default'),
+        'queue_name' => env('RANETRACE_BATCH_QUEUE_NAME', null), // unset: the connection's default queue
         'cache_driver' => env('RANETRACE_BATCH_CACHE_DRIVER', env('CACHE_STORE', env('CACHE_DRIVER', 'file'))),
         'max_buffer_size' => env('RANETRACE_BATCH_MAX_BUFFER_SIZE', 5000),
         'lock_wait' => env('RANETRACE_BATCH_LOCK_WAIT', 1), // seconds to wait for a buffer lock (0 = non-blocking)

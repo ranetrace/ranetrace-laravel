@@ -79,7 +79,7 @@ window.Ranetrace.addBreadcrumb('custom', 'User selected plan', {
 'javascript_errors' => [
     'enabled' => env('RANETRACE_JAVASCRIPT_ERRORS_ENABLED', false),
     'queue' => env('RANETRACE_JAVASCRIPT_ERRORS_QUEUE', true),
-    'queue_name' => env('RANETRACE_JAVASCRIPT_ERRORS_QUEUE_NAME', 'default'),
+    'queue_name' => env('RANETRACE_JAVASCRIPT_ERRORS_QUEUE_NAME', null), // unset: the connection's default queue
     'timeout' => env('RANETRACE_JAVASCRIPT_ERRORS_TIMEOUT', 10),
     'sample_rate' => env('RANETRACE_JAVASCRIPT_ERRORS_SAMPLE_RATE', 1.0),
     'capture_console_errors' => env('RANETRACE_JAVASCRIPT_ERRORS_CAPTURE_CONSOLE_ERRORS', false),
