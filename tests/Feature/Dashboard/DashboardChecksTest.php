@@ -55,6 +55,49 @@ test('cache driver check fails on a volatile driver in production', function ():
     expect(runChecks()['cache_driver']->level)->toBe(CheckLevel::Fail);
 });
 
+test('cache driver check warns on a custom-named store on the array driver outside production', function (): void {
+    Config::set('cache.stores.fast', ['driver' => 'array']);
+    Config::set('ranetrace.batch.cache_driver', 'fast');
+
+    $result = runChecks()['cache_driver'];
+
+    expect($result->level)->toBe(CheckLevel::Warn)
+        ->and($result->title)->toBe('Volatile cache driver "fast" on the "array" driver');
+});
+
+test('cache driver check fails on a custom-named store on the array driver in production', function (): void {
+    Config::set('cache.stores.fast', ['driver' => 'array']);
+    Config::set('ranetrace.batch.cache_driver', 'fast');
+    $this->app['env'] = 'production';
+
+    $result = runChecks()['cache_driver'];
+
+    expect($result->level)->toBe(CheckLevel::Fail)
+        ->and($result->title)->toBe('Volatile cache driver "fast" on the "array" driver in production');
+});
+
+test('cache driver check passes a custom-named store on a durable driver', function (): void {
+    Config::set('cache.stores.durable', ['driver' => 'file', 'path' => storage_path('framework/cache/data')]);
+    Config::set('ranetrace.batch.cache_driver', 'durable');
+
+    $result = runChecks()['cache_driver'];
+
+    expect($result->level)->toBe(CheckLevel::Pass)
+        ->and($result->title)->toBe('Cache driver "durable" on the "file" driver persists between requests');
+});
+
+test('cache driver check fails on a store that is not configured, in any environment', function (): void {
+    $check = new Ranetrace\Laravel\Dashboard\Checks\CacheDriverCheck;
+    $status = ['config' => ['cache_driver' => 'missing', 'cache_driver_is_app_default' => false]];
+
+    $result = $check->run($status);
+
+    expect($result->level)->toBe(CheckLevel::Fail)
+        ->and($result->title)->toBe('Cache driver "missing" is not a configured cache store')
+        ->and($result->remediation)->toContain('config/cache.php')
+        ->not->toContain("\u{2014}");
+});
+
 test('drain stalled check fails when buffered items wait past the drain window with no drain', function (): void {
     app(RanetraceBatchBuffer::class)->addItem('events', ['event_name' => 'e1']);
 
