@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Ranetrace\Laravel\Commands;
 
 use Illuminate\Console\Command;
+use Ranetrace\Laravel\Support\BatchConfig;
 
 class RanetraceTestCommand extends Command
 {
@@ -179,13 +180,12 @@ class RanetraceTestCommand extends Command
             $feature = $config[$key];
             $enabled = $feature['enabled'] ?? false;
             $queue = $feature['queue'] ?? false;
-            $queueName = $feature['queue_name'] ?? 'default';
 
             $rows[] = [
                 $name,
                 $enabled ? '✅ Enabled' : '❌ Disabled',
                 $queue ? '✅ Queued' : '⚡ Sync',
-                $queueName,
+                BatchConfig::describeQueue(BatchConfig::featureQueueName("ranetrace.{$key}")),
             ];
 
             // Validate structure
@@ -226,7 +226,7 @@ class RanetraceTestCommand extends Command
                 ['Setting', 'Value'],
                 [
                     ['Timeout', ($config['errors']['timeout'] ?? 10).' seconds'],
-                    ['Queue Name', $config['errors']['queue_name'] ?? 'default'],
+                    ['Queue Name', BatchConfig::describeQueue(BatchConfig::featureQueueName('ranetrace.errors'))],
                     ['Capture User Email', ($config['errors']['capture_user_email'] ?? false) ? 'Yes' : 'No'],
                 ]
             );

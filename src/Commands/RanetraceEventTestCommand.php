@@ -9,6 +9,7 @@ use InvalidArgumentException;
 use Ranetrace\Laravel\Events\EventTracker;
 use Ranetrace\Laravel\Facades\Ranetrace;
 use Ranetrace\Laravel\Facades\RanetraceEvents;
+use Ranetrace\Laravel\Support\BatchConfig;
 
 class RanetraceEventTestCommand extends Command
 {
@@ -155,7 +156,7 @@ class RanetraceEventTestCommand extends Command
             [
                 ['Events Enabled', config('ranetrace.events.enabled') ? 'Yes' : 'No'],
                 ['Queue Enabled', config('ranetrace.events.queue') ? 'Yes' : 'No'],
-                ['Queue Name', config('ranetrace.events.queue_name')],
+                ['Queue Name', BatchConfig::describeQueue(BatchConfig::featureQueueName('ranetrace.events'))],
                 ['API Key Set', config('ranetrace.key') ? 'Yes' : 'No'],
             ]
         );

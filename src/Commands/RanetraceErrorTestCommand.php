@@ -7,6 +7,7 @@ namespace Ranetrace\Laravel\Commands;
 use Exception;
 use Illuminate\Console\Command;
 use Ranetrace\Laravel\Facades\Ranetrace;
+use Ranetrace\Laravel\Support\BatchConfig;
 use RuntimeException;
 
 class RanetraceErrorTestCommand extends Command
@@ -102,7 +103,7 @@ class RanetraceErrorTestCommand extends Command
             ['Setting', 'Value'],
             [
                 ['Queue Enabled', config('ranetrace.errors.queue', true) ? 'Yes' : 'No'],
-                ['Queue Name', config('ranetrace.errors.queue_name', 'default')],
+                ['Queue Name', BatchConfig::describeQueue(BatchConfig::featureQueueName('ranetrace.errors'))],
                 ['Timeout', config('ranetrace.errors.timeout', 10).' seconds'],
                 ['Capture User Email', config('ranetrace.errors.capture_user_email', false) ? 'Yes' : 'No'],
                 ['API Key Set', config('ranetrace.key') ? 'Yes' : 'No'],

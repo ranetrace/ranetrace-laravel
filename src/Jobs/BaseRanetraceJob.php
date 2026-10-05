@@ -10,6 +10,7 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Ranetrace\Laravel\Services\RanetraceBatchBuffer;
+use Ranetrace\Laravel\Support\BatchConfig;
 use Ranetrace\Laravel\Support\InternalLogger;
 use Ranetrace\Php\Support\PayloadSizer;
 use Throwable;
@@ -213,12 +214,12 @@ abstract class BaseRanetraceJob implements ShouldQueue
     }
 
     /**
-     * Assign the job to the configured queue.
+     * Assign the job to the feature's queue, or to the connection's default
+     * queue when none is named.
      */
     protected function assignQueue(): void
     {
-        $queueName = config($this->getConfigPath().'.queue_name', 'default');
-        $this->onQueue($queueName);
+        $this->onQueue(BatchConfig::featureQueueName($this->getConfigPath()));
     }
 
     /**

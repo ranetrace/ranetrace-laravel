@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Ranetrace\Laravel\Dashboard\Checks;
 
+use Ranetrace\Laravel\Support\BatchConfig;
+
 /**
  * Non-default queue names need a worker explicitly configured to process them,
  * or jobs pile up unprocessed on a queue nobody is draining.
@@ -13,21 +15,21 @@ class QueueWorkerCheck implements Check
     /**
      * @var array<int, string>
      */
-    protected const array QUEUE_CONFIG_KEYS = [
-        'ranetrace.batch.queue_name',
-        'ranetrace.errors.queue_name',
-        'ranetrace.events.queue_name',
-        'ranetrace.logging.queue_name',
-        'ranetrace.javascript_errors.queue_name',
-        'ranetrace.website_analytics.queue_name',
+    protected const array FEATURE_CONFIG_PATHS = [
+        'ranetrace.batch',
+        'ranetrace.errors',
+        'ranetrace.events',
+        'ranetrace.logging',
+        'ranetrace.javascript_errors',
+        'ranetrace.website_analytics',
     ];
 
     public function run(array $status): CheckResult
     {
         $queues = [];
-        foreach (self::QUEUE_CONFIG_KEYS as $key) {
-            $name = config($key);
-            if (is_string($name) && $name !== '' && $name !== 'default') {
+        foreach (self::FEATURE_CONFIG_PATHS as $path) {
+            $name = BatchConfig::featureQueueName($path);
+            if ($name !== null && $name !== 'default') {
                 $queues[$name] = true;
             }
         }

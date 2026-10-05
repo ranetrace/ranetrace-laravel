@@ -1,0 +1,116 @@
+<?php
+
+declare(strict_types=1);
+
+use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\Queue;
+use Ranetrace\Laravel\Dashboard\Checks\CheckLevel;
+use Ranetrace\Laravel\Dashboard\Checks\QueueWorkerCheck;
+use Ranetrace\Laravel\Dashboard\DashboardData;
+use Ranetrace\Laravel\Facades\Ranetrace;
+use Ranetrace\Laravel\Jobs\HandleErrorJob;
+use Ranetrace\Laravel\Jobs\HandleEventJob;
+use Ranetrace\Laravel\Jobs\HandleJavaScriptErrorJob;
+use Ranetrace\Laravel\Jobs\HandleLogJob;
+use Ranetrace\Laravel\Jobs\HandlePageVisitJob;
+
+/**
+ * `RANETRACE_EVENTS_QUEUE_NAME=null` arrives as null and
+ * `RANETRACE_EVENTS_QUEUE_NAME=` as an empty string: both name no queue, and
+ * so does a value of nothing but spaces.
+ */
+dataset('unset feature queue names', [
+    'null' => [null],
+    'blank' => [''],
+    'spaces' => ['  '],
+]);
+
+dataset('capture jobs', [
+    'errors' => [HandleErrorJob::class, 'ranetrace.errors'],
+    'events' => [HandleEventJob::class, 'ranetrace.events'],
+    'logging' => [HandleLogJob::class, 'ranetrace.logging'],
+    'javascript errors' => [HandleJavaScriptErrorJob::class, 'ranetrace.javascript_errors'],
+    'website analytics' => [HandlePageVisitJob::class, 'ranetrace.website_analytics'],
+]);
+
+test('a captured event with an unset queue name is pushed to the connection default queue', function (?string $unsetValue): void {
+    Config::set('ranetrace.events.queue_name', $unsetValue);
+    Queue::fake();
+
+    Ranetrace::trackEvent('user_registered');
+
+    Queue::assertPushed(HandleEventJob::class, fn (HandleEventJob $job): bool => $job->queue === null);
+})->with('unset feature queue names');
+
+test('a captured event with a queue name set is pushed to that queue', function (): void {
+    Config::set('ranetrace.events.queue_name', 'ranetrace');
+    Queue::fake();
+
+    Ranetrace::trackEvent('user_registered');
+
+    Queue::assertPushed(HandleEventJob::class, fn (HandleEventJob $job): bool => $job->queue === 'ranetrace');
+});
+
+test('every capture job with an unset queue name goes to the connection default queue', function (string $jobClass, string $configPath): void {
+    foreach ([null, '', '  '] as $unsetValue) {
+        Config::set("{$configPath}.queue_name", $unsetValue);
+
+        expect((new $jobClass([]))->queue)->toBeNull();
+    }
+})->with('capture jobs');
+
+test('every capture job uses its feature queue name as it is set', function (string $jobClass, string $configPath): void {
+    Config::set("{$configPath}.queue_name", 'ranetrace');
+
+    expect((new $jobClass([]))->queue)->toBe('ranetrace');
+})->with('capture jobs');
+
+test('ranetrace:test names the connection default queue for an unset feature queue name', function (?string $unsetValue): void {
+    Config::set('ranetrace.errors.queue_name', $unsetValue);
+
+    $this->artisan('ranetrace:test')
+        ->expectsTable(
+            ['Setting', 'Value'],
+            [
+                ['Timeout', '10 seconds'],
+                ['Queue Name', "the connection's default queue"],
+                ['Capture User Email', 'No'],
+            ],
+        )
+        ->assertSuccessful();
+})->with('unset feature queue names');
+
+test('ranetrace:test-javascript-errors names the connection default queue for an unset queue name', function (?string $unsetValue): void {
+    Bus::fake();
+    Config::set('ranetrace.javascript_errors.queue_name', $unsetValue);
+
+    $this->artisan('ranetrace:test-javascript-errors')
+        ->expectsOutputToContain("the connection's default queue")
+        ->assertSuccessful();
+})->with('unset feature queue names');
+
+test('the queue worker check does not count an unset feature queue name as a queue', function (?string $unsetValue): void {
+    Config::set('ranetrace.batch.queue_name', 'default');
+    Config::set('ranetrace.errors.queue_name', 'default');
+    Config::set('ranetrace.events.queue_name', 'default');
+    Config::set('ranetrace.logging.queue_name', 'default');
+    Config::set('ranetrace.javascript_errors.queue_name', 'default');
+    Config::set('ranetrace.website_analytics.queue_name', $unsetValue);
+
+    $result = (new QueueWorkerCheck)->run(app(DashboardData::class)->collectStatus());
+
+    expect($result->level)->toBe(CheckLevel::Pass);
+})->with('unset feature queue names');
+
+test('only the batch config resolver reads a queue name from config', function (): void {
+    $readers = [];
+
+    foreach (Illuminate\Support\Facades\File::allFiles(dirname(__DIR__, 2).'/src') as $file) {
+        if (preg_match('/config\([^;\n]*queue_name/', $file->getContents()) === 1) {
+            $readers[] = $file->getRelativePathname();
+        }
+    }
+
+    expect($readers)->toBe(['Support/BatchConfig.php']);
+});

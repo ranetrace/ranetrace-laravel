@@ -8,7 +8,8 @@ use Illuminate\Contracts\Cache\Repository;
 use Illuminate\Support\Facades\Cache;
 
 /**
- * The batch pipeline's cache store and queue, read in one place.
+ * The batch pipeline's cache store and the queues Ranetrace jobs go to, read
+ * in one place.
  *
  * `ranetrace.batch.cache_driver` names the store the buffers, pauses, drain
  * timestamps, capture throttle and beacon marks all live in, so every reader
@@ -27,8 +28,8 @@ final class BatchConfig
     public const string APP_DEFAULT_STORE_NOTE = "the app's default store";
 
     /**
-     * How a batch queue nobody named is described: the job is dispatched with
-     * no queue, so it lands on its connection's default.
+     * How a queue nobody named is described: the job is dispatched with no
+     * queue, so it lands on its connection's default.
      */
     public const string CONNECTION_DEFAULT_QUEUE = "the connection's default queue";
 
@@ -69,7 +70,17 @@ final class BatchConfig
      */
     public static function queueName(): ?string
     {
-        $configured = config('ranetrace.batch.queue_name');
+        return self::featureQueueName('ranetrace.batch');
+    }
+
+    /**
+     * The queue a feature's jobs are dispatched to, read from
+     * `{$featureConfigPath}.queue_name` (for example `ranetrace.errors`), or
+     * null for the connection's default queue when it is null or blank.
+     */
+    public static function featureQueueName(string $featureConfigPath): ?string
+    {
+        $configured = config($featureConfigPath.'.queue_name');
 
         return filled($configured) ? (string) $configured : null;
     }
