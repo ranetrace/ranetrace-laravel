@@ -185,7 +185,7 @@ class RanetraceTestCommand extends Command
                 $name,
                 $enabled ? '✅ Enabled' : '❌ Disabled',
                 $queue ? '✅ Queued' : '⚡ Sync',
-                BatchConfig::describeQueue(BatchConfig::featureQueueName("ranetrace.{$key}")),
+                BatchConfig::describeFeatureQueue("ranetrace.{$key}"),
             ];
 
             // Validate structure
@@ -226,7 +226,7 @@ class RanetraceTestCommand extends Command
                 ['Setting', 'Value'],
                 [
                     ['Timeout', ($config['errors']['timeout'] ?? 10).' seconds'],
-                    ['Queue Name', BatchConfig::describeQueue(BatchConfig::featureQueueName('ranetrace.errors'))],
+                    ['Queue Name', BatchConfig::describeFeatureQueue('ranetrace.errors')],
                     ['Capture User Email', ($config['errors']['capture_user_email'] ?? false) ? 'Yes' : 'No'],
                 ]
             );

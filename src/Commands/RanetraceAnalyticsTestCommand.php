@@ -55,7 +55,7 @@ class RanetraceAnalyticsTestCommand extends Command
             [
                 ['Enabled', config('ranetrace.website_analytics.enabled') ? '✅ Yes' : '❌ No'],
                 ['Queue Enabled', config('ranetrace.website_analytics.queue') ? '✅ Yes' : '❌ No'],
-                ['Queue Name', BatchConfig::describeQueue(BatchConfig::featureQueueName('ranetrace.website_analytics'))],
+                ['Queue Name', BatchConfig::describeFeatureQueue('ranetrace.website_analytics')],
                 ['Timeout', config('ranetrace.website_analytics.timeout', 10).' seconds'],
                 ['Throttle', config('ranetrace.website_analytics.throttle_seconds', 30).' seconds'],
                 ['User Agent Min Length', config('ranetrace.website_analytics.user_agent.min_length', 10)],

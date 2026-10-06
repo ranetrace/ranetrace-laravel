@@ -189,6 +189,15 @@ final class BatchConfig
     }
 
     /**
+     * A feature's configured queue as the test commands print it, read from
+     * `{$featureConfigPath}.queue_name` (for example `ranetrace.errors`).
+     */
+    public static function describeFeatureQueue(string $featureConfigPath): string
+    {
+        return self::describeQueue(self::featureQueueName($featureConfigPath));
+    }
+
+    /**
      * The queue a connection really uses for a queue name once queue forwards
      * apply.
      */

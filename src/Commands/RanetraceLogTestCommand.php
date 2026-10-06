@@ -136,7 +136,7 @@ class RanetraceLogTestCommand extends Command
             [
                 ['Logging Enabled', config('ranetrace.logging.enabled') ? 'Yes' : 'No'],
                 ['Queue Enabled', config('ranetrace.logging.queue') ? 'Yes' : 'No'],
-                ['Queue Name', BatchConfig::describeQueue(BatchConfig::featureQueueName('ranetrace.logging'))],
+                ['Queue Name', BatchConfig::describeFeatureQueue('ranetrace.logging')],
                 ['Minimum Level', config('ranetrace.logging.level', 'notice')],
                 ['Excluded Channels', implode(', ', config('ranetrace.logging.excluded_channels', [])) ?: '(none)'],
                 ['API Key Set', config('ranetrace.key') ? 'Yes' : 'No'],
