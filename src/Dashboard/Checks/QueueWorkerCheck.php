@@ -4,13 +4,6 @@ declare(strict_types=1);
 
 namespace Ranetrace\Laravel\Dashboard\Checks;
 
-use Ranetrace\Laravel\Jobs\BaseRanetraceJob;
-use Ranetrace\Laravel\Jobs\HandleErrorJob;
-use Ranetrace\Laravel\Jobs\HandleEventJob;
-use Ranetrace\Laravel\Jobs\HandleJavaScriptErrorJob;
-use Ranetrace\Laravel\Jobs\HandleLogJob;
-use Ranetrace\Laravel\Jobs\HandlePageVisitJob;
-use Ranetrace\Laravel\Jobs\SendBatchToRanetraceJob;
 use Ranetrace\Laravel\Support\BatchConfig;
 
 /**
@@ -23,28 +16,14 @@ use Ranetrace\Laravel\Support\BatchConfig;
  */
 class QueueWorkerCheck implements Check
 {
-    /**
-     * Each feature's config path and the job its queue name applies to.
-     *
-     * @var array<string, class-string<BaseRanetraceJob|SendBatchToRanetraceJob>>
-     */
-    protected const array FEATURE_JOBS = [
-        'ranetrace.batch' => SendBatchToRanetraceJob::class,
-        'ranetrace.errors' => HandleErrorJob::class,
-        'ranetrace.events' => HandleEventJob::class,
-        'ranetrace.logging' => HandleLogJob::class,
-        'ranetrace.javascript_errors' => HandleJavaScriptErrorJob::class,
-        'ranetrace.website_analytics' => HandlePageVisitJob::class,
-    ];
-
     public function run(array $status): CheckResult
     {
         $defaultConnectionName = (string) config('queue.default');
 
         /** @var array<string, array<string, true>> $queuesByConnection */
         $queuesByConnection = [];
-        foreach (self::FEATURE_JOBS as $path => $jobClass) {
-            $job = BatchConfig::jobAsDispatched($jobClass, $path);
+        foreach (array_keys(BatchConfig::FEATURE_JOBS) as $path) {
+            $job = BatchConfig::jobAsDispatched($path);
 
             if (! BatchConfig::jobLandsOnConnectionDefaultQueue($job)) {
                 $queuesByConnection[BatchConfig::jobConnectionName($job)][(string) BatchConfig::jobQueueName($job)] = true;

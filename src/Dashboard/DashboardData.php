@@ -177,7 +177,7 @@ class DashboardData
             fn (int $count): bool => $count >= $maxPerFeature * self::NEAR_CAPACITY_RATIO
         );
 
-        $batchJob = BatchConfig::jobAsDispatched(SendBatchToRanetraceJob::class, 'ranetrace.batch');
+        $batchJob = BatchConfig::jobAsDispatched('ranetrace.batch');
 
         $healthy = ! $isGloballyPaused
             && ! $anyBufferNearCapacity

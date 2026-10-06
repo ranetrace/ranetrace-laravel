@@ -6,7 +6,13 @@ namespace Ranetrace\Laravel\Support;
 
 use Illuminate\Contracts\Cache\Repository;
 use Illuminate\Support\Facades\Cache;
+use InvalidArgumentException;
 use Ranetrace\Laravel\Jobs\BaseRanetraceJob;
+use Ranetrace\Laravel\Jobs\HandleErrorJob;
+use Ranetrace\Laravel\Jobs\HandleEventJob;
+use Ranetrace\Laravel\Jobs\HandleJavaScriptErrorJob;
+use Ranetrace\Laravel\Jobs\HandleLogJob;
+use Ranetrace\Laravel\Jobs\HandlePageVisitJob;
 use Ranetrace\Laravel\Jobs\SendBatchToRanetraceJob;
 use ReflectionClass;
 
@@ -24,6 +30,20 @@ use ReflectionClass;
  */
 final class BatchConfig
 {
+    /**
+     * Each feature's config path and the job its queue name applies to.
+     *
+     * @var array<string, class-string<BaseRanetraceJob|SendBatchToRanetraceJob>>
+     */
+    public const array FEATURE_JOBS = [
+        'ranetrace.batch' => SendBatchToRanetraceJob::class,
+        'ranetrace.errors' => HandleErrorJob::class,
+        'ranetrace.events' => HandleEventJob::class,
+        'ranetrace.logging' => HandleLogJob::class,
+        'ranetrace.javascript_errors' => HandleJavaScriptErrorJob::class,
+        'ranetrace.website_analytics' => HandlePageVisitJob::class,
+    ];
+
     /**
      * What the status output, the checks and the dashboard add after a store
      * name that came from `cache.default` rather than from Ranetrace's config.
@@ -144,13 +164,13 @@ final class BatchConfig
      * alone and the constructors' payload arguments play no part in where the
      * job lands.
      *
-     * @template TJob of BaseRanetraceJob|SendBatchToRanetraceJob
-     *
-     * @param  class-string<TJob>  $jobClass
-     * @return TJob
+     * @throws InvalidArgumentException When no job belongs to the path.
      */
-    public static function jobAsDispatched(string $jobClass, string $featureConfigPath): BaseRanetraceJob|SendBatchToRanetraceJob
+    public static function jobAsDispatched(string $featureConfigPath): BaseRanetraceJob|SendBatchToRanetraceJob
     {
+        $jobClass = self::FEATURE_JOBS[$featureConfigPath]
+            ?? throw new InvalidArgumentException("No Ranetrace job is dispatched for [{$featureConfigPath}].");
+
         $job = (new ReflectionClass($jobClass))->newInstanceWithoutConstructor();
         $job->onQueue(self::featureQueueName($featureConfigPath));
 
@@ -178,12 +198,19 @@ final class BatchConfig
     }
 
     /**
-     * A feature's configured queue as the test commands print it, read from
-     * `{$featureConfigPath}.queue_name` (for example `ranetrace.errors`).
+     * Where a feature's job lands, as the test commands print it, for a
+     * feature config path such as `ranetrace.errors`. It follows queue routes
+     * and forwards so the commands agree with the status output.
      */
     public static function describeFeatureQueue(string $featureConfigPath): string
     {
-        return self::describeQueue(self::featureQueueName($featureConfigPath));
+        $job = self::jobAsDispatched($featureConfigPath);
+
+        return self::describeQueue(
+            self::jobLandingQueueName($job),
+            self::jobConnectionName($job),
+            self::featureQueueName($featureConfigPath),
+        );
     }
 
     /**
