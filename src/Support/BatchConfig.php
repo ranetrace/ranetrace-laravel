@@ -6,6 +6,8 @@ namespace Ranetrace\Laravel\Support;
 
 use Illuminate\Contracts\Cache\Repository;
 use Illuminate\Support\Facades\Cache;
+use Ranetrace\Laravel\Jobs\BaseRanetraceJob;
+use Ranetrace\Laravel\Jobs\SendBatchToRanetraceJob;
 
 /**
  * The batch pipeline's cache store and the queues Ranetrace jobs go to, read
@@ -86,16 +88,54 @@ final class BatchConfig
     }
 
     /**
-     * The default queue of the connection Ranetrace jobs are dispatched on,
-     * which is the app's default connection: no job sets its own. Null when
-     * that connection names no queue.
+     * The default queue of a queue connection, or null when that connection
+     * names no queue.
      */
-    public static function connectionDefaultQueueName(): ?string
+    public static function connectionDefaultQueueName(string $connectionName): ?string
     {
-        $connection = config('queue.default');
-        $queue = config("queue.connections.{$connection}.queue");
+        $queue = config("queue.connections.{$connectionName}.queue");
 
         return filled($queue) ? (string) $queue : null;
+    }
+
+    /**
+     * The connection a Ranetrace job is dispatched on, resolved the way the bus
+     * dispatcher resolves it: the job's own connection (none of Ranetrace's
+     * jobs sets one), else the connection a queue route registered for the
+     * job's class, a parent, an interface or a trait names, or the connection
+     * the job's queue is forwarded to, else `queue.default`.
+     */
+    public static function jobConnectionName(BaseRanetraceJob|SendBatchToRanetraceJob $job): string
+    {
+        return $job->connection
+            ?? self::queueRoutes()?->getConnection($job)
+            ?? (string) config('queue.default');
+    }
+
+    /**
+     * The queue a Ranetrace job is pushed to, before forwards apply, or null
+     * for its connection's default queue: the job's own queue, which its
+     * constructor sets to the feature's queue name, else the queue a queue
+     * route for the job names.
+     */
+    public static function jobQueueName(BaseRanetraceJob|SendBatchToRanetraceJob $job): ?string
+    {
+        return $job->queue ?? self::queueRoutes()?->getQueue($job);
+    }
+
+    /**
+     * Whether a Ranetrace job lands on the queue that `queue:work` without
+     * `--queue` drains on the job's connection. A connection forwards both
+     * the queue a job is pushed to and the queue a worker pops from, so both
+     * are compared after their forwards.
+     */
+    public static function jobLandsOnConnectionDefaultQueue(BaseRanetraceJob|SendBatchToRanetraceJob $job): bool
+    {
+        $connectionName = self::jobConnectionName($job);
+        $defaultQueue = self::connectionDefaultQueueName($connectionName);
+
+        return self::forwardedQueueName(self::jobQueueName($job) ?? $defaultQueue, $connectionName)
+            === self::forwardedQueueName($defaultQueue, $connectionName);
     }
 
     /**
@@ -104,5 +144,30 @@ final class BatchConfig
     public static function describeQueue(?string $name): string
     {
         return $name ?? self::CONNECTION_DEFAULT_QUEUE;
+    }
+
+    /**
+     * The queue a connection really uses for a queue name once queue forwards
+     * apply.
+     */
+    private static function forwardedQueueName(?string $queue, string $connectionName): ?string
+    {
+        $routes = self::queueRoutes();
+
+        if ($queue === null || $routes === null || ! method_exists($routes, 'forwardedQueue')) {
+            return $queue;
+        }
+
+        return $routes->forwardedQueue($queue, $connectionName);
+    }
+
+    /**
+     * The host's queue routes, or null where the framework has none (Laravel
+     * 12). Untyped because `Illuminate\Queue\QueueRoutes` does not exist
+     * there either.
+     */
+    private static function queueRoutes(): mixed
+    {
+        return app()->bound('queue.routes') ? app('queue.routes') : null;
     }
 }

@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\Queue;
 use Ranetrace\Laravel\Dashboard\Checks\CheckLevel;
 use Ranetrace\Laravel\Dashboard\DashboardData;
+use Ranetrace\Laravel\Jobs\BaseRanetraceJob;
+use Ranetrace\Laravel\Jobs\HandleEventJob;
 use Ranetrace\Laravel\Services\RanetraceBatchBuffer;
 
 beforeEach(function (): void {
@@ -157,6 +160,147 @@ test('queue worker check judges a queue name against the default connection, not
     Config::set('queue.connections.database.queue', 'jobs');
     Config::set('ranetrace.batch.queue_name', 'jobs');
 
+    expect(runChecks()['queue_worker']->level)->toBe(CheckLevel::Warn);
+});
+
+test('queue worker check names a non-default queue on the default connection without a connection', function (): void {
+    Config::set('ranetrace.batch.queue_name', 'ranetrace');
+
+    $result = runChecks()['queue_worker'];
+
+    expect($result->level)->toBe(CheckLevel::Warn)
+        ->and($result->title)->toBe('Non-default queue(s): ranetrace')
+        ->and($result->remediation)->toBe('Make sure a worker processes these queues, e.g. `queue:work --queue=ranetrace`.');
+});
+
+/**
+ * The default connection is `database` with its default queue `jobs`, and
+ * `redis` is another connection whose default queue is `high`.
+ */
+function useTwoQueueConnections(): void
+{
+    Config::set('queue.default', 'database');
+    Config::set('queue.connections.database.queue', 'jobs');
+    Config::set('queue.connections.redis.queue', 'high');
+}
+
+$withoutQueueRoutes = fn (): bool => ! app()->bound('queue.routes');
+$queueRoutesSkipReason = 'Queue routes arrived in Laravel 13, so on Laravel 12 no host can route a job away from the default connection.';
+
+test('queue worker check passes a queue name equal to the default queue of the connection the job is routed to', function (): void {
+    useTwoQueueConnections();
+    Config::set('ranetrace.events.queue_name', 'high');
+    Queue::route(HandleEventJob::class, connection: 'redis');
+
+    expect(runChecks()['queue_worker']->level)->toBe(CheckLevel::Pass);
+})->skip($withoutQueueRoutes, $queueRoutesSkipReason);
+
+test('queue worker check warns about the default connection\'s queue on a job routed to a connection whose default queue is another', function (): void {
+    useTwoQueueConnections();
+    Config::set('ranetrace.events.queue_name', 'jobs');
+    Queue::route(HandleEventJob::class, connection: 'redis');
+
+    $result = runChecks()['queue_worker'];
+
+    expect($result->level)->toBe(CheckLevel::Warn)
+        ->and($result->title)->toBe('Non-default queue(s): jobs on redis')
+        ->and($result->remediation)->toBe('Make sure a worker processes these queues, e.g. `queue:work redis --queue=jobs`.');
+})->skip($withoutQueueRoutes, $queueRoutesSkipReason);
+
+test('queue worker check warns about a queue a route names when the feature names none', function (): void {
+    useTwoQueueConnections();
+    Queue::route(HandleEventJob::class, 'ranetrace');
+
+    $result = runChecks()['queue_worker'];
+
+    expect($result->level)->toBe(CheckLevel::Warn)
+        ->and($result->title)->toBe('Non-default queue(s): ranetrace')
+        ->and($result->remediation)->toBe('Make sure a worker processes these queues, e.g. `queue:work --queue=ranetrace`.');
+})->skip($withoutQueueRoutes, $queueRoutesSkipReason);
+
+test('queue worker check passes a job routed to another connection with no queue named', function (): void {
+    useTwoQueueConnections();
+    Queue::route(HandleEventJob::class, connection: 'redis');
+
+    expect(runChecks()['queue_worker']->level)->toBe(CheckLevel::Pass);
+})->skip($withoutQueueRoutes, $queueRoutesSkipReason);
+
+test('queue worker check lets a feature queue name win over the queue a route names', function (): void {
+    useTwoQueueConnections();
+    Config::set('ranetrace.events.queue_name', 'jobs');
+    Queue::route(HandleEventJob::class, 'ranetrace');
+
+    expect(runChecks()['queue_worker']->level)->toBe(CheckLevel::Pass);
+})->skip($withoutQueueRoutes, $queueRoutesSkipReason);
+
+test('queue worker check follows a route registered on a parent class or an interface of the jobs', function (string $routedClass): void {
+    useTwoQueueConnections();
+    Queue::route($routedClass, 'high', 'redis');
+
+    expect(runChecks()['queue_worker']->level)->toBe(CheckLevel::Pass);
+
+    Queue::route($routedClass, 'ranetrace', 'redis');
+
+    $result = runChecks()['queue_worker'];
+
+    expect($result->level)->toBe(CheckLevel::Warn)
+        ->and($result->title)->toBe('Non-default queue(s): ranetrace on redis');
+})->with([
+    'parent class' => [BaseRanetraceJob::class],
+    'interface' => [Illuminate\Contracts\Queue\ShouldQueue::class],
+])->skip($withoutQueueRoutes, $queueRoutesSkipReason);
+
+test('queue worker check reads each feature queue name for the job that feature dispatches', function (string $routedJob, string $configPath): void {
+    useTwoQueueConnections();
+    Config::set("{$configPath}.queue_name", 'high');
+    Queue::route($routedJob, connection: 'redis');
+
+    expect(runChecks()['queue_worker']->level)->toBe(CheckLevel::Pass);
+})->with([
+    'batch' => [Ranetrace\Laravel\Jobs\SendBatchToRanetraceJob::class, 'ranetrace.batch'],
+    'errors' => [Ranetrace\Laravel\Jobs\HandleErrorJob::class, 'ranetrace.errors'],
+    'events' => [HandleEventJob::class, 'ranetrace.events'],
+    'logging' => [Ranetrace\Laravel\Jobs\HandleLogJob::class, 'ranetrace.logging'],
+    'javascript errors' => [Ranetrace\Laravel\Jobs\HandleJavaScriptErrorJob::class, 'ranetrace.javascript_errors'],
+    'website analytics' => [Ranetrace\Laravel\Jobs\HandlePageVisitJob::class, 'ranetrace.website_analytics'],
+])->skip($withoutQueueRoutes, $queueRoutesSkipReason);
+
+test('queue worker check groups the queues to drain by connection', function (): void {
+    useTwoQueueConnections();
+    Config::set('ranetrace.batch.queue_name', 'ranetrace');
+    Config::set('ranetrace.events.queue_name', 'ranetrace');
+    Queue::route(HandleEventJob::class, connection: 'redis');
+
+    $result = runChecks()['queue_worker'];
+
+    expect($result->title)->toBe('Non-default queue(s): ranetrace, ranetrace on redis')
+        ->and($result->remediation)->toBe('Make sure a worker processes these queues, e.g. `queue:work --queue=ranetrace` and `queue:work redis --queue=ranetrace`.');
+})->skip($withoutQueueRoutes, $queueRoutesSkipReason);
+
+test('queue worker check passes a queue name forwarded to the connection default queue', function (): void {
+    useTwoQueueConnections();
+    Config::set('ranetrace.events.queue_name', 'ranetrace');
+    Queue::forward('ranetrace', 'jobs');
+
+    expect(runChecks()['queue_worker']->level)->toBe(CheckLevel::Pass);
+})->skip(fn (): bool => ! method_exists(app('queue'), 'forward'), 'This Laravel version has no queue forwards.');
+
+test('queue worker check follows a queue name forwarded to another connection', function (): void {
+    useTwoQueueConnections();
+    Config::set('ranetrace.events.queue_name', 'ranetrace');
+    Queue::forward('ranetrace', 'high', 'redis');
+
+    expect(runChecks()['queue_worker']->level)->toBe(CheckLevel::Pass);
+})->skip(fn (): bool => ! method_exists(app('queue'), 'forward'), 'This Laravel version has no queue forwards.');
+
+test('queue worker check judges the default connection when queue routes are not bound', function (): void {
+    useTwoQueueConnections();
+    app()->offsetUnset('queue.routes');
+
+    Config::set('ranetrace.events.queue_name', 'jobs');
+    expect(runChecks()['queue_worker']->level)->toBe(CheckLevel::Pass);
+
+    Config::set('ranetrace.events.queue_name', 'high');
     expect(runChecks()['queue_worker']->level)->toBe(CheckLevel::Warn);
 });
 

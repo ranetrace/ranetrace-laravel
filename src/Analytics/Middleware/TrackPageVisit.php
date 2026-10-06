@@ -383,10 +383,10 @@ class TrackPageVisit
      * Whether the connection the visit job will be dispatched on honours a
      * delay, which is what the beacon needs to have time to answer.
      *
-     * The connection is resolved the way the bus dispatcher resolves it: the
-     * job's own connection if one is set, else a queue route the host
-     * registered for the job, else the default connection. The check is on the
-     * resolved instance rather than on the configured driver name, because
+     * The connection is resolved the way the bus dispatcher resolves it, by
+     * `BatchConfig::jobConnectionName()`, which follows a queue route the host
+     * registered for the job. The check is on the resolved instance rather
+     * than on the configured driver name, because
      * `DeferredQueue` and `BackgroundQueue` both extend `SyncQueue` and inherit
      * the `later()` that ignores the delay, so one instanceof also covers any
      * future driver built the same way. Resolving is not an extra cost: the
@@ -406,10 +406,7 @@ class TrackPageVisit
      */
     private function canHoldVisit(HandlePageVisitJob $job): bool
     {
-        $connectionName = $job->connection
-            ?? (app()->bound('queue.routes') ? app('queue.routes')->getConnection($job) : null);
-
-        return ! app('queue')->connection($connectionName) instanceof SyncQueue;
+        return ! app('queue')->connection(BatchConfig::jobConnectionName($job)) instanceof SyncQueue;
     }
 
     /**
