@@ -97,8 +97,7 @@ test('the dashboard names the app default store for an unset batch cache driver'
     $response = $this->get('/ranetrace');
 
     $response->assertOk();
-    expect($response->getContent())
-        ->toMatch('/Cache driver<\/span>\s*<span class="rt-kv__val rt-kv__val--mono">array \(the app&#039;s default store\)<\/span>/');
+    expect(configPanelValue($response->getContent(), 'Cache driver'))->toBe("array (the app's default store)");
 })->with('unset batch values');
 
 test('ranetrace:status names the app default store for an unset batch cache driver', function (?string $unsetValue): void {
@@ -129,8 +128,7 @@ test('ranetrace:status names the connection default queue for an unset batch que
 test('the dashboard names the connection default queue for an unset batch queue name', function (?string $unsetValue): void {
     Config::set('ranetrace.batch.queue_name', $unsetValue);
 
-    expect($this->get('/ranetrace')->getContent())
-        ->toMatch('/Batch queue<\/span>\s*<span class="rt-kv__val rt-kv__val--mono">the connection&#039;s default queue<\/span>/');
+    expect(configPanelValue($this->get('/ranetrace')->getContent(), 'Batch queue'))->toBe("the connection's default queue");
 })->with('unset batch values');
 
 test('a batch job with an unset queue name goes to the connection default queue', function (?string $unsetValue): void {

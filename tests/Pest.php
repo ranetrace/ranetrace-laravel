@@ -106,3 +106,14 @@ function withoutQueueForwards(): bool
 {
     return ! method_exists(app('queue'), 'forward');
 }
+
+/**
+ * The value the dashboard's Configuration panel shows beside a label, as
+ * decoded text, or an empty string when the label is absent.
+ */
+function configPanelValue(string $html, string $label): string
+{
+    preg_match('/'.preg_quote($label, '/').'<\/span>\s*<span class="rt-kv__val rt-kv__val--mono">([^<]*)<\/span>/', $html, $matches);
+
+    return html_entity_decode($matches[1] ?? '', ENT_QUOTES);
+}

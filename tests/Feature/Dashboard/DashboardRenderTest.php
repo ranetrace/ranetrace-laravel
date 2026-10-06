@@ -99,9 +99,8 @@ test('the configuration panel names the batch cache store and queue it was given
         'status' => ['config' => ['cache_driver' => 'redis', 'cache_driver_is_app_default' => false, 'queue_name' => 'ranetrace', 'queue_landing' => 'ranetrace', 'queue_connection' => config('queue.default')]],
     ])->render();
 
-    expect($html)
-        ->toMatch('/Cache driver<\/span>\s*<span class="rt-kv__val rt-kv__val--mono">redis<\/span>/')
-        ->toMatch('/Batch queue<\/span>\s*<span class="rt-kv__val rt-kv__val--mono">ranetrace<\/span>/');
+    expect(configPanelValue($html, 'Cache driver'))->toBe('redis')
+        ->and(configPanelValue($html, 'Batch queue'))->toBe('ranetrace');
 });
 
 test('a dashboard whose batch cache driver and queue name are blank has no em-dash anywhere', function (): void {

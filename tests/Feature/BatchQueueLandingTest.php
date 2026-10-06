@@ -6,7 +6,6 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Queue;
-use Illuminate\Testing\TestResponse;
 use Ranetrace\Laravel\Dashboard\DashboardData;
 use Ranetrace\Laravel\Jobs\HandleEventJob;
 use Ranetrace\Laravel\Jobs\SendBatchToRanetraceJob;
@@ -32,16 +31,6 @@ function statusJsonConfig(): array
     return json_decode(mb_trim(Artisan::output()), true)['config'];
 }
 
-/**
- * The value the dashboard's Configuration panel shows for the batch queue.
- */
-function dashboardBatchQueue(TestResponse $response): string
-{
-    preg_match('/Batch queue<\/span>\s*<span class="rt-kv__val rt-kv__val--mono">([^<]*)<\/span>/', $response->getContent(), $matches);
-
-    return html_entity_decode($matches[1] ?? '', ENT_QUOTES);
-}
-
 test('status and dashboard name the queue and connection a route sends the batch job to', function (): void {
     Queue::route(SendBatchToRanetraceJob::class, 'ranetrace', 'redis');
 
@@ -51,7 +40,7 @@ test('status and dashboard name the queue and connection a route sends the batch
 
     expect(statusJsonConfig())
         ->toMatchArray(['queue_name' => null, 'queue_landing' => 'ranetrace', 'queue_connection' => 'redis'])
-        ->and(dashboardBatchQueue($this->get('/ranetrace')))->toBe('ranetrace on redis');
+        ->and(configPanelValue($this->get('/ranetrace')->getContent(), 'Batch queue'))->toBe('ranetrace on redis');
 })->skip(withoutQueueRoutes(...), QUEUE_ROUTES_SKIP_REASON);
 
 test('status and dashboard name a configured batch queue on the default connection without a connection', function (): void {
@@ -63,7 +52,7 @@ test('status and dashboard name a configured batch queue on the default connecti
 
     expect(statusJsonConfig())
         ->toMatchArray(['queue_name' => 'ranetrace', 'queue_landing' => 'ranetrace', 'queue_connection' => 'database'])
-        ->and(dashboardBatchQueue($this->get('/ranetrace')))->toBe('ranetrace');
+        ->and(configPanelValue($this->get('/ranetrace')->getContent(), 'Batch queue'))->toBe('ranetrace');
 });
 
 test('status and dashboard name the connection default queue when nothing names a batch queue', function (): void {
@@ -73,7 +62,7 @@ test('status and dashboard name the connection default queue when nothing names 
 
     expect(statusJsonConfig())
         ->toMatchArray(['queue_name' => null, 'queue_landing' => null, 'queue_connection' => 'database'])
-        ->and(dashboardBatchQueue($this->get('/ranetrace')))->toBe("the connection's default queue");
+        ->and(configPanelValue($this->get('/ranetrace')->getContent(), 'Batch queue'))->toBe("the connection's default queue");
 });
 
 test('a route that names only a connection lands the batch job on that connection default queue', function (): void {
@@ -85,7 +74,7 @@ test('a route that names only a connection lands the batch job on that connectio
 
     expect(statusJsonConfig())
         ->toMatchArray(['queue_name' => null, 'queue_landing' => null, 'queue_connection' => 'redis'])
-        ->and(dashboardBatchQueue($this->get('/ranetrace')))->toBe('the default queue on redis');
+        ->and(configPanelValue($this->get('/ranetrace')->getContent(), 'Batch queue'))->toBe('the default queue on redis');
 })->skip(withoutQueueRoutes(...), QUEUE_ROUTES_SKIP_REASON);
 
 test('a route to the default connection names the queue without a connection', function (): void {
@@ -132,7 +121,7 @@ test('a forwarded batch queue is named where it lands and where it was forwarded
 
     expect(statusJsonConfig())
         ->toMatchArray(['queue_name' => 'ranetrace', 'queue_landing' => 'jobs', 'queue_connection' => 'database'])
-        ->and(dashboardBatchQueue($this->get('/ranetrace')))->toBe('jobs (forwarded from ranetrace)');
+        ->and(configPanelValue($this->get('/ranetrace')->getContent(), 'Batch queue'))->toBe('jobs (forwarded from ranetrace)');
 })->skip(withoutQueueForwards(...), QUEUE_FORWARDS_SKIP_REASON);
 
 test('a batch queue forwarded to another connection names that connection', function (): void {
