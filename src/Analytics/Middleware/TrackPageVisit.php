@@ -296,9 +296,6 @@ class TrackPageVisit
 
         $throttleSeconds = config('ranetrace.website_analytics.throttle_seconds', 30);
 
-        // Use the Ranetrace cache store (same as the buffer/pause manager) so the
-        // throttle is consistent and actually shared across workers: the host's
-        // default cache may be `array`, which would make this a per-process no-op.
         $throttleStore = BatchConfig::cacheStore();
 
         if ($throttleStore->add($cacheKey, true, now()->addSeconds($throttleSeconds))) {
@@ -386,13 +383,13 @@ class TrackPageVisit
      * The connection is resolved the way the bus dispatcher resolves it, by
      * `BatchConfig::jobConnectionName()`, which follows a queue route the host
      * registered for the job. The check is on the resolved instance rather
-     * than on the configured driver name, because
-     * `DeferredQueue` and `BackgroundQueue` both extend `SyncQueue` and inherit
-     * the `later()` that ignores the delay, so one instanceof also covers any
-     * future driver built the same way. Resolving is not an extra cost: the
-     * queue manager caches the instance and the dispatch reuses it, and a
-     * connection that cannot be resolved would have failed the dispatch anyway
-     * (inside the capture try/catch in handle()).
+     * than on the configured driver name, because `DeferredQueue` and
+     * `BackgroundQueue` both extend `SyncQueue` and inherit the `later()` that
+     * ignores the delay, so one instanceof also covers any future driver built
+     * the same way. Resolving is not an extra cost: the queue manager caches
+     * the instance and the dispatch reuses it, and a connection that cannot be
+     * resolved would have failed the dispatch anyway (inside the capture
+     * try/catch in handle()).
      *
      * This is decided before the dispatch, so it can only judge what the
      * connection is, not where a job will land. A `failover` connection
