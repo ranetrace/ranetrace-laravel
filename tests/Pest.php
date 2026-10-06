@@ -2,12 +2,17 @@
 
 declare(strict_types=1);
 
+use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\File;
 use Pest\Plugins\Tia\Recorder;
 use Pest\Support\Container;
 use Ranetrace\Laravel\Tests\TestCase;
 
 uses(TestCase::class)->in('Browser', 'Contract', 'Feature', 'Unit');
+
+const QUEUE_ROUTES_SKIP_REASON = 'Queue routes arrived in Laravel 13, so on Laravel 12 no host can route a job away from the default connection.';
+
+const QUEUE_FORWARDS_SKIP_REASON = 'This Laravel version has no queue forwards.';
 
 /**
  * Every file under resources/boost, as sorted absolute paths. Swept
@@ -71,4 +76,33 @@ function commentsIn(string $rendered): array
     }
 
     return $found;
+}
+
+/**
+ * The default connection is `database` with its default queue `jobs`, and
+ * `redis` is another connection whose default queue is `high`.
+ */
+function useTwoQueueConnections(): void
+{
+    Config::set('queue.default', 'database');
+    Config::set('queue.connections.database.queue', 'jobs');
+    Config::set('queue.connections.redis.queue', 'high');
+}
+
+/**
+ * Whether this Laravel version lacks queue routes, as a `skip()` condition
+ * alongside QUEUE_ROUTES_SKIP_REASON.
+ */
+function withoutQueueRoutes(): bool
+{
+    return ! app()->bound('queue.routes');
+}
+
+/**
+ * Whether this Laravel version lacks queue forwards, as a `skip()` condition
+ * alongside QUEUE_FORWARDS_SKIP_REASON.
+ */
+function withoutQueueForwards(): bool
+{
+    return ! method_exists(app('queue'), 'forward');
 }

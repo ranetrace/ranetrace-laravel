@@ -180,27 +180,13 @@ test('queue worker check names a non-default queue on the default connection wit
         ->and($result->remediation)->toBe('Make sure a worker processes these queues, e.g. `queue:work --queue=ranetrace`.');
 });
 
-/**
- * The default connection is `database` with its default queue `jobs`, and
- * `redis` is another connection whose default queue is `high`.
- */
-function useTwoQueueConnections(): void
-{
-    Config::set('queue.default', 'database');
-    Config::set('queue.connections.database.queue', 'jobs');
-    Config::set('queue.connections.redis.queue', 'high');
-}
-
-$withoutQueueRoutes = fn (): bool => ! app()->bound('queue.routes');
-$queueRoutesSkipReason = 'Queue routes arrived in Laravel 13, so on Laravel 12 no host can route a job away from the default connection.';
-
 test('queue worker check passes a queue name equal to the default queue of the connection the job is routed to', function (): void {
     useTwoQueueConnections();
     Config::set('ranetrace.events.queue_name', 'high');
     Queue::route(HandleEventJob::class, connection: 'redis');
 
     expect(runChecks()['queue_worker']->level)->toBe(CheckLevel::Pass);
-})->skip($withoutQueueRoutes, $queueRoutesSkipReason);
+})->skip(withoutQueueRoutes(...), QUEUE_ROUTES_SKIP_REASON);
 
 test('queue worker check warns about the default connection\'s queue on a job routed to a connection whose default queue is another', function (): void {
     useTwoQueueConnections();
@@ -212,7 +198,7 @@ test('queue worker check warns about the default connection\'s queue on a job ro
     expect($result->level)->toBe(CheckLevel::Warn)
         ->and($result->title)->toBe('Non-default queue(s): jobs on redis')
         ->and($result->remediation)->toBe('Make sure a worker processes these queues, e.g. `queue:work redis --queue=jobs`.');
-})->skip($withoutQueueRoutes, $queueRoutesSkipReason);
+})->skip(withoutQueueRoutes(...), QUEUE_ROUTES_SKIP_REASON);
 
 test('queue worker check warns about a queue a route names when the feature names none', function (): void {
     useTwoQueueConnections();
@@ -223,14 +209,14 @@ test('queue worker check warns about a queue a route names when the feature name
     expect($result->level)->toBe(CheckLevel::Warn)
         ->and($result->title)->toBe('Non-default queue(s): ranetrace')
         ->and($result->remediation)->toBe('Make sure a worker processes these queues, e.g. `queue:work --queue=ranetrace`.');
-})->skip($withoutQueueRoutes, $queueRoutesSkipReason);
+})->skip(withoutQueueRoutes(...), QUEUE_ROUTES_SKIP_REASON);
 
 test('queue worker check passes a job routed to another connection with no queue named', function (): void {
     useTwoQueueConnections();
     Queue::route(HandleEventJob::class, connection: 'redis');
 
     expect(runChecks()['queue_worker']->level)->toBe(CheckLevel::Pass);
-})->skip($withoutQueueRoutes, $queueRoutesSkipReason);
+})->skip(withoutQueueRoutes(...), QUEUE_ROUTES_SKIP_REASON);
 
 test('queue worker check lets a feature queue name win over the queue a route names', function (): void {
     useTwoQueueConnections();
@@ -238,7 +224,7 @@ test('queue worker check lets a feature queue name win over the queue a route na
     Queue::route(HandleEventJob::class, 'ranetrace');
 
     expect(runChecks()['queue_worker']->level)->toBe(CheckLevel::Pass);
-})->skip($withoutQueueRoutes, $queueRoutesSkipReason);
+})->skip(withoutQueueRoutes(...), QUEUE_ROUTES_SKIP_REASON);
 
 test('queue worker check follows a route registered on a parent class or an interface of the jobs', function (string $routedClass): void {
     useTwoQueueConnections();
@@ -255,7 +241,7 @@ test('queue worker check follows a route registered on a parent class or an inte
 })->with([
     'parent class' => [BaseRanetraceJob::class],
     'interface' => [ShouldQueue::class],
-])->skip($withoutQueueRoutes, $queueRoutesSkipReason);
+])->skip(withoutQueueRoutes(...), QUEUE_ROUTES_SKIP_REASON);
 
 test('queue worker check reads each feature queue name for the job that feature dispatches', function (string $routedJob, string $configPath): void {
     useTwoQueueConnections();
@@ -270,7 +256,7 @@ test('queue worker check reads each feature queue name for the job that feature 
     'logging' => [HandleLogJob::class, 'ranetrace.logging'],
     'javascript errors' => [HandleJavaScriptErrorJob::class, 'ranetrace.javascript_errors'],
     'website analytics' => [HandlePageVisitJob::class, 'ranetrace.website_analytics'],
-])->skip($withoutQueueRoutes, $queueRoutesSkipReason);
+])->skip(withoutQueueRoutes(...), QUEUE_ROUTES_SKIP_REASON);
 
 test('queue worker check groups the queues to drain by connection', function (): void {
     useTwoQueueConnections();
@@ -282,7 +268,7 @@ test('queue worker check groups the queues to drain by connection', function ():
 
     expect($result->title)->toBe('Non-default queue(s): ranetrace, ranetrace on redis')
         ->and($result->remediation)->toBe('Make sure a worker processes these queues, e.g. `queue:work --queue=ranetrace` and `queue:work redis --queue=ranetrace`.');
-})->skip($withoutQueueRoutes, $queueRoutesSkipReason);
+})->skip(withoutQueueRoutes(...), QUEUE_ROUTES_SKIP_REASON);
 
 test('queue worker check passes a queue name forwarded to the connection default queue', function (): void {
     useTwoQueueConnections();
@@ -290,7 +276,7 @@ test('queue worker check passes a queue name forwarded to the connection default
     Queue::forward('ranetrace', 'jobs');
 
     expect(runChecks()['queue_worker']->level)->toBe(CheckLevel::Pass);
-})->skip(fn (): bool => ! method_exists(app('queue'), 'forward'), 'This Laravel version has no queue forwards.');
+})->skip(withoutQueueForwards(...), QUEUE_FORWARDS_SKIP_REASON);
 
 test('queue worker check follows a queue name forwarded to another connection', function (): void {
     useTwoQueueConnections();
@@ -298,7 +284,7 @@ test('queue worker check follows a queue name forwarded to another connection', 
     Queue::forward('ranetrace', 'high', 'redis');
 
     expect(runChecks()['queue_worker']->level)->toBe(CheckLevel::Pass);
-})->skip(fn (): bool => ! method_exists(app('queue'), 'forward'), 'This Laravel version has no queue forwards.');
+})->skip(withoutQueueForwards(...), QUEUE_FORWARDS_SKIP_REASON);
 
 test('queue worker check judges the default connection when queue routes are not bound', function (): void {
     useTwoQueueConnections();
