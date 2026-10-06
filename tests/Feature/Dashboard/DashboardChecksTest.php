@@ -2,13 +2,20 @@
 
 declare(strict_types=1);
 
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Queue;
+use Ranetrace\Laravel\Dashboard\Checks\CacheDriverCheck;
 use Ranetrace\Laravel\Dashboard\Checks\CheckLevel;
 use Ranetrace\Laravel\Dashboard\DashboardData;
 use Ranetrace\Laravel\Jobs\BaseRanetraceJob;
+use Ranetrace\Laravel\Jobs\HandleErrorJob;
 use Ranetrace\Laravel\Jobs\HandleEventJob;
+use Ranetrace\Laravel\Jobs\HandleJavaScriptErrorJob;
+use Ranetrace\Laravel\Jobs\HandleLogJob;
+use Ranetrace\Laravel\Jobs\HandlePageVisitJob;
+use Ranetrace\Laravel\Jobs\SendBatchToRanetraceJob;
 use Ranetrace\Laravel\Services\RanetraceBatchBuffer;
 
 beforeEach(function (): void {
@@ -90,7 +97,7 @@ test('cache driver check passes a custom-named store on a durable driver', funct
 });
 
 test('cache driver check fails on a store that is not configured, in any environment', function (): void {
-    $check = new Ranetrace\Laravel\Dashboard\Checks\CacheDriverCheck;
+    $check = new CacheDriverCheck;
     $status = ['config' => ['cache_driver' => 'missing', 'cache_driver_is_app_default' => false]];
 
     $result = $check->run($status);
@@ -247,7 +254,7 @@ test('queue worker check follows a route registered on a parent class or an inte
         ->and($result->title)->toBe('Non-default queue(s): ranetrace on redis');
 })->with([
     'parent class' => [BaseRanetraceJob::class],
-    'interface' => [Illuminate\Contracts\Queue\ShouldQueue::class],
+    'interface' => [ShouldQueue::class],
 ])->skip($withoutQueueRoutes, $queueRoutesSkipReason);
 
 test('queue worker check reads each feature queue name for the job that feature dispatches', function (string $routedJob, string $configPath): void {
@@ -257,12 +264,12 @@ test('queue worker check reads each feature queue name for the job that feature 
 
     expect(runChecks()['queue_worker']->level)->toBe(CheckLevel::Pass);
 })->with([
-    'batch' => [Ranetrace\Laravel\Jobs\SendBatchToRanetraceJob::class, 'ranetrace.batch'],
-    'errors' => [Ranetrace\Laravel\Jobs\HandleErrorJob::class, 'ranetrace.errors'],
+    'batch' => [SendBatchToRanetraceJob::class, 'ranetrace.batch'],
+    'errors' => [HandleErrorJob::class, 'ranetrace.errors'],
     'events' => [HandleEventJob::class, 'ranetrace.events'],
-    'logging' => [Ranetrace\Laravel\Jobs\HandleLogJob::class, 'ranetrace.logging'],
-    'javascript errors' => [Ranetrace\Laravel\Jobs\HandleJavaScriptErrorJob::class, 'ranetrace.javascript_errors'],
-    'website analytics' => [Ranetrace\Laravel\Jobs\HandlePageVisitJob::class, 'ranetrace.website_analytics'],
+    'logging' => [HandleLogJob::class, 'ranetrace.logging'],
+    'javascript errors' => [HandleJavaScriptErrorJob::class, 'ranetrace.javascript_errors'],
+    'website analytics' => [HandlePageVisitJob::class, 'ranetrace.website_analytics'],
 ])->skip($withoutQueueRoutes, $queueRoutesSkipReason);
 
 test('queue worker check groups the queues to drain by connection', function (): void {

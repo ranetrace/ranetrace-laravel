@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
 use Ranetrace\Laravel\Dashboard\Checks\CacheDriverCheck;
 use Ranetrace\Laravel\Dashboard\Checks\CheckLevel;
@@ -187,7 +188,7 @@ test('a batch queue name set explicitly is shown as it is', function (): void {
 test('only the batch config resolver reads the batch cache driver and queue name', function (): void {
     $readers = [];
 
-    foreach (Illuminate\Support\Facades\File::allFiles(dirname(__DIR__, 2).'/src') as $file) {
+    foreach (File::allFiles(dirname(__DIR__, 2).'/src') as $file) {
         if (preg_match("/config\(\s*'ranetrace\.batch\.(cache_driver|queue_name)'/", $file->getContents()) === 1) {
             $readers[] = $file->getRelativePathname();
         }

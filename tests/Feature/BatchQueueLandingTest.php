@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Testing\TestResponse;
 use Ranetrace\Laravel\Dashboard\DashboardData;
 use Ranetrace\Laravel\Jobs\HandleEventJob;
 use Ranetrace\Laravel\Jobs\SendBatchToRanetraceJob;
@@ -40,7 +41,7 @@ function statusJsonConfig(): array
 /**
  * The value the dashboard's Configuration panel shows for the batch queue.
  */
-function dashboardBatchQueue(Illuminate\Testing\TestResponse $response): string
+function dashboardBatchQueue(TestResponse $response): string
 {
     preg_match('/Batch queue<\/span>\s*<span class="rt-kv__val rt-kv__val--mono">([^<]*)<\/span>/', $response->getContent(), $matches);
 
