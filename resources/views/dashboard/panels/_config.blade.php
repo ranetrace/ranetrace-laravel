@@ -1,3 +1,4 @@
+@use('Ranetrace\Laravel\Support\BatchConfig')
 @php
     $cfg = $status['config'] ?? [];
     $enabled = $cfg['enabled'] ?? false;
@@ -29,11 +30,11 @@
         </div>
         <div class="rt-kv">
             <span class="rt-kv__key">Cache driver</span>
-            <span class="rt-kv__val rt-kv__val--mono">{{ \Ranetrace\Laravel\Support\BatchConfig::describeCacheStore($cfg['cache_driver'], $cfg['cache_driver_is_app_default']) }}</span>
+            <span class="rt-kv__val rt-kv__val--mono">{{ BatchConfig::describeCacheStore($cfg['cache_driver'], $cfg['cache_driver_is_app_default']) }}</span>
         </div>
         <div class="rt-kv">
             <span class="rt-kv__key">Batch queue</span>
-            <span class="rt-kv__val rt-kv__val--mono">{{ \Ranetrace\Laravel\Support\BatchConfig::describeQueue($cfg['queue_landing'], $cfg['queue_connection'], $cfg['queue_name']) }}</span>
+            <span class="rt-kv__val rt-kv__val--mono">{{ BatchConfig::describeQueue($cfg['queue_landing'], $cfg['queue_connection'], $cfg['queue_name']) }}</span>
         </div>
 
         @foreach ($features as $name => $configKey)
