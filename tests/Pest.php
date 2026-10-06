@@ -108,10 +108,10 @@ function withoutQueueForwards(): bool
 }
 
 /**
- * The value the dashboard's Configuration panel shows beside a label, as
- * decoded text, or an empty string when the label is absent.
+ * The value a dashboard panel shows beside a label, as decoded text, or an
+ * empty string when the label is absent.
  */
-function configPanelValue(string $html, string $label): string
+function dashboardPanelValue(string $html, string $label): string
 {
     preg_match('/'.preg_quote($label, '/').'<\/span>\s*<span class="rt-kv__val rt-kv__val--mono">([^<]*)<\/span>/', $html, $matches);
 

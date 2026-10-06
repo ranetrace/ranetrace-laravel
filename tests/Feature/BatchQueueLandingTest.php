@@ -40,7 +40,7 @@ test('status and dashboard name the queue and connection a route sends the batch
 
     expect(statusJsonConfig())
         ->toMatchArray(['queue_name' => null, 'queue_landing' => 'ranetrace', 'queue_connection' => 'redis'])
-        ->and(configPanelValue($this->get('/ranetrace')->getContent(), 'Batch queue'))->toBe('ranetrace on redis');
+        ->and(dashboardPanelValue($this->get('/ranetrace')->getContent(), 'Batch queue'))->toBe('ranetrace on redis');
 })->skip(withoutQueueRoutes(...), QUEUE_ROUTES_SKIP_REASON);
 
 test('status and dashboard name a configured batch queue on the default connection without a connection', function (): void {
@@ -52,7 +52,7 @@ test('status and dashboard name a configured batch queue on the default connecti
 
     expect(statusJsonConfig())
         ->toMatchArray(['queue_name' => 'ranetrace', 'queue_landing' => 'ranetrace', 'queue_connection' => 'database'])
-        ->and(configPanelValue($this->get('/ranetrace')->getContent(), 'Batch queue'))->toBe('ranetrace');
+        ->and(dashboardPanelValue($this->get('/ranetrace')->getContent(), 'Batch queue'))->toBe('ranetrace');
 });
 
 test('status and dashboard name the connection default queue when nothing names a batch queue', function (): void {
@@ -62,7 +62,7 @@ test('status and dashboard name the connection default queue when nothing names 
 
     expect(statusJsonConfig())
         ->toMatchArray(['queue_name' => null, 'queue_landing' => null, 'queue_connection' => 'database'])
-        ->and(configPanelValue($this->get('/ranetrace')->getContent(), 'Batch queue'))->toBe("the connection's default queue");
+        ->and(dashboardPanelValue($this->get('/ranetrace')->getContent(), 'Batch queue'))->toBe("the connection's default queue");
 });
 
 test('a route that names only a connection lands the batch job on that connection default queue', function (): void {
@@ -74,7 +74,7 @@ test('a route that names only a connection lands the batch job on that connectio
 
     expect(statusJsonConfig())
         ->toMatchArray(['queue_name' => null, 'queue_landing' => null, 'queue_connection' => 'redis'])
-        ->and(configPanelValue($this->get('/ranetrace')->getContent(), 'Batch queue'))->toBe('the default queue on redis');
+        ->and(dashboardPanelValue($this->get('/ranetrace')->getContent(), 'Batch queue'))->toBe('the default queue on redis');
 })->skip(withoutQueueRoutes(...), QUEUE_ROUTES_SKIP_REASON);
 
 test('a route to the default connection names the queue without a connection', function (): void {
@@ -121,7 +121,7 @@ test('a forwarded batch queue is named where it lands and where it was forwarded
 
     expect(statusJsonConfig())
         ->toMatchArray(['queue_name' => 'ranetrace', 'queue_landing' => 'jobs', 'queue_connection' => 'database'])
-        ->and(configPanelValue($this->get('/ranetrace')->getContent(), 'Batch queue'))->toBe('jobs (forwarded from ranetrace)');
+        ->and(dashboardPanelValue($this->get('/ranetrace')->getContent(), 'Batch queue'))->toBe('jobs (forwarded from ranetrace)');
 })->skip(withoutQueueForwards(...), QUEUE_FORWARDS_SKIP_REASON);
 
 test('a batch queue forwarded to another connection names that connection', function (): void {

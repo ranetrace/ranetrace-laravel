@@ -99,20 +99,19 @@ test('the configuration panel names the batch cache store and queue it was given
         'status' => ['config' => ['cache_driver' => 'redis', 'cache_driver_is_app_default' => false, 'queue_name' => 'ranetrace', 'queue_landing' => 'ranetrace', 'queue_connection' => config('queue.default')]],
     ])->render();
 
-    expect(configPanelValue($html, 'Cache driver'))->toBe('redis')
-        ->and(configPanelValue($html, 'Batch queue'))->toBe('ranetrace');
+    expect(dashboardPanelValue($html, 'Cache driver'))->toBe('redis')
+        ->and(dashboardPanelValue($html, 'Batch queue'))->toBe('ranetrace');
 });
 
 test('the environment panel reads unknown for every value it was not given', function (): void {
     $html = view('ranetrace::dashboard.panels._environment')->render();
 
     foreach (['App environment', 'Laravel', 'PHP', 'Queue connection', 'Cache store'] as $label) {
-        expect($html)->toMatch('/'.preg_quote($label, '/').'<\/span>\s*<span class="rt-kv__val rt-kv__val--mono">unknown<\/span>/');
+        expect(dashboardPanelValue($html, $label))->toBe('unknown');
     }
 
-    expect($html)
-        ->toMatch('/Package<\/span>\s*<span class="rt-kv__val rt-kv__val--mono">dev<\/span>/')
-        ->not->toContain("\u{2014}");
+    expect(dashboardPanelValue($html, 'Package'))->toBe('dev')
+        ->and($html)->not->toContain("\u{2014}");
 });
 
 test('a freshly buffered item is shown as waiting, not stalled', function (): void {
