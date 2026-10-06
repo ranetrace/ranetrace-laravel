@@ -54,13 +54,11 @@ test('a captured event with a queue name set is pushed to that queue', function 
     Queue::assertPushed(HandleEventJob::class, fn (HandleEventJob $job): bool => $job->queue === 'ranetrace');
 });
 
-test('every capture job with an unset queue name goes to the connection default queue', function (string $jobClass, string $configPath): void {
-    foreach ([null, '', '  '] as $unsetValue) {
-        Config::set("{$configPath}.queue_name", $unsetValue);
+test('every capture job with an unset queue name goes to the connection default queue', function (string $jobClass, string $configPath, ?string $unsetValue): void {
+    Config::set("{$configPath}.queue_name", $unsetValue);
 
-        expect((new $jobClass([]))->queue)->toBeNull();
-    }
-})->with('capture jobs');
+    expect((new $jobClass([]))->queue)->toBeNull();
+})->with('capture jobs')->with('unset feature queue names');
 
 test('every capture job uses its feature queue name as it is set', function (string $jobClass, string $configPath): void {
     Config::set("{$configPath}.queue_name", 'ranetrace');
