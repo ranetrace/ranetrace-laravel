@@ -6,8 +6,11 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Queue;
+use Ranetrace\Laravel\Dashboard\Checks\ApiKeyCheck;
 use Ranetrace\Laravel\Dashboard\Checks\CacheDriverCheck;
+use Ranetrace\Laravel\Dashboard\Checks\Check;
 use Ranetrace\Laravel\Dashboard\Checks\CheckLevel;
+use Ranetrace\Laravel\Dashboard\Checks\CheckResult;
 use Ranetrace\Laravel\Dashboard\DashboardData;
 use Ranetrace\Laravel\Jobs\BaseRanetraceJob;
 use Ranetrace\Laravel\Jobs\HandleErrorJob;
@@ -26,7 +29,7 @@ beforeEach(function (): void {
 /**
  * Index the check results by their stable name for easy assertions.
  *
- * @return array<string, Ranetrace\Laravel\Dashboard\Checks\CheckResult>
+ * @return array<string, CheckResult>
  */
 function runChecks(): array
 {
@@ -306,7 +309,7 @@ test('internal logging check warns when internal logging is disabled', function 
 test('a check that throws is skipped, never breaking the set', function (): void {
     Config::set('ranetrace.dashboard.checks', [
         ThrowingCheck::class,
-        Ranetrace\Laravel\Dashboard\Checks\ApiKeyCheck::class,
+        ApiKeyCheck::class,
     ]);
 
     $data = app(DashboardData::class);
@@ -327,9 +330,9 @@ test('the volatile cache driver advice speaks in two sentences, with no em-dash'
         ->not->toContain("\u{2014}");
 });
 
-class ThrowingCheck implements Ranetrace\Laravel\Dashboard\Checks\Check
+class ThrowingCheck implements Check
 {
-    public function run(array $status): Ranetrace\Laravel\Dashboard\Checks\CheckResult
+    public function run(array $status): CheckResult
     {
         throw new RuntimeException('boom');
     }
