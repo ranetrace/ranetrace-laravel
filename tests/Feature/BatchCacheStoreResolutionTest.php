@@ -183,11 +183,11 @@ test('a batch queue name set explicitly is shown as it is', function (): void {
     expect((new SendBatchToRanetraceJob('events'))->queue)->toBe('ranetrace');
 });
 
-test('only the batch config resolver reads the batch cache driver and queue name', function (): void {
+test('only the batch config resolver reads the batch cache driver or a queue name from config', function (): void {
     $readers = [];
 
     foreach (File::allFiles(dirname(__DIR__, 2).'/src') as $file) {
-        if (preg_match("/config\(\s*'ranetrace\.batch\.(cache_driver|queue_name)'/", $file->getContents()) === 1) {
+        if (preg_match('/config\([^;\n]*(queue_name|batch\.cache_driver)/', $file->getContents()) === 1) {
             $readers[] = $file->getRelativePathname();
         }
     }

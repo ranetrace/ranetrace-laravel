@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Config;
-use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Queue;
 use Ranetrace\Laravel\Dashboard\Checks\CheckLevel;
 use Ranetrace\Laravel\Dashboard\Checks\QueueWorkerCheck;
@@ -120,15 +119,3 @@ test('the queue worker check does not count an unset feature queue name as a que
 
     expect($result->level)->toBe(CheckLevel::Pass);
 })->with('unset feature queue names');
-
-test('only the batch config resolver reads a queue name from config', function (): void {
-    $readers = [];
-
-    foreach (File::allFiles(dirname(__DIR__, 2).'/src') as $file) {
-        if (preg_match('/config\([^;\n]*queue_name/', $file->getContents()) === 1) {
-            $readers[] = $file->getRelativePathname();
-        }
-    }
-
-    expect($readers)->toBe(['Support/BatchConfig.php']);
-});
