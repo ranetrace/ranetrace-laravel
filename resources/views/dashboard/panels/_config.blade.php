@@ -33,7 +33,7 @@
         </div>
         <div class="rt-kv">
             <span class="rt-kv__key">Batch queue</span>
-            <span class="rt-kv__val rt-kv__val--mono">{{ \Ranetrace\Laravel\Support\BatchConfig::describeQueue($cfg['queue_name']) }}</span>
+            <span class="rt-kv__val rt-kv__val--mono">{{ \Ranetrace\Laravel\Support\BatchConfig::describeQueue($cfg['queue_landing'], $cfg['queue_connection'], $cfg['queue_name']) }}</span>
         </div>
 
         @foreach ($features as $name => $configKey)

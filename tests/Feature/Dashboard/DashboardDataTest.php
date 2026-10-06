@@ -25,7 +25,7 @@ test('collectStatus returns the canonical status structure', function (): void {
         ->and($status['buffers'])->toHaveKeys(['total', 'max_per_feature', 'features'])
         ->and($status['buffers']['features'])->toHaveKeys(RanetraceBatchBuffer::TYPES)
         ->and($status['drain'])->toHaveKeys(['last_batch', 'stalled'])
-        ->and($status['config'])->toHaveKeys(['enabled', 'api_key_configured', 'cache_driver', 'queue_name'])
+        ->and($status['config'])->toHaveKeys(['enabled', 'api_key_configured', 'cache_driver', 'queue_name', 'queue_landing', 'queue_connection'])
         ->and($status['config']['api_key_configured'])->toBeTrue();
 });
 

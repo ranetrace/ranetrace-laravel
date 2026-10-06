@@ -61,7 +61,7 @@ class RanetraceStatusCommand extends Command
         $this->line('Enabled: '.($status['config']['enabled'] ? '<fg=green>Yes</>' : '<fg=red>No</>'));
         $this->line('Ingest API Key: '.($status['config']['api_key_configured'] ? '<fg=green>Configured</>' : '<fg=red>Not Configured</>'));
         $this->line('Cache Driver: '.BatchConfig::describeCacheStore($status['config']['cache_driver'], $status['config']['cache_driver_is_app_default']));
-        $this->line('Queue Name: '.BatchConfig::describeQueue($status['config']['queue_name']));
+        $this->line('Queue Name: '.BatchConfig::describeQueue($status['config']['queue_landing'], $status['config']['queue_connection'], $status['config']['queue_name']));
         $this->newLine();
 
         // Global pause

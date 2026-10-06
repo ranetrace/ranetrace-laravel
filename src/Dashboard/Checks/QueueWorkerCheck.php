@@ -12,7 +12,6 @@ use Ranetrace\Laravel\Jobs\HandleLogJob;
 use Ranetrace\Laravel\Jobs\HandlePageVisitJob;
 use Ranetrace\Laravel\Jobs\SendBatchToRanetraceJob;
 use Ranetrace\Laravel\Support\BatchConfig;
-use ReflectionClass;
 
 /**
  * A job that lands on a queue other than the default queue of its connection
@@ -45,7 +44,7 @@ class QueueWorkerCheck implements Check
         /** @var array<string, array<string, true>> $queuesByConnection */
         $queuesByConnection = [];
         foreach (self::FEATURE_JOBS as $path => $jobClass) {
-            $job = $this->jobAsDispatched($jobClass, $path);
+            $job = BatchConfig::jobAsDispatched($jobClass, $path);
 
             if (! BatchConfig::jobLandsOnConnectionDefaultQueue($job)) {
                 $queuesByConnection[BatchConfig::jobConnectionName($job)][(string) BatchConfig::jobQueueName($job)] = true;
@@ -74,20 +73,5 @@ class QueueWorkerCheck implements Check
             'Non-default queue(s): '.implode(', ', $names),
             'Make sure a worker processes these queues, e.g. '.implode(' and ', $commands).'.'
         );
-    }
-
-    /**
-     * The job with the queue its constructor would give it, built without the
-     * constructor because a queue route matches on the class alone and the
-     * constructors' payload arguments play no part in where the job lands.
-     *
-     * @param  class-string<BaseRanetraceJob|SendBatchToRanetraceJob>  $jobClass
-     */
-    private function jobAsDispatched(string $jobClass, string $featureConfigPath): BaseRanetraceJob|SendBatchToRanetraceJob
-    {
-        $job = (new ReflectionClass($jobClass))->newInstanceWithoutConstructor();
-        $job->onQueue(BatchConfig::featureQueueName($featureConfigPath));
-
-        return $job;
     }
 }

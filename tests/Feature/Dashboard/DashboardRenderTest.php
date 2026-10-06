@@ -96,7 +96,7 @@ test('the page speaks its warnings and its log panel with no em-dash anywhere', 
 
 test('the configuration panel names the batch cache store and queue it was given', function (): void {
     $html = view('ranetrace::dashboard.panels._config', [
-        'status' => ['config' => ['cache_driver' => 'redis', 'cache_driver_is_app_default' => false, 'queue_name' => 'ranetrace']],
+        'status' => ['config' => ['cache_driver' => 'redis', 'cache_driver_is_app_default' => false, 'queue_name' => 'ranetrace', 'queue_landing' => 'ranetrace', 'queue_connection' => config('queue.default')]],
     ])->render();
 
     expect($html)

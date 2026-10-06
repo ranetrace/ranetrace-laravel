@@ -78,6 +78,13 @@ class DashboardData
      * All cache/database reads degrade gracefully: the status surface is a
      * diagnostic tool and must never throw, even when subsystems are down.
      *
+     * In `config`, `queue_name` is the batch queue as configured, null when
+     * unset. `queue_landing` and `queue_connection` are where the batch job
+     * really lands once the host's queue routes and forwards apply:
+     * `queue_landing` is the queue it is pushed to, null for the default
+     * queue of `queue_connection`, and `queue_connection` is always a
+     * connection name.
+     *
      * @return array<string, mixed>
      */
     public function collectStatus(): array
@@ -170,6 +177,8 @@ class DashboardData
             fn (int $count): bool => $count >= $maxPerFeature * self::NEAR_CAPACITY_RATIO
         );
 
+        $batchJob = BatchConfig::jobAsDispatched(SendBatchToRanetraceJob::class, 'ranetrace.batch');
+
         $healthy = ! $isGloballyPaused
             && ! $anyBufferNearCapacity
             && $failedJobsCount < 10;
@@ -205,6 +214,8 @@ class DashboardData
                 'cache_driver' => BatchConfig::cacheStoreName(),
                 'cache_driver_is_app_default' => BatchConfig::cacheStoreIsAppDefault(),
                 'queue_name' => BatchConfig::queueName(),
+                'queue_landing' => BatchConfig::jobLandingQueueName($batchJob),
+                'queue_connection' => BatchConfig::jobConnectionName($batchJob),
             ],
         ];
     }

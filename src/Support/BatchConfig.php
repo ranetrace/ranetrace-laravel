@@ -8,6 +8,7 @@ use Illuminate\Contracts\Cache\Repository;
 use Illuminate\Support\Facades\Cache;
 use Ranetrace\Laravel\Jobs\BaseRanetraceJob;
 use Ranetrace\Laravel\Jobs\SendBatchToRanetraceJob;
+use ReflectionClass;
 
 /**
  * The batch pipeline's cache store and the queues Ranetrace jobs go to, read
@@ -139,11 +140,52 @@ final class BatchConfig
     }
 
     /**
-     * A queue name as the status output and the dashboard print it.
+     * The queue a Ranetrace job lands on once queue forwards apply, or null
+     * when nothing names a queue for it, so it lands on its connection's
+     * default queue.
      */
-    public static function describeQueue(?string $name): string
+    public static function jobLandingQueueName(BaseRanetraceJob|SendBatchToRanetraceJob $job): ?string
     {
-        return $name ?? self::CONNECTION_DEFAULT_QUEUE;
+        return self::forwardedQueueName(self::jobQueueName($job), self::jobConnectionName($job));
+    }
+
+    /**
+     * A feature's job with the queue its constructor would give it, built
+     * without the constructor because a queue route matches on the class
+     * alone and the constructors' payload arguments play no part in where the
+     * job lands.
+     *
+     * @template TJob of BaseRanetraceJob|SendBatchToRanetraceJob
+     *
+     * @param  class-string<TJob>  $jobClass
+     * @return TJob
+     */
+    public static function jobAsDispatched(string $jobClass, string $featureConfigPath): BaseRanetraceJob|SendBatchToRanetraceJob
+    {
+        $job = (new ReflectionClass($jobClass))->newInstanceWithoutConstructor();
+        $job->onQueue(self::featureQueueName($featureConfigPath));
+
+        return $job;
+    }
+
+    /**
+     * A queue as the status output and the dashboard print it: the queue
+     * name, the connection when one is given and it is not `queue.default`,
+     * and the configured name when a forward sent the job elsewhere.
+     */
+    public static function describeQueue(?string $name, ?string $connectionName = null, ?string $configuredName = null): string
+    {
+        $isOtherConnection = $connectionName !== null && $connectionName !== (string) config('queue.default');
+
+        if ($name === null) {
+            return $isOtherConnection ? 'the default queue on '.$connectionName : self::CONNECTION_DEFAULT_QUEUE;
+        }
+
+        $description = $isOtherConnection ? $name.' on '.$connectionName : $name;
+
+        return $configuredName !== null && $configuredName !== $name
+            ? $description.' (forwarded from '.$configuredName.')'
+            : $description;
     }
 
     /**
