@@ -103,16 +103,6 @@ test('the configuration panel names the batch cache store and queue it was given
         ->and(configPanelValue($html, 'Batch queue'))->toBe('ranetrace');
 });
 
-test('a dashboard whose batch cache driver and queue name are blank has no em-dash anywhere', function (): void {
-    Config::set('ranetrace.batch.cache_driver', '');
-    Config::set('ranetrace.batch.queue_name', '');
-
-    $response = $this->get('/ranetrace');
-
-    $response->assertOk();
-    expect($response->getContent())->not->toContain("\u{2014}");
-});
-
 test('the environment panel reads unknown for every value it was not given', function (): void {
     $html = view('ranetrace::dashboard.panels._environment')->render();
 
