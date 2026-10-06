@@ -28,13 +28,13 @@ final class BatchConfig
      * What the status output, the checks and the dashboard add after a store
      * name that came from `cache.default` rather than from Ranetrace's config.
      */
-    public const string APP_DEFAULT_STORE_NOTE = "the app's default store";
+    private const string APP_DEFAULT_STORE_NOTE = "the app's default store";
 
     /**
      * How a queue nobody named is described: the job is dispatched with no
      * queue, so it lands on its connection's default.
      */
-    public const string CONNECTION_DEFAULT_QUEUE = "the connection's default queue";
+    private const string CONNECTION_DEFAULT_QUEUE = "the connection's default queue";
 
     /**
      * The name of the cache store the batch pipeline uses.
@@ -86,17 +86,6 @@ final class BatchConfig
         $configured = config($featureConfigPath.'.queue_name');
 
         return filled($configured) ? (string) $configured : null;
-    }
-
-    /**
-     * The default queue of a queue connection, or null when that connection
-     * names no queue.
-     */
-    public static function connectionDefaultQueueName(string $connectionName): ?string
-    {
-        $queue = config("queue.connections.{$connectionName}.queue");
-
-        return filled($queue) ? (string) $queue : null;
     }
 
     /**
@@ -195,6 +184,17 @@ final class BatchConfig
     public static function describeFeatureQueue(string $featureConfigPath): string
     {
         return self::describeQueue(self::featureQueueName($featureConfigPath));
+    }
+
+    /**
+     * The default queue of a queue connection, or null when that connection
+     * names no queue.
+     */
+    private static function connectionDefaultQueueName(string $connectionName): ?string
+    {
+        $queue = config("queue.connections.{$connectionName}.queue");
+
+        return filled($queue) ? (string) $queue : null;
     }
 
     /**
