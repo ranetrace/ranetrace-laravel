@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Ranetrace\Laravel\Services;
 
 use Carbon\Carbon;
+use Illuminate\Contracts\Cache\Repository;
 use Illuminate\Support\Facades\Cache;
 use Ranetrace\Laravel\Support\BatchConfig;
 
@@ -28,7 +29,7 @@ class RanetracePauseManager
     {
         $pausedUntil = Carbon::now()->addSeconds($seconds);
 
-        Cache::store($this->cacheDriver)->put(
+        $this->store()->put(
             self::GLOBAL_PAUSE_KEY,
             [
                 'paused_until' => $pausedUntil->toIso8601String(),
@@ -45,7 +46,7 @@ class RanetracePauseManager
     {
         $pausedUntil = Carbon::now()->addSeconds($seconds);
 
-        Cache::store($this->cacheDriver)->put(
+        $this->store()->put(
             $this->getFeaturePauseKey($feature),
             [
                 'paused_until' => $pausedUntil->toIso8601String(),
@@ -60,7 +61,7 @@ class RanetracePauseManager
      */
     public function isGloballyPaused(): bool
     {
-        $pauseData = Cache::store($this->cacheDriver)->get(self::GLOBAL_PAUSE_KEY);
+        $pauseData = $this->store()->get(self::GLOBAL_PAUSE_KEY);
 
         if (! $pauseData) {
             return false;
@@ -76,7 +77,7 @@ class RanetracePauseManager
      */
     public function isFeaturePaused(string $feature): bool
     {
-        $pauseData = Cache::store($this->cacheDriver)->get($this->getFeaturePauseKey($feature));
+        $pauseData = $this->store()->get($this->getFeaturePauseKey($feature));
 
         if (! $pauseData) {
             return false;
@@ -94,7 +95,7 @@ class RanetracePauseManager
      */
     public function getGlobalPause(): ?array
     {
-        return Cache::store($this->cacheDriver)->get(self::GLOBAL_PAUSE_KEY);
+        return $this->store()->get(self::GLOBAL_PAUSE_KEY);
     }
 
     /**
@@ -104,7 +105,7 @@ class RanetracePauseManager
      */
     public function getFeaturePause(string $feature): ?array
     {
-        return Cache::store($this->cacheDriver)->get($this->getFeaturePauseKey($feature));
+        return $this->store()->get($this->getFeaturePauseKey($feature));
     }
 
     /**
@@ -112,7 +113,7 @@ class RanetracePauseManager
      */
     public function clearGlobalPause(): void
     {
-        Cache::store($this->cacheDriver)->forget(self::GLOBAL_PAUSE_KEY);
+        $this->store()->forget(self::GLOBAL_PAUSE_KEY);
     }
 
     /**
@@ -120,7 +121,17 @@ class RanetracePauseManager
      */
     public function clearFeaturePause(string $feature): void
     {
-        Cache::store($this->cacheDriver)->forget($this->getFeaturePauseKey($feature));
+        $this->store()->forget($this->getFeaturePauseKey($feature));
+    }
+
+    /**
+     * The batch cache store, resolved on each use rather than in the
+     * constructor so a store that cannot be resolved fails the call that
+     * needs it, not every class this one is injected into.
+     */
+    protected function store(): Repository
+    {
+        return Cache::store($this->cacheDriver);
     }
 
     /**

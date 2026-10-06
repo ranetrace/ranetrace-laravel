@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Ranetrace\Laravel\Services;
 
 use Illuminate\Contracts\Cache\LockTimeoutException;
+use Illuminate\Contracts\Cache\Repository;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use Psr\SimpleCache\InvalidArgumentException;
@@ -76,8 +77,8 @@ class RanetraceBatchBuffer
         // dropping their item on the first collision. The wait is short (see
         // $lockWait) because the critical section below is sub-millisecond.
         try {
-            Cache::store($this->cacheDriver)->lock($cacheKey.':lock', self::LOCK_SECONDS)->block($this->lockWait, function () use ($type, $cacheKey, $dataItems) {
-                $buffer = Cache::store($this->cacheDriver)->get($cacheKey, []);
+            $this->store()->lock($cacheKey.':lock', self::LOCK_SECONDS)->block($this->lockWait, function () use ($type, $cacheKey, $dataItems) {
+                $buffer = $this->store()->get($cacheKey, []);
 
                 foreach ($dataItems as $data) {
                     $buffer[] = [
@@ -127,10 +128,10 @@ class RanetraceBatchBuffer
         $cacheKey = $this->getCacheKey($type);
 
         try {
-            Cache::store($this->cacheDriver)->lock($cacheKey.':lock', self::LOCK_SECONDS)->block(max($this->lockWait, self::LOCK_SECONDS + 1), function () use ($type, $cacheKey, $envelopes) {
+            $this->store()->lock($cacheKey.':lock', self::LOCK_SECONDS)->block(max($this->lockWait, self::LOCK_SECONDS + 1), function () use ($type, $cacheKey, $envelopes) {
                 $buffer = [
                     ...array_values($envelopes),
-                    ...Cache::store($this->cacheDriver)->get($cacheKey, []),
+                    ...$this->store()->get($cacheKey, []),
                 ];
 
                 $this->putWithinMaxSize($type, $cacheKey, $buffer);
@@ -156,8 +157,8 @@ class RanetraceBatchBuffer
         $cacheKey = $this->getCacheKey($type);
 
         try {
-            $itemsToProcess = Cache::store($this->cacheDriver)->lock($cacheKey.':lock', self::LOCK_SECONDS)->block($this->lockWait, function () use ($cacheKey, $limit) {
-                $buffer = Cache::store($this->cacheDriver)->get($cacheKey, []);
+            $itemsToProcess = $this->store()->lock($cacheKey.':lock', self::LOCK_SECONDS)->block($this->lockWait, function () use ($cacheKey, $limit) {
+                $buffer = $this->store()->get($cacheKey, []);
 
                 // Get items to process
                 $itemsToProcess = array_slice($buffer, 0, $limit);
@@ -168,14 +169,14 @@ class RanetraceBatchBuffer
                 // A drain that brings the buffer below capacity ends the overflow
                 // cycle. Clear the flag so the next overflow is logged again.
                 if (count($buffer) < $this->getMaxBufferSize()) {
-                    Cache::store($this->cacheDriver)->forget($cacheKey.':overflow');
+                    $this->store()->forget($cacheKey.':overflow');
                 }
 
                 // Update cache
                 if (empty($buffer)) {
-                    Cache::store($this->cacheDriver)->forget($cacheKey);
+                    $this->store()->forget($cacheKey);
                 } else {
-                    Cache::store($this->cacheDriver)->forever($cacheKey, $buffer);
+                    $this->store()->forever($cacheKey, $buffer);
                 }
 
                 return $itemsToProcess;
@@ -198,7 +199,7 @@ class RanetraceBatchBuffer
     public function count(string $type): int
     {
         $cacheKey = $this->getCacheKey($type);
-        $buffer = Cache::store($this->cacheDriver)->get($cacheKey, []);
+        $buffer = $this->store()->get($cacheKey, []);
 
         return count($buffer);
     }
@@ -215,7 +216,7 @@ class RanetraceBatchBuffer
     public function oldestTimestamp(string $type): ?int
     {
         $cacheKey = $this->getCacheKey($type);
-        $buffer = Cache::store($this->cacheDriver)->get($cacheKey, []);
+        $buffer = $this->store()->get($cacheKey, []);
 
         $timestamp = $buffer[0]['timestamp'] ?? null;
 
@@ -229,8 +230,8 @@ class RanetraceBatchBuffer
     public function clear(string $type): void
     {
         $cacheKey = $this->getCacheKey($type);
-        Cache::store($this->cacheDriver)->forget($cacheKey);
-        Cache::store($this->cacheDriver)->forget($cacheKey.':overflow');
+        $this->store()->forget($cacheKey);
+        $this->store()->forget($cacheKey.':overflow');
     }
 
     /**
@@ -244,6 +245,16 @@ class RanetraceBatchBuffer
             self::TYPES,
             fn (string $type): bool => $this->count($type) > 0
         ));
+    }
+
+    /**
+     * The batch cache store, resolved on each use rather than in the
+     * constructor so a store that cannot be resolved fails the call that
+     * needs it, not every class this one is injected into.
+     */
+    protected function store(): Repository
+    {
+        return Cache::store($this->cacheDriver);
     }
 
     /**
@@ -273,7 +284,7 @@ class RanetraceBatchBuffer
             $this->logOverflowOnce($type, $dropped, $maxSize);
         }
 
-        Cache::store($this->cacheDriver)->forever($cacheKey, $buffer);
+        $this->store()->forever($cacheKey, $buffer);
     }
 
     /**
@@ -285,11 +296,11 @@ class RanetraceBatchBuffer
     {
         $flagKey = $this->getCacheKey($type).':overflow';
 
-        if (Cache::store($this->cacheDriver)->get($flagKey, false)) {
+        if ($this->store()->get($flagKey, false)) {
             return;
         }
 
-        Cache::store($this->cacheDriver)->forever($flagKey, true);
+        $this->store()->forever($flagKey, true);
 
         InternalLogger::warning('Ranetrace buffer overflow, oldest items dropped', [
             'type' => $type,
