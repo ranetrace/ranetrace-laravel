@@ -253,8 +253,8 @@ test('error payload sends the generic framework pair instead of laravel_version'
 test('every built error payload key survives the job allow-list', function (): void {
     // The builder and HandleErrorJob::getAllowedKeys() are two spellings of one
     // wire contract. If they drift, filterPayload() silently strips the new key,
-    // the item misses the strict field count, and the backend 422s the whole
-    // batch (plus a 15-minute errors pause) while the suite stays green.
+    // the item misses the strict field count, and the backend refuses every
+    // error item while the suite stays green.
     $payload = invokeBuildErrorPayload(new RuntimeException('boom'));
 
     $allowedKeys = new ReflectionMethod(HandleErrorJob::class, 'getAllowedKeys')

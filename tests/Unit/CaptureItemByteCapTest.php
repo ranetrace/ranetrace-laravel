@@ -98,7 +98,7 @@ test('an item still over the budget after shrinking is dropped, not buffered', f
 
 test('a dropped item never leaves a _truncated marker in the buffered output', function (): void {
     // `_truncated` is on no job's allow-list, so a marker item would fail the
-    // backend's strict field matching and 422 the whole batch it travels in.
+    // backend's strict field matching and be refused.
     $buffer = new RanetraceBatchBuffer;
 
     (new HandleErrorJob(irreduciblyOversizeErrorData()))->handle($buffer);

@@ -94,8 +94,8 @@ class VisitDataCollector
      * Read a campaign parameter as a bounded string.
      *
      * Query parameters are visitor-controlled: `?utm_source[]=x` yields an
-     * array and the value is otherwise unbounded, while the backend rejects
-     * the whole batch when one item violates the schema. Anything that is not
+     * array and the value is otherwise unbounded, while the backend refuses
+     * an item that violates the schema, losing the visit. Anything that is not
      * a string is dropped rather than shipped.
      */
     protected static function campaignParameter(Request $request, string $key): ?string

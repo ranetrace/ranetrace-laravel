@@ -6,6 +6,9 @@ This file starts at 1.0.0. The package was re-versioned to share a major with `r
 
 ## [Unreleased]
 
+### Changed
+- Comments that gave the backend's old rule, one invalid item failing its whole batch with a 422, as the reason for a guard now describe the current one: the backend refuses that item alone and counts it as failed. No behaviour changes, and nothing to do on upgrade
+
 ## [1.1.18] - 2026-10-06
 
 ### Changed

@@ -174,10 +174,8 @@ abstract class BaseRanetraceJob implements ShouldQueue
         // Still over budget. The item is dropped rather than replaced with a
         // marker payload: the wire shape is an allow-list per type, so a marker
         // key belongs to no type and the backend's strict field matching would
-        // 422 the item, discarding the whole batch of up to 1000 items and
-        // pausing the type, which is precisely the failure this budget exists
-        // to prevent. Dropping loses one item and nothing else, and the internal
-        // log keeps that loss visible.
+        // refuse the item anyway, out of the SDK's sight. Dropping it here loses
+        // the same one item, and the internal log keeps that loss visible.
         $bytes = self::encodedBytes($payload);
 
         if ($bytes === null) {

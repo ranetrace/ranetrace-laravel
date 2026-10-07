@@ -17,9 +17,9 @@ use Ranetrace\Php\Contract\WireContract;
  * `filterPayload()` keeps only the keys `getAllowedKeys()` names, so a key the
  * endpoint does not declare cannot reach the wire, and a key the endpoint
  * requires cannot survive a typo here. The errors endpoint allow-lists its
- * field set server-side, where one unexpected key 422s the item and takes the
- * whole batch (up to a thousand items) with it, so a drift between these lists
- * and `contract/items/*.json` is a batch-losing bug rather than a style issue.
+ * field set server-side, where one unexpected key refuses the item, and every
+ * error item carries the same keys, so a drift between these lists and
+ * `contract/items/*.json` loses every error rather than being a style issue.
  *
  * The fixtures come from the sibling core package (`ranetrace/ranetrace-php`),
  * which both SDKs and the backend read, so this suite compares against one

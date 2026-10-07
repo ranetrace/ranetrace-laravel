@@ -193,7 +193,7 @@ test('it still redacts a sensitive segment that itself contains a percent sign',
 
 test('it drops a non-string campaign parameter', function (): void {
     // `?utm_source[]=x` yields an array, which violates the API's string|null
-    // schema and gets the whole batch rejected.
+    // schema and gets the visit refused.
     $request = Request::create('/', 'GET', ['utm_source' => ['x']]);
     $request->headers->set('User-Agent', 'Test Browser');
     $request->server->set('REMOTE_ADDR', '127.0.0.1');
