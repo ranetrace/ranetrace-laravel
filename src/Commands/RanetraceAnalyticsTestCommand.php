@@ -148,7 +148,7 @@ class RanetraceAnalyticsTestCommand extends Command
         // Excluded paths
         $excludedPaths = config('ranetrace.website_analytics.excluded_paths', []);
         if (! empty($excludedPaths)) {
-            $this->line('🚫 <fg=cyan>Excluded Paths (visits to these are NOT tracked):</>');
+            $this->line('🚫 <fg=cyan>Excluded Paths (visits to these are not tracked):</>');
             foreach ($excludedPaths as $path) {
                 $this->line('   • /'.$path.'/*');
             }

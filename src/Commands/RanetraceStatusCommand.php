@@ -56,7 +56,7 @@ class RanetraceStatusCommand extends Command
         $this->newLine();
 
         // Configuration
-        $this->line('<fg=cyan>CONFIGURATION</>');
+        $this->line('<fg=cyan>Configuration</>');
         $this->line('─────────────────────────────────────────────────────────────');
         $this->line('Enabled: '.($status['config']['enabled'] ? '<fg=green>Yes</>' : '<fg=red>No</>'));
         $this->line('Ingest API Key: '.($status['config']['api_key_configured'] ? '<fg=green>Configured</>' : '<fg=red>Not Configured</>'));
@@ -65,7 +65,7 @@ class RanetraceStatusCommand extends Command
         $this->newLine();
 
         // Global pause
-        $this->line('<fg=cyan>GLOBAL PAUSE STATUS</>');
+        $this->line('<fg=cyan>Global pause status</>');
         $this->line('─────────────────────────────────────────────────────────────');
         if ($status['pauses']['global']) {
             $pause = $status['pauses']['global'];
@@ -83,7 +83,7 @@ class RanetraceStatusCommand extends Command
         $this->newLine();
 
         // Feature pauses
-        $this->line('<fg=cyan>FEATURE PAUSE STATUS</>');
+        $this->line('<fg=cyan>Feature pause status</>');
         $this->line('─────────────────────────────────────────────────────────────');
         foreach ($status['pauses']['features'] as $feature => $pause) {
             if ($pause) {
@@ -110,7 +110,7 @@ class RanetraceStatusCommand extends Command
         $this->newLine();
 
         // Buffers
-        $this->line('<fg=cyan>BUFFER STATUS</>');
+        $this->line('<fg=cyan>Buffer status</>');
         $this->line('─────────────────────────────────────────────────────────────');
         $this->line('Total Items: '.$status['buffers']['total']);
         $this->line('Max Per Feature: '.$status['buffers']['max_per_feature']);
@@ -155,7 +155,7 @@ class RanetraceStatusCommand extends Command
         }
 
         // Failed jobs
-        $this->line('<fg=cyan>FAILED JOBS (Last 24h)</>');
+        $this->line('<fg=cyan>Failed jobs (last 24h)</>');
         $this->line('─────────────────────────────────────────────────────────────');
         if ($status['failed_jobs_last_24h'] === 0) {
             $this->info('✓ No failed jobs');
@@ -168,7 +168,7 @@ class RanetraceStatusCommand extends Command
 
         // Recommendations
         if (! $status['healthy'] || ! empty($status['drain']['stalled'])) {
-            $this->line('<fg=cyan>RECOMMENDATIONS</>');
+            $this->line('<fg=cyan>Recommendations</>');
             $this->line('─────────────────────────────────────────────────────────────');
 
             if (! $status['config']['enabled']) {
