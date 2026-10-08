@@ -194,7 +194,7 @@ class RanetraceStatusCommand extends Command
                     } elseif ($reason === '413') {
                         $this->line('  → Batch too large - CLIENT BUG, investigate immediately');
                     } elseif ($reason === '422') {
-                        $this->line('  → Validation failed - schema drift or malformed data');
+                        $this->line('  → Request body rejected as malformed, indicates a client bug');
                     } elseif ($reason === '500') {
                         $this->line('  → Server errors - check backend health');
                     } elseif ($reason === '403') {

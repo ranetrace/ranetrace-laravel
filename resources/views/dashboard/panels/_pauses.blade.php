@@ -3,7 +3,7 @@
         '401' => 'Invalid or revoked API key',
         '403' => 'Subscription or permission issue',
         '413' => 'Payload too large: client bug, investigate',
-        '422' => 'Validation failed: schema drift',
+        '422' => 'Request body rejected as malformed: client bug, investigate',
         '429' => 'Rate limited, auto-resumes',
         '500' => 'Ranetrace backend error',
     ];

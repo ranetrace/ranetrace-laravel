@@ -221,7 +221,7 @@ class SendBatchToRanetraceJob implements ShouldBeUnique, ShouldQueue
                 'items_count' => count($this->items),
                 'message' => ResponsePolicy::errorMessage($data, 'Payload Too Large'),
             ]),
-            422 => $this->logError('Validation failed - indicates schema drift or malformed items', [
+            422 => $this->logError('Request body rejected as malformed, indicates a client bug', [
                 'type' => $this->type,
                 'items_count' => count($this->items),
                 'message' => ResponsePolicy::errorMessage($data, 'Unprocessable Entity'),

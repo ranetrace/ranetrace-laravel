@@ -198,9 +198,9 @@ test('a 401 sets a global pause and re-buffers the whole batch', function (): vo
         ->and($buffer->count('events'))->toBe(2); // entire batch returned to the buffer
 });
 
-test('a 422 pauses the feature and drops the invalid batch', function (): void {
+test('a 422 pauses the feature and drops the malformed batch', function (): void {
     Http::fake([
-        'api.ranetrace.com/*' => Http::response(['error' => ['message' => 'schema drift']], 422),
+        'api.ranetrace.com/*' => Http::response(['error' => ['message' => 'The events field is required.']], 422),
     ]);
 
     $buffer = app(RanetraceBatchBuffer::class);
@@ -210,7 +210,7 @@ test('a 422 pauses the feature and drops the invalid batch', function (): void {
     (new SendBatchToRanetraceJob('events', 10))->handle(app(RanetraceApiClient::class), $buffer, $pauseManager);
 
     expect($pauseManager->isFeaturePaused('events'))->toBeTrue()
-        ->and($buffer->count('events'))->toBe(0); // invalid items are NOT re-buffered
+        ->and($buffer->count('events'))->toBe(0); // a malformed batch is NOT re-buffered
 });
 
 // --- putting a batch back ---
