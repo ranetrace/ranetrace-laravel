@@ -160,9 +160,9 @@ class RanetraceStatusCommand extends Command
         if ($status['failed_jobs_last_24h'] === 0) {
             $this->info('✓ No failed jobs');
         } elseif ($status['failed_jobs_last_24h'] < 10) {
-            $this->warn('! '.$status['failed_jobs_last_24h'].' failed job(s) - Review queue:failed');
+            $this->warn('! '.$status['failed_jobs_last_24h'].' failed job(s): review queue:failed');
         } else {
-            $this->error('✗ '.$status['failed_jobs_last_24h'].' failed job(s) - INVESTIGATE IMMEDIATELY');
+            $this->error('✗ '.$status['failed_jobs_last_24h'].' failed job(s): investigate now');
         }
         $this->newLine();
 
@@ -190,15 +190,15 @@ class RanetraceStatusCommand extends Command
                     $this->line("• Feature '{$feature}' paused (reason: {$reason})");
 
                     if ($reason === '429') {
-                        $this->line('  → Rate limit exceeded, wait for auto-resume');
+                        $this->line('  → Rate limited, auto-resumes');
                     } elseif ($reason === '413') {
-                        $this->line('  → Batch too large - CLIENT BUG, investigate immediately');
+                        $this->line('  → Payload too large: client bug, investigate');
                     } elseif ($reason === '422') {
-                        $this->line('  → Request body rejected as malformed, indicates a client bug');
+                        $this->line('  → Request body rejected as malformed: client bug, investigate');
                     } elseif ($reason === '500') {
-                        $this->line('  → Server errors - check backend health');
+                        $this->line('  → Ranetrace backend error: check backend health');
                     } elseif ($reason === '403') {
-                        $this->line('  → Access denied - check subscription/permissions');
+                        $this->line('  → Subscription or permission issue: check your subscription and permissions');
                     }
                 }
             }
@@ -208,7 +208,7 @@ class RanetraceStatusCommand extends Command
                 fn (int $count): bool => $count >= $status['buffers']['max_per_feature'] * DashboardData::NEAR_CAPACITY_RATIO
             ));
             if (! empty($nearCapacity)) {
-                $this->line('• Buffers approaching capacity: '.implode(', ', $nearCapacity).' - data may be dropped');
+                $this->line('• Buffers approaching capacity, data may be dropped: '.implode(', ', $nearCapacity));
                 $this->line('• Check if ranetrace:work command is running on schedule');
             }
 
@@ -218,7 +218,7 @@ class RanetraceStatusCommand extends Command
             }
 
             if ($status['failed_jobs_last_24h'] >= 10) {
-                $this->line('• High failed job count - check ranetrace_internal logs');
+                $this->line('• High failed job count: check the ranetrace_internal logs');
                 $this->line('• Review failed_jobs table for details');
             }
 

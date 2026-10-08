@@ -9,6 +9,7 @@ This file starts at 1.0.0. The package was re-versioned to share a major with `r
 ### Changed
 - Comments that gave the backend's old rule, one invalid item failing its whole batch with a 422, as the reason for a guard now describe the current one: the backend refuses that item alone and counts it as failed. No behaviour changes, and nothing to do on upgrade
 - A 422 is now described as a request body rejected as malformed, which indicates a client bug, instead of schema drift or malformed items, because an invalid item no longer causes one. This covers the batch job's log line, the `ranetrace:status` and `ranetrace:pause-clear` explanations and the dashboard's pause reason, which reads "Request body rejected as malformed: client bug, investigate". No behaviour changes, and nothing to do on upgrade
+- The pause explanations in `ranetrace:status` and `ranetrace:pause-clear` now open with the dashboard's own label for each reason, such as "Rate limited, auto-resumes" or "Ranetrace backend error: check backend health", and the failed jobs, buffer capacity and troubleshooting lines read in the same calm voice, without capitals for emphasis or dashes joining clauses. No behaviour changes, and nothing to do on upgrade
 
 ## [1.1.18] - 2026-10-06
 

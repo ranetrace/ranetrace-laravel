@@ -197,10 +197,10 @@ class RanetracePauseClearCommand extends Command
         match ($reason) {
             '401' => $this->line('  • Check that RANETRACE_KEY in .env is valid and not revoked'),
             '403' => $this->line('  • Verify subscription is active, email is verified, and feature access is enabled'),
-            '413' => $this->line('  • Payload too large indicates a CLIENT BUG - investigate batch sizes immediately'),
+            '413' => $this->line('  • Payload too large, which indicates a client bug. Investigate the batch sizes'),
             '422' => $this->line('  • The request body was rejected as malformed, which indicates a client bug. The wrapper key is missing, its value is not a list, or the list is empty. Check recent changes to how batches are sent'),
-            '429' => $this->line('  • Rate limit - reduce batch frequency or increase rate limit with API provider'),
-            '500' => $this->line('  • Server errors - check backend API health and logs'),
+            '429' => $this->line('  • Rate limited: reduce the batch frequency or raise the rate limit with the API provider'),
+            '500' => $this->line("  • Ranetrace backend error: check the backend API's health and logs"),
             default => $this->line('  • Check ranetrace_internal logs for more details'),
         };
 
