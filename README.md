@@ -1,15 +1,17 @@
-# Ranetrace: web application monitoring for Laravel
+# Ranetrace for Laravel
 
 [![Latest Version on Packagist](https://img.shields.io/packagist/v/ranetrace/ranetrace-laravel.svg?style=flat-square)](https://packagist.org/packages/ranetrace/ranetrace-laravel)
 [![Total Downloads](https://img.shields.io/packagist/dt/ranetrace/ranetrace-laravel.svg?style=flat-square)](https://packagist.org/packages/ranetrace/ranetrace-laravel)
 
-Ranetrace is an all-in-one tool for **error tracking**, **website analytics**, and **website monitoring** for Laravel applications.
+Ranetrace watches your production apps from both sides and tells you what needs your attention, why it matters, and what to do. This package is the inside half for Laravel applications: it captures what happens in your app and sends it to Ranetrace.
 
-- Alerts you about errors and provides the context you need to fix them
+- Errors, with the context you need to fix them, including the JavaScript errors on your site's frontend
+- Centralized logging, and events for the moments that matter to you, such as a sale or a sign-up
 - Privacy-first website analytics: no cookies, no fingerprinting, no consent banner, and an optional beacon that sends one opaque token and nothing else; visitors are identified only by salted, one-way hashes (never raw identifiers, never across sites)
-- Monitors uptime, performance, SSL certificates, domain and DNS status, Lighthouse scores, and broken links
 
-Check out the [Ranetrace website](https://ranetrace.com) for more information.
+The outside half needs no package: Ranetrace checks uptime, performance, certificates, domain and DNS, Lighthouse scores and broken links from your site's URL alone. Built in Europe, and it collects only what's necessary. Read more on the [Ranetrace website](https://ranetrace.com).
+
+Not on Laravel? [ranetrace/ranetrace-php](https://github.com/ranetrace/ranetrace-php) brings the same capture to any PHP application.
 
 ## Installation
 
