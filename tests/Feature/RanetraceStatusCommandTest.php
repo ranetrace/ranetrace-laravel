@@ -27,7 +27,7 @@ function statusOutput(array $options = []): string
 
 test('status reports healthy with empty buffers', function (): void {
     $this->artisan('ranetrace:status')
-        ->expectsOutputToContain('Overall Status: HEALTHY')
+        ->expectsOutputToContain('✓ Overall status: healthy')
         ->assertSuccessful();
 });
 
@@ -40,7 +40,7 @@ test('status reports unhealthy when a buffer is near its own capacity', function
     }
 
     $this->artisan('ranetrace:status')
-        ->expectsOutputToContain('ISSUES DETECTED')
+        ->expectsOutputToContain('✗ Overall status: issues detected')
         ->assertSuccessful();
 });
 
@@ -70,7 +70,7 @@ test('status reports the ingest key as configured without naming its value', fun
     Config::set('ranetrace.key', 'ingest-key');
 
     $this->artisan('ranetrace:status')
-        ->expectsOutputToContain('Ingest API Key: Configured')
+        ->expectsOutputToContain('Ingest API key: Configured')
         ->doesntExpectOutputToContain('ingest-key')
         ->assertSuccessful();
 });
@@ -87,7 +87,7 @@ test('status renders an active pause without crashing and shows the remaining ti
     app(RanetracePauseManager::class)->setFeaturePause('errors', 900, '429');
 
     $this->artisan('ranetrace:status')
-        ->expectsOutputToContain('PAUSED')
+        ->expectsOutputToContain('errors               Paused (reason: 429, remaining: ')
         ->assertSuccessful();
 });
 
@@ -166,4 +166,29 @@ test('the --json output carries the feature pause without the guidance and stays
     expect($status['healthy'])->toBeTrue()
         ->and($status['pauses']['features']['errors'])->toMatchArray(['paused' => true, 'reason' => '429'])
         ->and($output)->not->toContain('Rate limited');
+});
+
+test('the status output has no all-caps words besides acronyms', function (): void {
+    $acronyms = ['API', 'JSON', 'MCP'];
+
+    $healthy = statusOutput();
+
+    Config::set('ranetrace.key', null);
+    Config::set('ranetrace.batch.max_buffer_size', 10);
+    $buffer = app(RanetraceBatchBuffer::class);
+    for ($i = 0; $i < 8; $i++) {
+        $buffer->addItem('events', ['event_name' => "e{$i}"]);
+    }
+    $pauseManager = app(RanetracePauseManager::class);
+    $pauseManager->setGlobalPause(900, '401');
+    $pauseManager->setFeaturePause('errors', 900, '429');
+    $troubled = statusOutput();
+
+    expect($troubled)->toContain('Recommendations');
+
+    foreach ([$healthy, $troubled] as $output) {
+        preg_match_all('/(?<!\w)[A-Z]{3,}(?!\w)/u', $output, $matches);
+
+        expect(array_diff($matches[0], $acronyms))->toBe([]);
+    }
 });

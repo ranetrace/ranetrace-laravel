@@ -35,7 +35,7 @@ test('status and dashboard name the queue and connection a route sends the batch
     Queue::route(SendBatchToRanetraceJob::class, 'ranetrace', 'redis');
 
     $this->artisan('ranetrace:status')
-        ->expectsOutput('Queue Name: ranetrace on redis')
+        ->expectsOutput('Queue name: ranetrace on redis')
         ->assertSuccessful();
 
     expect(statusJsonConfig())
@@ -47,7 +47,7 @@ test('status and dashboard name a configured batch queue on the default connecti
     Config::set('ranetrace.batch.queue_name', 'ranetrace');
 
     $this->artisan('ranetrace:status')
-        ->expectsOutput('Queue Name: ranetrace')
+        ->expectsOutput('Queue name: ranetrace')
         ->assertSuccessful();
 
     expect(statusJsonConfig())
@@ -57,7 +57,7 @@ test('status and dashboard name a configured batch queue on the default connecti
 
 test('status and dashboard name the connection default queue when nothing names a batch queue', function (): void {
     $this->artisan('ranetrace:status')
-        ->expectsOutput("Queue Name: the connection's default queue")
+        ->expectsOutput("Queue name: the connection's default queue")
         ->assertSuccessful();
 
     expect(statusJsonConfig())
@@ -69,7 +69,7 @@ test('a route that names only a connection lands the batch job on that connectio
     Queue::route(SendBatchToRanetraceJob::class, connection: 'redis');
 
     $this->artisan('ranetrace:status')
-        ->expectsOutput('Queue Name: the default queue on redis')
+        ->expectsOutput('Queue name: the default queue on redis')
         ->assertSuccessful();
 
     expect(statusJsonConfig())
@@ -81,7 +81,7 @@ test('a route to the default connection names the queue without a connection', f
     Queue::route(SendBatchToRanetraceJob::class, 'ranetrace', 'database');
 
     $this->artisan('ranetrace:status')
-        ->expectsOutput('Queue Name: ranetrace')
+        ->expectsOutput('Queue name: ranetrace')
         ->assertSuccessful();
 
     expect(statusJsonConfig())
@@ -93,7 +93,7 @@ test('a configured batch queue name wins over the queue a route names but follow
     Queue::route(SendBatchToRanetraceJob::class, 'ranetrace', 'redis');
 
     $this->artisan('ranetrace:status')
-        ->expectsOutput('Queue Name: jobs on redis')
+        ->expectsOutput('Queue name: jobs on redis')
         ->assertSuccessful();
 
     expect(statusJsonConfig())
@@ -104,7 +104,7 @@ test('a route for another Ranetrace job leaves the batch queue line alone', func
     Queue::route(HandleEventJob::class, 'ranetrace', 'redis');
 
     $this->artisan('ranetrace:status')
-        ->expectsOutput("Queue Name: the connection's default queue")
+        ->expectsOutput("Queue name: the connection's default queue")
         ->assertSuccessful();
 
     expect(statusJsonConfig())
@@ -116,7 +116,7 @@ test('a forwarded batch queue is named where it lands and where it was forwarded
     Queue::forward('ranetrace', 'jobs');
 
     $this->artisan('ranetrace:status')
-        ->expectsOutput('Queue Name: jobs (forwarded from ranetrace)')
+        ->expectsOutput('Queue name: jobs (forwarded from ranetrace)')
         ->assertSuccessful();
 
     expect(statusJsonConfig())
@@ -129,7 +129,7 @@ test('a batch queue forwarded to another connection names that connection', func
     Queue::forward('ranetrace', 'high', 'redis');
 
     $this->artisan('ranetrace:status')
-        ->expectsOutput('Queue Name: high on redis (forwarded from ranetrace)')
+        ->expectsOutput('Queue name: high on redis (forwarded from ranetrace)')
         ->assertSuccessful();
 
     expect(statusJsonConfig())

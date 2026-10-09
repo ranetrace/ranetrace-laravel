@@ -42,15 +42,15 @@ class RanetraceStatusCommand extends Command
         // Header
         $this->newLine();
         $this->line('╔═══════════════════════════════════════════════════════════════╗');
-        $this->line('║              RANETRACE HEALTH STATUS                             ║');
+        $this->line('║                    Ranetrace health status                    ║');
         $this->line('╚═══════════════════════════════════════════════════════════════╝');
         $this->newLine();
 
         // Overall health
         if ($status['healthy']) {
-            $this->info('✓ Overall Status: HEALTHY');
+            $this->info('✓ Overall status: healthy');
         } else {
-            $this->error('✗ Overall Status: ISSUES DETECTED');
+            $this->error('✗ Overall status: issues detected');
         }
 
         $this->newLine();
@@ -59,9 +59,9 @@ class RanetraceStatusCommand extends Command
         $this->line('<fg=cyan>Configuration</>');
         $this->line('─────────────────────────────────────────────────────────────');
         $this->line('Enabled: '.($status['config']['enabled'] ? '<fg=green>Yes</>' : '<fg=red>No</>'));
-        $this->line('Ingest API Key: '.($status['config']['api_key_configured'] ? '<fg=green>Configured</>' : '<fg=red>Not Configured</>'));
-        $this->line('Cache Driver: '.BatchConfig::describeCacheStore($status['config']['cache_driver'], $status['config']['cache_driver_is_app_default']));
-        $this->line('Queue Name: '.BatchConfig::describeQueue($status['config']['queue_landing'], $status['config']['queue_connection'], $status['config']['queue_name']));
+        $this->line('Ingest API key: '.($status['config']['api_key_configured'] ? '<fg=green>Configured</>' : '<fg=red>Not configured</>'));
+        $this->line('Cache driver: '.BatchConfig::describeCacheStore($status['config']['cache_driver'], $status['config']['cache_driver_is_app_default']));
+        $this->line('Queue name: '.BatchConfig::describeQueue($status['config']['queue_landing'], $status['config']['queue_connection'], $status['config']['queue_name']));
         $this->newLine();
 
         // Global pause
@@ -70,7 +70,7 @@ class RanetraceStatusCommand extends Command
         if ($status['pauses']['global']) {
             $pause = $status['pauses']['global'];
             if ($pause['paused']) {
-                $this->error('✗ PAUSED');
+                $this->error('✗ Paused');
                 $this->line('  Reason: '.$pause['reason']);
                 $this->line('  Until: '.$pause['paused_until']);
                 $this->line('  Remaining: '.$this->formatDuration($pause['time_remaining_seconds']));
@@ -89,7 +89,7 @@ class RanetraceStatusCommand extends Command
             if ($pause) {
                 if ($pause['paused']) {
                     $this->line(sprintf(
-                        '  <fg=red>✗</> %-20s <fg=red>PAUSED</> (reason: %s, remaining: %s)',
+                        '  <fg=red>✗</> %-20s <fg=red>Paused</> (reason: %s, remaining: %s)',
                         $feature,
                         $pause['reason'],
                         $this->formatDuration($pause['time_remaining_seconds'])
@@ -117,8 +117,8 @@ class RanetraceStatusCommand extends Command
         // Buffers
         $this->line('<fg=cyan>Buffer status</>');
         $this->line('─────────────────────────────────────────────────────────────');
-        $this->line('Total Items: '.$status['buffers']['total']);
-        $this->line('Max Per Feature: '.$status['buffers']['max_per_feature']);
+        $this->line('Total items: '.$status['buffers']['total']);
+        $this->line('Max per feature: '.$status['buffers']['max_per_feature']);
         $this->newLine();
 
         foreach ($status['buffers']['features'] as $feature => $count) {

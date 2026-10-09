@@ -104,7 +104,7 @@ test('ranetrace:status names the app default store for an unset batch cache driv
     Config::set('ranetrace.batch.cache_driver', $unsetValue);
 
     $this->artisan('ranetrace:status')
-        ->expectsOutputToContain("Cache Driver: array (the app's default store)")
+        ->expectsOutputToContain("Cache driver: array (the app's default store)")
         ->assertSuccessful();
 })->with('unset batch values');
 
@@ -121,7 +121,7 @@ test('ranetrace:status names the connection default queue for an unset batch que
     Config::set('ranetrace.batch.queue_name', $unsetValue);
 
     $this->artisan('ranetrace:status')
-        ->expectsOutputToContain("Queue Name: the connection's default queue")
+        ->expectsOutputToContain("Queue name: the connection's default queue")
         ->assertSuccessful();
 })->with('unset batch values');
 
@@ -168,7 +168,7 @@ test('a batch cache driver set explicitly is used and named without the default 
         ->and($result->title)->toBe('Volatile cache driver "array"');
 
     $this->artisan('ranetrace:status')
-        ->expectsOutputToContain('Cache Driver: array')
+        ->expectsOutputToContain('Cache driver: array')
         ->doesntExpectOutputToContain('default store')
         ->assertSuccessful();
 });
@@ -177,7 +177,7 @@ test('a batch queue name set explicitly is shown as it is', function (): void {
     Config::set('ranetrace.batch.queue_name', 'ranetrace');
 
     $this->artisan('ranetrace:status')
-        ->expectsOutputToContain('Queue Name: ranetrace')
+        ->expectsOutputToContain('Queue name: ranetrace')
         ->assertSuccessful();
 
     expect((new SendBatchToRanetraceJob('events'))->queue)->toBe('ranetrace');
