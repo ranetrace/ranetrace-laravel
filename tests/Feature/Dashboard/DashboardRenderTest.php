@@ -170,3 +170,24 @@ test('the rendered page carries no inline style or script (CSP-clean)', function
         ->not->toContain('style=')
         ->not->toMatch('/<script(?![^>]*\bsrc=)/'); // only external <script src=...>
 });
+
+test('the health badge reads issues detected for an enabled app with no ingest key', function (): void {
+    Config::set('ranetrace.key', null);
+
+    expect($this->get('/ranetrace')->getContent())
+        ->toContain('rt-badge--bad')
+        ->toContain('Issues detected')
+        ->not->toContain('rt-badge--ok');
+});
+
+test('the health badge and the checks agree for a disabled app with no ingest key', function (): void {
+    Config::set('ranetrace.enabled', false);
+    Config::set('ranetrace.key', null);
+
+    expect($this->get('/ranetrace')->getContent())
+        ->toContain('rt-badge--ok')
+        ->toContain('Healthy')
+        ->not->toContain('Issues detected')
+        ->not->toContain('failing')
+        ->toContain('Ranetrace is disabled, so nothing is sent yet');
+});

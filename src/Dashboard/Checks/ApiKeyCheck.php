@@ -6,7 +6,9 @@ namespace Ranetrace\Laravel\Dashboard\Checks;
 
 /**
  * Without an ingest key, capture is silently disabled, the single most common
- * "nothing is arriving" cause. Critical.
+ * "nothing is arriving" cause. Critical while Ranetrace is enabled, which is
+ * also when the overall health turns unhealthy; only a warning while it is
+ * disabled, when nothing is meant to be sent and the installation stays healthy.
  *
  * Deliberately only about `RANETRACE_KEY`. The MCP tools use an OAuth
  * connection with the opposite job (reading data back out), and it is held by
@@ -20,6 +22,14 @@ class ApiKeyCheck implements Check
 
         if ($configured) {
             return CheckResult::pass('api_key', 'Ingest API key is configured');
+        }
+
+        if (! ($status['config']['enabled'] ?? true)) {
+            return CheckResult::warn(
+                'api_key',
+                'Ingest API key is missing',
+                'Ranetrace is disabled, so nothing is sent yet. Set RANETRACE_KEY in .env before you set RANETRACE_ENABLED=true.'
+            );
         }
 
         return CheckResult::fail(

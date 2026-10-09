@@ -170,8 +170,13 @@ class DashboardData
         // Get failed jobs count (last 24 hours)
         $failedJobsCount = $this->getFailedJobsCount();
 
-        // Overall health: no single buffer near its own capacity, not globally
-        // paused, and few failed jobs.
+        $isEnabled = (bool) config('ranetrace.enabled', true);
+        $isApiKeyConfigured = ! blank(config('ranetrace.key'));
+
+        // Overall health: an enabled installation has an ingest key (without one
+        // everything is captured and nothing is sent), no single buffer is near
+        // its own capacity, it is not globally paused, and few jobs failed. A
+        // disabled installation needs no key, since nothing is meant to be sent.
         $anyBufferNearCapacity = array_any(
             $buffers,
             fn (int $count): bool => $count >= $maxPerFeature * self::NEAR_CAPACITY_RATIO
@@ -179,7 +184,8 @@ class DashboardData
 
         $batchJob = BatchConfig::jobAsDispatched('ranetrace.batch');
 
-        $healthy = ! $isGloballyPaused
+        $healthy = (! $isEnabled || $isApiKeyConfigured)
+            && ! $isGloballyPaused
             && ! $anyBufferNearCapacity
             && $failedJobsCount < 10;
 
@@ -206,11 +212,11 @@ class DashboardData
             ],
             'failed_jobs_last_24h' => $failedJobsCount,
             'config' => [
-                'enabled' => config('ranetrace.enabled', true),
+                'enabled' => $isEnabled,
                 // Only whether the ingest key is set is reported, never the
                 // value. The MCP tools use an OAuth connection, a different
                 // credential entirely, held by the MCP client, not by this application.
-                'api_key_configured' => ! empty(config('ranetrace.key')),
+                'api_key_configured' => $isApiKeyConfigured,
                 'cache_driver' => BatchConfig::cacheStoreName(),
                 'cache_driver_is_app_default' => BatchConfig::cacheStoreIsAppDefault(),
                 'queue_name' => BatchConfig::queueName(),

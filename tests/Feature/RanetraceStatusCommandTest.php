@@ -192,3 +192,96 @@ test('the status output has no all-caps words besides acronyms', function (): vo
         expect(array_diff($matches[0], $acronyms))->toBe([]);
     }
 });
+
+test('an enabled app with no ingest key is reported as unhealthy, with the key recommendation once', function (): void {
+    Config::set('ranetrace.key', null);
+
+    $output = statusOutput();
+
+    expect($output)->toContain('✗ Overall status: issues detected')
+        ->and($output)->toContain('Ingest API key: Not configured')
+        ->and($output)->toContain('Recommendations')
+        ->and(mb_substr_count($output, '• Configure RANETRACE_KEY in .env (the ingest key; the MCP tools use an OAuth connection, held by your MCP client)'))->toBe(1)
+        ->and($output)->not->toContain('RANETRACE_ENABLED');
+});
+
+test('the --json output reports an enabled app with no ingest key as unhealthy', function (): void {
+    Config::set('ranetrace.key', null);
+
+    $status = json_decode(mb_trim(statusOutput(['--json' => true])), true);
+
+    expect($status['healthy'])->toBeFalse()
+        ->and($status['config']['enabled'])->toBeTrue()
+        ->and($status['config']['api_key_configured'])->toBeFalse();
+});
+
+test('an enabled app with an ingest key stays healthy and prints no enable hint', function (): void {
+    $output = statusOutput();
+
+    expect($output)->toContain('✓ Overall status: healthy')
+        ->and($output)->toContain('Enabled: Yes')
+        ->and($output)->not->toContain('→')
+        ->and($output)->not->toContain('Recommendations')
+        ->and(json_decode(mb_trim(statusOutput(['--json' => true])), true)['healthy'])->toBeTrue();
+});
+
+test('a disabled app is healthy and shows how to turn it on under the Enabled row', function (?string $key): void {
+    Config::set('ranetrace.enabled', false);
+    Config::set('ranetrace.key', $key);
+
+    $output = statusOutput();
+    $lines = explode("\n", $output);
+    $enabledIndex = array_search('Enabled: No', $lines, true);
+
+    expect($output)->toContain('✓ Overall status: healthy')
+        ->and($enabledIndex)->not->toBeFalse()
+        ->and($lines[$enabledIndex + 1])->toBe('  → Nothing is captured or sent. Set RANETRACE_ENABLED=true to turn it on')
+        ->and(mb_substr_count($output, 'RANETRACE_ENABLED'))->toBe(1)
+        ->and($output)->not->toContain('Enable Ranetrace')
+        ->and($output)->not->toContain('Recommendations')
+        ->and(json_decode(mb_trim(statusOutput(['--json' => true])), true)['healthy'])->toBeTrue();
+})->with([
+    'without a key' => [null],
+    'with a key' => ['ingest-key'],
+]);
+
+test('a disabled app lists neither the enable hint nor the key in Recommendations when something else is wrong', function (): void {
+    Config::set('ranetrace.enabled', false);
+    Config::set('ranetrace.key', null);
+    app(RanetracePauseManager::class)->setGlobalPause(900, '401');
+
+    $output = statusOutput();
+
+    expect($output)->toContain('✗ Overall status: issues detected')
+        ->and($output)->toContain('Recommendations')
+        ->and(mb_substr_count($output, 'RANETRACE_ENABLED'))->toBe(1)
+        ->and($output)->not->toContain('Enable Ranetrace')
+        ->and($output)->not->toContain('Configure RANETRACE_KEY');
+});
+
+test('a blank ingest key counts as missing', function (string $key): void {
+    Config::set('ranetrace.key', $key);
+
+    $output = statusOutput();
+
+    expect($output)->toContain('✗ Overall status: issues detected')
+        ->and($output)->toContain('Ingest API key: Not configured')
+        ->and($output)->toContain('• Configure RANETRACE_KEY in .env');
+})->with([
+    'empty' => [''],
+    'a space' => [' '],
+    'whitespace' => ["\t\n "],
+]);
+
+test('an enabled flag left as a string by env() decides health by its truthiness', function (string $enabled, bool $isEnabled): void {
+    Config::set('ranetrace.enabled', $enabled);
+    Config::set('ranetrace.key', null);
+
+    $status = json_decode(mb_trim(statusOutput(['--json' => true])), true);
+
+    expect($status['config']['enabled'])->toBe($isEnabled)
+        ->and($status['healthy'])->toBe(! $isEnabled);
+})->with([
+    'zero' => ['0', false],
+    'one' => ['1', true],
+]);

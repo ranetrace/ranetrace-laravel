@@ -59,6 +59,9 @@ class RanetraceStatusCommand extends Command
         $this->line('<fg=cyan>Configuration</>');
         $this->line('─────────────────────────────────────────────────────────────');
         $this->line('Enabled: '.($status['config']['enabled'] ? '<fg=green>Yes</>' : '<fg=red>No</>'));
+        if (! $status['config']['enabled']) {
+            $this->line(str_repeat(' ', 2).'→ Nothing is captured or sent. Set RANETRACE_ENABLED=true to turn it on');
+        }
         $this->line('Ingest API key: '.($status['config']['api_key_configured'] ? '<fg=green>Configured</>' : '<fg=red>Not configured</>'));
         $this->line('Cache driver: '.BatchConfig::describeCacheStore($status['config']['cache_driver'], $status['config']['cache_driver_is_app_default']));
         $this->line('Queue name: '.BatchConfig::describeQueue($status['config']['queue_landing'], $status['config']['queue_connection'], $status['config']['queue_name']));
@@ -176,11 +179,7 @@ class RanetraceStatusCommand extends Command
             $this->line('<fg=cyan>Recommendations</>');
             $this->line('─────────────────────────────────────────────────────────────');
 
-            if (! $status['config']['enabled']) {
-                $this->line('• Enable Ranetrace in config/ranetrace.php');
-            }
-
-            if (! $status['config']['api_key_configured']) {
+            if ($status['config']['enabled'] && ! $status['config']['api_key_configured']) {
                 $this->line('• Configure RANETRACE_KEY in .env (the ingest key; the MCP tools use an OAuth connection, held by your MCP client)');
             }
 

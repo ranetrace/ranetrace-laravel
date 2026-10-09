@@ -337,3 +337,36 @@ class ThrowingCheck implements Check
         throw new RuntimeException('boom');
     }
 }
+
+test('api key check fails on a key of nothing but whitespace', function (): void {
+    Config::set('ranetrace.key', '   ');
+
+    expect(runChecks()['api_key']->level)->toBe(CheckLevel::Fail);
+});
+
+test('api key check only warns about a missing key while Ranetrace is disabled', function (): void {
+    Config::set('ranetrace.enabled', false);
+    Config::set('ranetrace.key', null);
+
+    $check = runChecks()['api_key'];
+
+    expect($check->level)->toBe(CheckLevel::Warn)
+        ->and($check->remediation)->toContain('Ranetrace is disabled')
+        ->and($check->remediation)->toContain('RANETRACE_KEY');
+});
+
+test('the api key check fails exactly when the missing key makes the installation unhealthy', function (bool $enabled, ?string $key): void {
+    Config::set('ranetrace.enabled', $enabled);
+    Config::set('ranetrace.key', $key);
+
+    $data = app(DashboardData::class);
+    $status = $data->collectStatus();
+    $check = collect($data->runChecks($status))->firstWhere('name', 'api_key');
+
+    expect($check->level === CheckLevel::Fail)->toBe(! $status['healthy']);
+})->with([
+    'enabled with a key' => [true, 'ingest-key'],
+    'enabled without a key' => [true, null],
+    'disabled with a key' => [false, 'ingest-key'],
+    'disabled without a key' => [false, null],
+]);

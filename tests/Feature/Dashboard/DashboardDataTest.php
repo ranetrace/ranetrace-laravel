@@ -118,3 +118,34 @@ test('ranetrace:status --json output is unchanged after the DashboardData extrac
 
     expect($commandJson)->toEqual($serviceData);
 });
+
+test('an enabled installation with no ingest key is unhealthy', function (): void {
+    Config::set('ranetrace.key', null);
+
+    $status = app(DashboardData::class)->collectStatus();
+
+    expect($status['healthy'])->toBeFalse()
+        ->and($status['config']['enabled'])->toBeTrue()
+        ->and($status['config']['api_key_configured'])->toBeFalse();
+});
+
+test('a disabled installation is healthy with or without an ingest key', function (?string $key): void {
+    Config::set('ranetrace.enabled', false);
+    Config::set('ranetrace.key', $key);
+
+    $status = app(DashboardData::class)->collectStatus();
+
+    expect($status['healthy'])->toBeTrue()
+        ->and($status['config']['enabled'])->toBeFalse();
+})->with([
+    'without a key' => [null],
+    'with a key' => ['ingest-key'],
+]);
+
+test('a missing ingest key does not hide the other reasons a disabled installation is unhealthy', function (): void {
+    Config::set('ranetrace.enabled', false);
+    Config::set('ranetrace.key', null);
+    app(RanetracePauseManager::class)->setGlobalPause(900, '401');
+
+    expect(app(DashboardData::class)->collectStatus()['healthy'])->toBeFalse();
+});
