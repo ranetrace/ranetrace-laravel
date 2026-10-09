@@ -22,6 +22,9 @@ This file starts at 1.0.0. The package was re-versioned to share a major with `r
 - **Logs, JavaScript errors and page visits are no longer captured while the ingest key is missing, as errors and events already were.** Before, they were buffered with no key and never sent, so the buffers filled and the stale items went out once a key was set. All five now follow one rule: Ranetrace enabled, the feature enabled and a key that is not blank. Without a key the `ranetrace` log channel stays silent, page visits are not tracked and the page itself is unchanged, the JavaScript error relay answers the same 403 as with the feature off, and an app booted without a key mounts no relay route and renders no capture script, as with the feature off. Nothing to do on upgrade
 - The README opens with what Ranetrace does and what this package adds: the errors, logs, events, analytics and frontend JavaScript errors it captures from inside a Laravel app, with the outside checks Ranetrace runs without a package named beside them, and a pointer to `ranetrace/ranetrace-php` for other PHP applications. The Packagist description says the same. Documentation only, and nothing to do on upgrade
 
+### Fixed
+- **A real ingest key with whitespace around it is now sent without it.** The batch job sent the key exactly as configured, so a quoted `.env` value such as `RANETRACE_KEY=" abc"` passed the capture gates, went out as `Bearer  abc`, was refused with a 401 and paused every feature. The key is now trimmed before it is sent, as `ranetrace/ranetrace-php` trims it, and a key of nothing but whitespace is still refused before anything is sent. Nothing to do on upgrade
+
 ## [1.1.18] - 2026-10-06
 
 ### Changed

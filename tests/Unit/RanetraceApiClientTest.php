@@ -122,6 +122,25 @@ test('it returns error when api key is missing', function (): void {
     Http::assertNothingSent();
 });
 
+test('it sends a configured key padded with whitespace as the trimmed bearer token', function (): void {
+    Http::fake();
+    config(['ranetrace.key' => " real-key\t"]);
+
+    (new RanetraceApiClient)->sendErrorBatch([['message' => 'Test']]);
+
+    Http::assertSent(fn ($request): bool => $request->header('Authorization') === ['Bearer real-key']);
+});
+
+test('it refuses to send with a configured key of nothing but whitespace', function (): void {
+    Http::fake();
+    config(['ranetrace.key' => "\t\n "]);
+
+    $result = (new RanetraceApiClient)->sendErrorBatch([['message' => 'Test']]);
+
+    expect($result['error'])->toBe('API key not configured');
+    Http::assertNothingSent();
+});
+
 test('it returns error on failed response', function (): void {
     Http::fake([
         '*' => Http::response(['error' => 'Failed'], 500),

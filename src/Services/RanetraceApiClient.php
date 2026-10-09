@@ -30,12 +30,21 @@ class RanetraceApiClient
      */
     protected string $apiUrl;
 
-    public function __construct(
-        protected ?string $apiKey = null
-    ) {
-        $this->apiKey = $apiKey ?? config('ranetrace.key');
+    /**
+     * The key sent as the Bearer token, trimmed like the shared core trims it,
+     * so a key the `blank()` capture gates let through is sent as the key it
+     * holds. Untrimmed, a real key with leading whitespace is refused with a
+     * 401, which pauses every feature.
+     */
+    protected string $apiKey;
 
-        $baseUrl = CoreConfig::make()->get('base_url', Config::DEFAULT_BASE_URL);
+    public function __construct(?string $apiKey = null)
+    {
+        $config = CoreConfig::make();
+
+        $this->apiKey = mb_trim($apiKey ?? $config->key());
+
+        $baseUrl = $config->get('base_url', Config::DEFAULT_BASE_URL);
 
         $this->apiUrl = is_string($baseUrl) && $baseUrl !== ''
             ? mb_rtrim($baseUrl, '/')
@@ -123,7 +132,7 @@ class RanetraceApiClient
      */
     protected function sendBatch(Endpoint $endpoint, array $items): array
     {
-        if (empty($this->apiKey)) {
+        if ($this->apiKey === '') {
             return $this->formatErrorResponse('API key not configured');
         }
 
