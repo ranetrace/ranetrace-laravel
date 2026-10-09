@@ -3,13 +3,13 @@ name: ranetrace-analytics
 description: Set up and configure Ranetrace's privacy-first website analytics with bot detection, the opt-in human-verification beacon, path filtering, and custom request filters.
 ---
 
-# Ranetrace Website Analytics
+# Ranetrace website analytics
 
 ## When to use this skill
 
 Use this skill when setting up website analytics, configuring bot detection, turning on the human-verification beacon, excluding paths from tracking, or implementing custom request filters.
 
-## How It Works
+## How it works
 
 The `TrackPageVisit` middleware is auto-registered on the `web` middleware group when both `RANETRACE_ENABLED` and `RANETRACE_WEBSITE_ANALYTICS_ENABLED` are `true`. No manual middleware registration is needed.
 
@@ -71,13 +71,13 @@ A page that is hidden when the beacon is due (a background tab, a prerender) is 
 
 `wait_seconds` is how long the visit is held before it is reported; the mark outlives it by a minute so a busy queue running the job late does not read a beacon that did arrive as absent.
 
-## Excluded Paths
+## Excluded paths
 
 The `excluded_paths` config array matches the **first URL segment**. To exclude `/admin/users`, add `'admin'` (this excludes all `/admin/*` routes).
 
 The array replaces the default, it does not merge with it: copy the default list from the published config and append your own first segments, for example `'webhooks'` and `'health'`.
 
-## Custom Request Filters
+## Custom request filters
 
 For advanced filtering logic, implement the `RequestFilter` contract:
 
@@ -110,7 +110,7 @@ Register in config:
 'request_filter' => \App\Analytics\MyRequestFilter::class,
 ```
 
-## Bot Detection
+## Bot detection
 
 The middleware uses a multi-layer bot detection system:
 1. **CrawlerDetect library**: comprehensive crawler detection
@@ -126,7 +126,7 @@ The middleware uses a multi-layer bot detection system:
 
 Requests from the same IP and the same browser to the same path are throttled to prevent duplicate tracking. Default: 30 seconds between tracked visits per IP, user agent and path. The user agent is part of the key so that people behind one shared IP (an office, a mobile carrier) are counted separately, while a reload by one visitor still counts once. Configure with `RANETRACE_WEBSITE_ANALYTICS_THROTTLE_SECONDS`.
 
-## What Gets Captured
+## What gets captured
 
 Each page visit includes:
 - Path, referrer, and UTM parameters (source, medium, campaign, term, content)

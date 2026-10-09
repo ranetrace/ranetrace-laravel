@@ -7,13 +7,13 @@ description: >-
   nothing reaches Ranetrace.
 ---
 
-# Ranetrace Worker
+# Ranetrace worker
 
 ## When to use this skill
 
 Use this skill when setting up, scheduling, or troubleshooting the Ranetrace worker (`ranetrace:work`). This is the command that flushes all buffered data (errors, events, logs, page visits, JavaScript errors) to the Ranetrace API. Without it running on a schedule, no data leaves the application.
 
-## Running the Worker
+## Running the worker
 
 ```bash
 # Process all feature types
@@ -70,7 +70,7 @@ php artisan queue:work --queue=ranetrace
 ],
 ```
 
-| Env Var | Description | Default |
+| Env var | Description | Default |
 |---|---|---|
 | `RANETRACE_BATCH_QUEUE_NAME` | Queue name for batch jobs | unset: the connection's default queue |
 | `RANETRACE_BATCH_CACHE_DRIVER` | Cache store for the buffer (use a shared, lock-capable store in production) | app cache store (`CACHE_STORE` → `file`) |

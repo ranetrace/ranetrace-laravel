@@ -3,7 +3,7 @@ name: ranetrace-event-tracking
 description: Track custom application events like sales, signups, and user actions with Ranetrace's privacy-first event system.
 ---
 
-# Ranetrace Event Tracking
+# Ranetrace event tracking
 
 ## When to use this skill
 
@@ -14,7 +14,7 @@ Use this skill when implementing custom event tracking for analytics, e-commerce
 - `Ranetrace::trackEvent(string $eventName, array $properties = [], int|string|null $userId = null, bool $validate = true)`: low-level tracking (`$userId` accepts int or string for UUID models; `$validate: false` skips snake_case name validation)
 - `RanetraceEvents`: convenience methods with built-in validation
 
-## Standard Event Constants
+## Standard event constants
 
 The `EventTracker` class provides constants for common events:
 
@@ -36,7 +36,7 @@ EventTracker::NEWSLETTER_SIGNUP
 EventTracker::CONTACT_FORM_SUBMITTED
 ```
 
-## Convenience Methods
+## Convenience methods
 
 ### E-commerce
 
@@ -61,7 +61,7 @@ RanetraceEvents::productAddedToCart(
 );
 ```
 
-### User Actions
+### User actions
 
 ```php
 // Track user registration (auto-detects authenticated user if $userId is null)
@@ -74,7 +74,7 @@ RanetraceEvents::userLoggedIn();
 RanetraceEvents::pageView('pricing-page');
 ```
 
-### Custom Events
+### Custom events
 
 ```php
 // Custom event with validation (enforces naming rules)
@@ -87,7 +87,7 @@ RanetraceEvents::custom('feature_toggled', [
 RanetraceEvents::customUnsafe('My.Custom.Event', $properties);
 ```
 
-## Event Naming Rules
+## Event naming rules
 
 Event names are validated by default and must:
 - Use `snake_case` format (lowercase with underscores)
@@ -112,7 +112,7 @@ Invalid: `UserRegistered`, `a`, `123_event`, `my-event`
 ],
 ```
 
-## What Gets Captured
+## What gets captured
 
 Each event includes:
 - Event name and custom properties

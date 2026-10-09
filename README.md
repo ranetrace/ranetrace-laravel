@@ -1,9 +1,9 @@
-# Ranetrace: Web Application Monitoring for Laravel
+# Ranetrace: web application monitoring for Laravel
 
 [![Latest Version on Packagist](https://img.shields.io/packagist/v/ranetrace/ranetrace-laravel.svg?style=flat-square)](https://packagist.org/packages/ranetrace/ranetrace-laravel)
 [![Total Downloads](https://img.shields.io/packagist/dt/ranetrace/ranetrace-laravel.svg?style=flat-square)](https://packagist.org/packages/ranetrace/ranetrace-laravel)
 
-Ranetrace is an all-in-one tool for **Error Tracking**, **Website Analytics**, and **Website Monitoring** for Laravel applications.
+Ranetrace is an all-in-one tool for **error tracking**, **website analytics**, and **website monitoring** for Laravel applications.
 
 - Alerts you about errors and provides the context you need to fix them
 - Privacy-first website analytics: no cookies, no fingerprinting, no consent banner, and an optional beacon that sends one opaque token and nothing else; visitors are identified only by salted, one-way hashes (never raw identifiers, never across sites)
@@ -47,7 +47,7 @@ Schedule::command('ranetrace:work')
 
 ## Usage
 
-### Error Tracking
+### Error tracking
 
 Wire Ranetrace into Laravel's exception handling in `bootstrap/app.php`:
 
@@ -82,7 +82,7 @@ Test your setup with:
 php artisan ranetrace:test-errors
 ```
 
-### JavaScript Error Tracking
+### JavaScript error tracking
 
 1. Enable it in your `.env`:
 
@@ -108,7 +108,7 @@ You can also capture errors manually:
 window.Ranetrace.captureError(error, { payment_amount: amount });
 ```
 
-### Event Tracking
+### Event tracking
 
 Track custom events with a privacy-first approach: no IP addresses are stored, user agents are hashed, and session IDs rotate daily.
 
@@ -140,7 +140,7 @@ Test your setup with:
 php artisan ranetrace:test-events
 ```
 
-### Centralized Logging
+### Centralized logging
 
 Enable it in your `.env`:
 
@@ -175,7 +175,7 @@ Test your setup with:
 php artisan ranetrace:test-logging
 ```
 
-### Website Analytics
+### Website analytics
 
 Enable it in your `.env`:
 
@@ -259,7 +259,7 @@ Moving over is one line of client config: point the client at `https://api.ranet
 
 Every monitor tool answers verdict first: what we found, why it matters, what to do, the same guidance you read on the dashboard, with the raw measurements following as its evidence.
 
-## Health Check
+## Health check
 
 The package gives you two ways to see what it's doing locally: a CLI command and an in-app dashboard. Both read the same underlying diagnostics, so they can never disagree.
 
@@ -317,7 +317,7 @@ Please see [CHANGELOG](CHANGELOG.md) for more information on what has changed re
 
 Please see [CONTRIBUTING](CONTRIBUTING.md) for details.
 
-## Security Vulnerabilities
+## Security vulnerabilities
 
 Please review [our security policy](../../security/policy) on how to report security vulnerabilities.
 

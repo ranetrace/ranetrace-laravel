@@ -3,7 +3,7 @@ name: ranetrace-logging
 description: Send application logs to Ranetrace via the auto-registered logging channel, and integrate it with Laravel's logging stack.
 ---
 
-# Ranetrace Centralized Logging
+# Ranetrace centralized logging
 
 ## When to use this skill
 

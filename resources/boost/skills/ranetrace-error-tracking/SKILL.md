@@ -3,13 +3,13 @@ name: ranetrace-error-tracking
 description: Track, investigate, and manage application errors with Ranetrace, and work with the hosted Ranetrace MCP server, including connecting an MCP client over OAuth and fixing a connection that fails, the tools for AI-assisted debugging, the search_tools and execute_tools flow for state changes, the monitored website's verdicts (uptime, performance, Lighthouse, certificate, domain, broken links, DNS) and the notification rules.
 ---
 
-# Ranetrace Error Tracking
+# Ranetrace error tracking
 
 ## When to use this skill
 
 Use this skill when working with error tracking, exception reporting, error investigation, or managing error states in a Ranetrace-monitored Laravel application. It is also the reference for the hosted MCP server: connecting a client, what a read-only or a write connection can do, the monitor tools and the notification rules.
 
-## Reporting Errors
+## Reporting errors
 
 Capturing unhandled exceptions is **required wiring: it is NOT automatic.** Register Ranetrace on Laravel's exception handler in `bootstrap/app.php` with the package's one-liner:
 
@@ -34,7 +34,7 @@ try {
 }
 ```
 
-## What Gets Captured
+## What gets captured
 
 Each error report includes:
 - Exception message (key=value secrets redacted), type, file, and line number
@@ -59,7 +59,7 @@ Each error report includes:
 ],
 ```
 
-## MCP Tools for Error Investigation
+## MCP tools for error investigation
 
 Ranetrace hosts an MCP server covering error investigation, investigation notes, error state management, the monitored website's verdicts (see *Monitor tools* at the end) and the owner's notification rules. It runs on Ranetrace, so there is nothing to install in the application and nothing to keep running.
 
@@ -125,7 +125,7 @@ The MCP credential is never `RANETRACE_KEY` and never lives in `.env`. The key w
 
 An application with `RANETRACE_MCP_TOKEN` in `.env` is on a retired setup: there is no local MCP server to run. Point the client at the hosted URL above, approve the connection in the browser, and delete the variable from `.env`.
 
-### Retrieving Errors
+### Retrieving errors
 
 Listed directly, so call these by name.
 
@@ -139,7 +139,7 @@ Listed directly, so call these by name.
 
 To find errors that mention a phrase, or that come from one class or file, pass it as `query` to `SearchErrorsTool` instead of paging through results and filtering them yourself. The match is a case-insensitive substring, at most 200 characters, and `%` and `_` are literal. For a PHP error the message is the one of its latest occurrence; for a JavaScript error the page URL is matched too. `query` combines with every other filter, so `query` plus `sort=last_occurred` also answers "the latest errors that mention this".
 
-### Managing Error States
+### Managing error states
 
 In the catalog, so find them with `search_tools` and run them with `execute_tools`.
 
@@ -154,7 +154,7 @@ In the catalog, so find them with `search_tools` and run them with `execute_tool
 | `DeleteErrorTool` | Soft-delete an error |
 | `RestoreErrorTool` | Restore a deleted error |
 
-### Bulk Operations
+### Bulk operations
 
 In the catalog too, same route in.
 
@@ -166,7 +166,7 @@ In the catalog too, same route in.
 | `BulkDeleteErrorsTool` | Delete multiple errors |
 | `BulkRestoreErrorsTool` | Restore multiple deleted errors |
 
-### Investigation Notes
+### Investigation notes
 
 Reading notes is listed directly; writing them is in the catalog. Notes work on PHP and JavaScript errors alike, so every note call names the error's `type` (`php`, or `javascript` or `js`), the same required argument the error state tools take in the example above.
 
@@ -179,7 +179,7 @@ Reading notes is listed directly; writing them is in the catalog. Notes work on 
 | `UpdateNoteTool` | Update a note | Catalog |
 | `DeleteNoteTool` | Delete a note | Catalog |
 
-## Monitor Tools
+## Monitor tools
 
 The same MCP server also answers for the website being monitored, not only the application's errors. These are reads, so they are all listed directly.
 
