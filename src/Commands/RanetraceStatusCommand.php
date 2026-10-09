@@ -94,6 +94,11 @@ class RanetraceStatusCommand extends Command
                         $pause['reason'],
                         $this->formatDuration($pause['time_remaining_seconds'])
                     ));
+
+                    $guidance = $this->pauseGuidance($pause['reason']);
+                    if ($guidance !== null) {
+                        $this->line(str_repeat(' ', 25).'→ '.$guidance);
+                    }
                 } else {
                     $this->line(sprintf(
                         '  <fg=yellow>○</> %-20s <fg=yellow>Pause expired</>',
@@ -184,25 +189,6 @@ class RanetraceStatusCommand extends Command
                 $this->line('• Run: php artisan ranetrace:pause-clear --global');
             }
 
-            foreach ($status['pauses']['features'] as $feature => $pause) {
-                if ($pause && $pause['paused']) {
-                    $reason = $pause['reason'];
-                    $this->line("• Feature '{$feature}' paused (reason: {$reason})");
-
-                    if ($reason === '429') {
-                        $this->line('  → Rate limited, auto-resumes');
-                    } elseif ($reason === '413') {
-                        $this->line('  → Payload too large: client bug, investigate');
-                    } elseif ($reason === '422') {
-                        $this->line('  → Request body rejected as malformed: client bug, investigate');
-                    } elseif ($reason === '500') {
-                        $this->line('  → Ranetrace backend error: check backend health');
-                    } elseif ($reason === '403') {
-                        $this->line('  → Subscription or permission issue: check your subscription and permissions');
-                    }
-                }
-            }
-
             $nearCapacity = array_keys(array_filter(
                 $status['buffers']['features'],
                 fn (int $count): bool => $count >= $status['buffers']['max_per_feature'] * DashboardData::NEAR_CAPACITY_RATIO
@@ -229,6 +215,24 @@ class RanetraceStatusCommand extends Command
         $this->newLine();
 
         $this->displayDashboardHint();
+    }
+
+    /**
+     * What a feature pause for this reason means, or null when the reason has
+     * no known explanation. It prints under the paused feature's row, aligned
+     * with the row's text column, so it shows even when nothing else is
+     * unhealthy enough for Recommendations to print.
+     */
+    protected function pauseGuidance(string $reason): ?string
+    {
+        return match ($reason) {
+            '429' => 'Rate limited, auto-resumes',
+            '413' => 'Payload too large: client bug, investigate',
+            '422' => 'Request body rejected as malformed: client bug, investigate',
+            '500' => 'Ranetrace backend error: check backend health',
+            '403' => 'Subscription or permission issue: check your subscription and permissions',
+            default => null,
+        };
     }
 
     /**

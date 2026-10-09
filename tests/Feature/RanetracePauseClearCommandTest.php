@@ -69,3 +69,20 @@ test('--feature clears an active feature pause after confirmation', function ():
 
     expect(app(RanetracePauseManager::class)->getFeaturePause('errors'))->toBeNull();
 });
+
+test('--feature ends with the troubleshooting tip for the pause reason', function (string $reason, string $tip): void {
+    app(RanetracePauseManager::class)->setFeaturePause('errors', 900, $reason);
+
+    $this->artisan('ranetrace:pause-clear', ['--feature' => 'errors'])
+        ->expectsConfirmation("Clear pause for 'errors' and resume processing?", 'yes')
+        ->expectsOutput('  • '.$tip)
+        ->assertSuccessful();
+})->with([
+    '401' => ['401', 'Check that RANETRACE_KEY in .env is valid and not revoked'],
+    '403' => ['403', 'Verify subscription is active, email is verified, and feature access is enabled'],
+    '413' => ['413', 'Payload too large, which indicates a client bug. Investigate the batch sizes'],
+    '422' => ['422', 'The request body was rejected as malformed, which indicates a client bug. The wrapper key is missing, its value is not a list, or the list is empty. Check recent changes to how batches are sent'],
+    '429' => ['429', 'Rate limited: reduce the batch frequency or raise the rate limit with the API provider'],
+    '500' => ['500', "Ranetrace backend error: check the backend API's health and logs"],
+    'an unknown reason' => ['418', 'Check ranetrace_internal logs for more details'],
+]);
