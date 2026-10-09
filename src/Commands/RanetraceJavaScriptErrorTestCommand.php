@@ -25,21 +25,21 @@ class RanetraceJavaScriptErrorTestCommand extends Command
 
     public function handle(): int
     {
-        $this->info('🔍 Ranetrace JavaScript Error Tracking Test');
+        $this->info('🔍 Ranetrace JavaScript error tracking test');
         $this->newLine();
 
         // Display current configuration
-        $this->line('📋 <fg=cyan>Current Configuration:</>');
+        $this->line('📋 <fg=cyan>Current configuration:</>');
         $this->table(
             ['Setting', 'Value'],
             [
                 ['Enabled', config('ranetrace.javascript_errors.enabled') ? '✅ Yes' : '❌ No'],
-                ['Sample Rate', config('ranetrace.javascript_errors.sample_rate', 1.0) * 100 .'%'],
-                ['Queue Enabled', config('ranetrace.javascript_errors.queue') ? '✅ Yes' : '❌ No'],
-                ['Queue Name', BatchConfig::describeFeatureQueue('ranetrace.javascript_errors')],
-                ['Max Breadcrumbs', config('ranetrace.javascript_errors.max_breadcrumbs', 20)],
-                ['Capture Console Errors', config('ranetrace.javascript_errors.capture_console_errors') ? '✅ Yes' : '❌ No'],
-                ['Ignored Errors', count(config('ranetrace.javascript_errors.ignored_errors', [])).' pattern(s)'],
+                ['Sample rate', config('ranetrace.javascript_errors.sample_rate', 1.0) * 100 .'%'],
+                ['Queue enabled', config('ranetrace.javascript_errors.queue') ? '✅ Yes' : '❌ No'],
+                ['Queue name', BatchConfig::describeFeatureQueue('ranetrace.javascript_errors')],
+                ['Max breadcrumbs', config('ranetrace.javascript_errors.max_breadcrumbs', 20)],
+                ['Capture console errors', config('ranetrace.javascript_errors.capture_console_errors') ? '✅ Yes' : '❌ No'],
+                ['Ignored errors', count(config('ranetrace.javascript_errors.ignored_errors', [])).' pattern(s)'],
             ]
         );
 
@@ -102,7 +102,7 @@ class RanetraceJavaScriptErrorTestCommand extends Command
         $this->newLine();
 
         // Display usage instructions
-        $this->line('📖 <fg=cyan>Usage Instructions:</>');
+        $this->line('📖 <fg=cyan>Usage instructions:</>');
         $this->newLine();
 
         $this->line('<fg=green>Step 1:</> Add the tracking script to your layout');

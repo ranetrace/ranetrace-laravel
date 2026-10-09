@@ -45,22 +45,22 @@ class RanetraceAnalyticsTestCommand extends Command
 
     public function handle(): int
     {
-        $this->info('🔍 Ranetrace Website Analytics Test');
+        $this->info('🔍 Ranetrace website analytics test');
         $this->newLine();
 
         // Display current configuration
-        $this->line('📋 <fg=cyan>Current Configuration:</>');
+        $this->line('📋 <fg=cyan>Current configuration:</>');
         $this->table(
             ['Setting', 'Value'],
             [
                 ['Enabled', config('ranetrace.website_analytics.enabled') ? '✅ Yes' : '❌ No'],
-                ['Queue Enabled', config('ranetrace.website_analytics.queue') ? '✅ Yes' : '❌ No'],
-                ['Queue Name', BatchConfig::describeFeatureQueue('ranetrace.website_analytics')],
+                ['Queue enabled', config('ranetrace.website_analytics.queue') ? '✅ Yes' : '❌ No'],
+                ['Queue name', BatchConfig::describeFeatureQueue('ranetrace.website_analytics')],
                 ['Timeout', config('ranetrace.website_analytics.timeout', 10).' seconds'],
                 ['Throttle', config('ranetrace.website_analytics.throttle_seconds', 30).' seconds'],
-                ['User Agent Min Length', config('ranetrace.website_analytics.user_agent.min_length', 10)],
-                ['User Agent Max Length', config('ranetrace.website_analytics.user_agent.max_length', 1000)],
-                ['Excluded Paths', count(config('ranetrace.website_analytics.excluded_paths', [])).' path(s)'],
+                ['User agent min length', config('ranetrace.website_analytics.user_agent.min_length', 10)],
+                ['User agent max length', config('ranetrace.website_analytics.user_agent.max_length', 1000)],
+                ['Excluded paths', count(config('ranetrace.website_analytics.excluded_paths', [])).' path(s)'],
             ]
         );
 
@@ -104,42 +104,42 @@ class RanetraceAnalyticsTestCommand extends Command
         $this->newLine();
 
         // How it works
-        $this->line('🚀 <fg=cyan>How It Works:</>');
+        $this->line('🚀 <fg=cyan>How it works:</>');
         $this->newLine();
         $this->line('Analytics are automatically tracked via middleware when enabled.');
         $this->line('The <fg=yellow>TrackPageVisit</> middleware is added to the <fg=cyan>web</> middleware group.');
         $this->newLine();
 
         // What gets tracked
-        $this->line('📊 <fg=cyan>What Gets Tracked:</>');
+        $this->line('📊 <fg=cyan>What gets tracked:</>');
         $this->table(
-            ['Data Point', 'Description'],
+            ['Data point', 'Description'],
             [
-                ['URL & Path', 'Full URL (sensitive query params redacted) and path'],
+                ['URL & path', 'Full URL (sensitive query params redacted) and path'],
                 ['Timestamp', 'When the visit occurred (ISO 8601)'],
                 ['Referrer', 'Where the visitor came from'],
-                ['Device Type', 'mobile, tablet, desktop, or console'],
+                ['Device type', 'mobile, tablet, desktop, or console'],
                 ['Browser', 'Chrome, Firefox, Safari, Edge, etc.'],
-                ['UTM Parameters', 'source, medium, campaign, content, term'],
+                ['UTM parameters', 'source, medium, campaign, content, term'],
                 ['Session ID (hashed)', 'HMAC-SHA256 (salted) for privacy'],
-                ['User Agent (hashed)', 'HMAC-SHA256 (salted) for privacy'],
-                ['Human Probability', 'Bot detection score (0-100, integer)'],
+                ['User agent (hashed)', 'HMAC-SHA256 (salted) for privacy'],
+                ['Human probability', 'Bot detection score (0-100, integer)'],
             ]
         );
 
         $this->newLine();
 
         // Bot detection
-        $this->line('🤖 <fg=cyan>Bot Detection & Filtering:</>');
+        $this->line('🤖 <fg=cyan>Bot detection & filtering:</>');
         $this->table(
-            ['Detection Method', 'Description'],
+            ['Detection method', 'Description'],
             [
-                ['User Agent Length', 'Filters too short (<10) or too long (>1000) UAs'],
-                ['Suspicious Patterns', 'Filters "test", "curl", "wget", "bot", etc.'],
-                ['CrawlerDetect Library', 'Detects 40+ known bots and crawlers'],
-                ['Extra Bot List', 'GoogleBot, ChatGPT, ClaudeBot, Puppeteer, etc.'],
-                ['Header Validation', 'Requires Accept-Language, validates Accept header'],
-                ['Human Probability', 'Requests scored as "bot" are excluded'],
+                ['User agent length', 'Filters too short (<10) or too long (>1000) UAs'],
+                ['Suspicious patterns', 'Filters "test", "curl", "wget", "bot", etc.'],
+                ['CrawlerDetect library', 'Detects 40+ known bots and crawlers'],
+                ['Extra bot list', 'GoogleBot, ChatGPT, ClaudeBot, Puppeteer, etc.'],
+                ['Header validation', 'Requires Accept-Language, validates Accept header'],
+                ['Human probability', 'Requests scored as "bot" are excluded'],
             ]
         );
 
@@ -148,7 +148,7 @@ class RanetraceAnalyticsTestCommand extends Command
         // Excluded paths
         $excludedPaths = config('ranetrace.website_analytics.excluded_paths', []);
         if (! empty($excludedPaths)) {
-            $this->line('🚫 <fg=cyan>Excluded Paths (visits to these are not tracked):</>');
+            $this->line('🚫 <fg=cyan>Excluded paths (visits to these are not tracked):</>');
             foreach ($excludedPaths as $path) {
                 $this->line('   • /'.$path.'/*');
             }
@@ -156,7 +156,7 @@ class RanetraceAnalyticsTestCommand extends Command
         }
 
         // Testing
-        $this->line('🧪 <fg=cyan>Testing Analytics:</>');
+        $this->line('🧪 <fg=cyan>Testing analytics:</>');
         $this->newLine();
         $this->line('1. Visit your website with a regular browser');
         $this->line('2. Navigate through different pages');
@@ -167,21 +167,21 @@ class RanetraceAnalyticsTestCommand extends Command
         $this->newLine();
 
         // Privacy
-        $this->line('🔒 <fg=cyan>Privacy Features:</>');
+        $this->line('🔒 <fg=cyan>Privacy features:</>');
         $this->table(
-            ['Item', 'How It\'s Handled'],
+            ['Item', 'How it\'s handled'],
             [
-                ['IP Address', 'NOT sent to Ranetrace (privacy-first)'],
-                ['User Agent', 'Hashed with HMAC-SHA256, salted (not stored raw)'],
-                ['Session ID', 'HMAC-SHA256 of IP + UA + Date (daily rotation, salted)'],
-                ['Personal Data', 'No personal information is collected'],
+                ['IP address', 'Not sent to Ranetrace (privacy-first)'],
+                ['User agent', 'Hashed with HMAC-SHA256, salted (not stored raw)'],
+                ['Session ID', 'HMAC-SHA256 of IP + UA + date (daily rotation, salted)'],
+                ['Personal data', 'No personal information is collected'],
             ]
         );
 
         $this->newLine();
 
         // Configuration options
-        $this->line('⚙️  <fg=cyan>Configuration Options:</>');
+        $this->line('⚙️  <fg=cyan>Configuration options:</>');
         $this->newLine();
         $this->line('Add to <fg=yellow>.env</> file:');
         $this->line('');

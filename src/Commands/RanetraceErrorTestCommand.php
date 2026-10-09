@@ -20,7 +20,7 @@ class RanetraceErrorTestCommand extends Command
 
     public function handle(): void
     {
-        $this->info('Testing Ranetrace Error Reporting...');
+        $this->info('Testing Ranetrace error reporting...');
 
         // Check if error reporting is enabled
         if (! config('ranetrace.errors.enabled', true)) {
@@ -83,15 +83,15 @@ class RanetraceErrorTestCommand extends Command
         $this->newLine();
         $this->info('What gets reported:');
         $this->table(
-            ['Data Point', 'Description'],
+            ['Data point', 'Description'],
             [
-                ['Exception Message', 'The error message'],
-                ['Exception Type', 'The exception class name'],
-                ['File & Line', 'Where the error occurred'],
-                ['Stack Trace', 'Full execution path (truncated if too long; key=value secrets redacted)'],
-                ['Code Context', '11 lines around the error (5 before, error, 5 after; each line length-capped)'],
-                ['Request Info', 'URL, method, headers (sensitive query params + non-allowlisted headers masked)'],
-                ['User Info', 'Authenticated user ID (email only if capture_user_email is enabled)'],
+                ['Exception message', 'The error message'],
+                ['Exception type', 'The exception class name'],
+                ['File & line', 'Where the error occurred'],
+                ['Stack trace', 'Full execution path (truncated if too long; key=value secrets redacted)'],
+                ['Code context', '11 lines around the error (5 before, error, 5 after; each line length-capped)'],
+                ['Request info', 'URL, method, headers (sensitive query params + non-allowlisted headers masked)'],
+                ['User info', 'Authenticated user ID (email only if capture_user_email is enabled)'],
                 ['Environment', 'Application environment (production, local, etc.)'],
                 ['Versions', 'PHP and Laravel versions'],
             ]
@@ -102,23 +102,23 @@ class RanetraceErrorTestCommand extends Command
         $this->table(
             ['Setting', 'Value'],
             [
-                ['Queue Enabled', config('ranetrace.errors.queue', true) ? 'Yes' : 'No'],
-                ['Queue Name', BatchConfig::describeFeatureQueue('ranetrace.errors')],
+                ['Queue enabled', config('ranetrace.errors.queue', true) ? 'Yes' : 'No'],
+                ['Queue name', BatchConfig::describeFeatureQueue('ranetrace.errors')],
                 ['Timeout', config('ranetrace.errors.timeout', 10).' seconds'],
-                ['Capture User Email', config('ranetrace.errors.capture_user_email', false) ? 'Yes' : 'No'],
-                ['API Key Set', config('ranetrace.key') ? 'Yes' : 'No'],
+                ['Capture user email', config('ranetrace.errors.capture_user_email', false) ? 'Yes' : 'No'],
+                ['API key set', config('ranetrace.key') ? 'Yes' : 'No'],
             ]
         );
 
         $this->newLine();
-        $this->info('Privacy & Security:');
+        $this->info('Privacy & security:');
         $this->table(
-            ['Item', 'How It\'s Handled'],
+            ['Item', 'How it\'s handled'],
             [
-                ['Request Headers', 'Only an allowlist of safe headers (accept, user-agent, referer, host, ...) is sent; every other header is masked with ***'],
-                ['Code Context', 'Only included if file is readable and under size limit'],
-                ['Stack Trace', 'Truncated if exceeds max length; key=value secrets redacted'],
-                ['User Data', 'User ID always; email only when capture_user_email is enabled (off by default)'],
+                ['Request headers', 'Only an allowlist of safe headers (accept, user-agent, referer, host, ...) is sent; every other header is masked with ***'],
+                ['Code context', 'Only included if file is readable and under size limit'],
+                ['Stack trace', 'Truncated if exceeds max length; key=value secrets redacted'],
+                ['User data', 'User ID always; email only when capture_user_email is enabled (off by default)'],
             ]
         );
 
@@ -144,7 +144,7 @@ class RanetraceErrorTestCommand extends Command
             })</>
             WIRING);
         $this->newLine();
-        $this->warn('Without this wiring, the package will NOT auto-capture unhandled exceptions.');
+        $this->warn('Without this wiring, the package will not auto-capture unhandled exceptions.');
     }
 
     /**

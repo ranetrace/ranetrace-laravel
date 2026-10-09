@@ -19,7 +19,7 @@ class RanetraceEventTestCommand extends Command
 
     public function handle(): void
     {
-        $this->info('Testing Ranetrace Event Tracking...');
+        $this->info('Testing Ranetrace event tracking...');
 
         // Test event name validation
         $this->info('1. Testing event name validation...');
@@ -47,7 +47,7 @@ class RanetraceEventTestCommand extends Command
         ]);
 
         // Test e-commerce events using the helper
-        $this->info('3. Sending Product Added to Cart event...');
+        $this->info('3. Sending product added to cart event...');
         RanetraceEvents::productAddedToCart(
             productId: 'PROD-123',
             productName: 'Awesome Widget',
@@ -57,7 +57,7 @@ class RanetraceEventTestCommand extends Command
             additionalProperties: ['color' => 'blue', 'size' => 'large']
         );
 
-        $this->info('4. Sending Sale event...');
+        $this->info('4. Sending sale event...');
         RanetraceEvents::sale(
             orderId: 'ORDER-456',
             totalAmount: 89.97,
@@ -79,13 +79,13 @@ class RanetraceEventTestCommand extends Command
             additionalProperties: ['payment_method' => 'credit_card']
         );
 
-        $this->info('5. Sending User Registration event...');
+        $this->info('5. Sending user registration event...');
         RanetraceEvents::userRegistered(
             userId: 123,
             additionalProperties: ['registration_source' => 'website']
         );
 
-        $this->info('6. Sending Page View event...');
+        $this->info('6. Sending page view event...');
         RanetraceEvents::pageView(
             pageName: 'Product Details',
             additionalProperties: ['product_id' => 'PROD-123']
@@ -110,7 +110,7 @@ class RanetraceEventTestCommand extends Command
         $this->info('Check your Ranetrace dashboard once the events have been sent.');
 
         $this->newLine();
-        $this->info('Available Event Constants:');
+        $this->info('Available event constants:');
         $this->table(
             ['Constant', 'Value'],
             [
@@ -125,7 +125,7 @@ class RanetraceEventTestCommand extends Command
         );
 
         $this->newLine();
-        $this->info('Event Name Validation Rules:');
+        $this->info('Event name validation rules:');
         $this->table(
             ['Rule', 'Description'],
             [
@@ -140,11 +140,11 @@ class RanetraceEventTestCommand extends Command
         $this->newLine();
         $this->info('Privacy-focused fingerprinting:');
         $this->table(
-            ['Data Point', 'How It\'s Handled'],
+            ['Data point', 'How it\'s handled'],
             [
-                ['User Agent', 'Hashed with HMAC-SHA256 (salted)'],
-                ['Session ID', 'HMAC-SHA256 of IP + User Agent + Date (daily rotation, salted)'],
-                ['IP Address', 'Not sent to Ranetrace (privacy-first)'],
+                ['User agent', 'Hashed with HMAC-SHA256 (salted)'],
+                ['Session ID', 'HMAC-SHA256 of IP + user agent + date (daily rotation, salted)'],
+                ['IP address', 'Not sent to Ranetrace (privacy-first)'],
                 ['User ID', 'Only if explicitly provided or user is authenticated'],
             ]
         );
@@ -154,10 +154,10 @@ class RanetraceEventTestCommand extends Command
         $this->table(
             ['Setting', 'Value'],
             [
-                ['Events Enabled', config('ranetrace.events.enabled') ? 'Yes' : 'No'],
-                ['Queue Enabled', config('ranetrace.events.queue') ? 'Yes' : 'No'],
-                ['Queue Name', BatchConfig::describeFeatureQueue('ranetrace.events')],
-                ['API Key Set', config('ranetrace.key') ? 'Yes' : 'No'],
+                ['Events enabled', config('ranetrace.events.enabled') ? 'Yes' : 'No'],
+                ['Queue enabled', config('ranetrace.events.queue') ? 'Yes' : 'No'],
+                ['Queue name', BatchConfig::describeFeatureQueue('ranetrace.events')],
+                ['API key set', config('ranetrace.key') ? 'Yes' : 'No'],
             ]
         );
     }

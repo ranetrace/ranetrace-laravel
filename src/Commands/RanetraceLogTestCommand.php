@@ -17,7 +17,7 @@ class RanetraceLogTestCommand extends Command
 
     public function handle(): void
     {
-        $this->info('Testing Ranetrace Logging...');
+        $this->info('Testing Ranetrace logging...');
 
         // Check if logging is enabled
         if (! config('ranetrace.logging.enabled', false)) {
@@ -134,12 +134,12 @@ class RanetraceLogTestCommand extends Command
         $this->table(
             ['Setting', 'Value'],
             [
-                ['Logging Enabled', config('ranetrace.logging.enabled') ? 'Yes' : 'No'],
-                ['Queue Enabled', config('ranetrace.logging.queue') ? 'Yes' : 'No'],
-                ['Queue Name', BatchConfig::describeFeatureQueue('ranetrace.logging')],
-                ['Minimum Level', config('ranetrace.logging.level', 'notice')],
-                ['Excluded Channels', implode(', ', config('ranetrace.logging.excluded_channels', [])) ?: '(none)'],
-                ['API Key Set', config('ranetrace.key') ? 'Yes' : 'No'],
+                ['Logging enabled', config('ranetrace.logging.enabled') ? 'Yes' : 'No'],
+                ['Queue enabled', config('ranetrace.logging.queue') ? 'Yes' : 'No'],
+                ['Queue name', BatchConfig::describeFeatureQueue('ranetrace.logging')],
+                ['Minimum level', config('ranetrace.logging.level', 'notice')],
+                ['Excluded channels', implode(', ', config('ranetrace.logging.excluded_channels', [])) ?: '(none)'],
+                ['API key set', config('ranetrace.key') ? 'Yes' : 'No'],
             ]
         );
 

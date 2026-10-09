@@ -175,7 +175,7 @@ class RanetracePauseClearCommand extends Command
             $this->info("✓ Pause cleared for '{$feature}'.");
             $this->line('  This feature will resume processing on next ranetrace:work execution.');
             $this->newLine();
-            $this->warn('Note: If the underlying issue is not resolved, the pause may be set again.');
+            $this->warn('Note: if the underlying issue is not resolved, the pause may be set again.');
 
             // Provide contextual help based on pause reason
             $this->provideContextualHelp($pauseData['reason']);

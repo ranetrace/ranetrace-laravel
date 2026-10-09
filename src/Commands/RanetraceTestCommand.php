@@ -41,7 +41,7 @@ class RanetraceTestCommand extends Command
 
     protected function testAllFeatures(): int
     {
-        $this->info('🧪 Testing All Ranetrace Features...');
+        $this->info('🧪 Testing all Ranetrace features...');
         $this->newLine();
 
         $features = ['errors', 'events', 'logging', 'javascript_errors', 'analytics'];
@@ -55,7 +55,7 @@ class RanetraceTestCommand extends Command
         }
 
         // Summary
-        $this->info('📊 Test Summary:');
+        $this->info('📊 Test summary:');
         $this->table(
             ['Feature', 'Result'],
             collect($results)->map(function ($passed, $feature) {
@@ -75,7 +75,7 @@ class RanetraceTestCommand extends Command
     {
         $features = array_map('trim', $features);
 
-        $this->info('🧪 Testing Multiple Features: '.implode(', ', $features));
+        $this->info('🧪 Testing multiple features: '.implode(', ', $features));
         $this->newLine();
 
         $results = [];
@@ -87,7 +87,7 @@ class RanetraceTestCommand extends Command
         }
 
         // Summary
-        $this->info('📊 Test Summary:');
+        $this->info('📊 Test summary:');
         $this->table(
             ['Feature', 'Result'],
             collect($results)->map(function ($passed, $feature) {
@@ -132,7 +132,7 @@ class RanetraceTestCommand extends Command
 
     protected function validateConfiguration(): int
     {
-        $this->info('🔍 Testing Ranetrace Configuration...');
+        $this->info('🔍 Testing Ranetrace configuration...');
         $this->newLine();
 
         $config = config('ranetrace');
@@ -160,14 +160,14 @@ class RanetraceTestCommand extends Command
 
         // Check each feature configuration
         $features = [
-            'errors' => 'Error Reporting',
-            'events' => 'Event Tracking',
-            'website_analytics' => 'Website Analytics',
-            'javascript_errors' => 'JavaScript Errors',
-            'logging' => 'Centralized Logging',
+            'errors' => 'Error reporting',
+            'events' => 'Event tracking',
+            'website_analytics' => 'Website analytics',
+            'javascript_errors' => 'JavaScript errors',
+            'logging' => 'Centralized logging',
         ];
 
-        $this->line('📋 <fg=cyan>Feature Configuration:</>');
+        $this->line('📋 <fg=cyan>Feature configuration:</>');
         $rows = [];
 
         foreach ($features as $key => $name) {
@@ -221,13 +221,13 @@ class RanetraceTestCommand extends Command
         // context) and the 1000-item batch size are fixed internal constants, not
         // config, so only genuinely configurable settings are shown here.
         if (! empty($config['errors'])) {
-            $this->line('⚙️  <fg=cyan>Error Reporting Settings:</>');
+            $this->line('⚙️  <fg=cyan>Error reporting settings:</>');
             $this->table(
                 ['Setting', 'Value'],
                 [
                     ['Timeout', ($config['errors']['timeout'] ?? 10).' seconds'],
-                    ['Queue Name', BatchConfig::describeFeatureQueue('ranetrace.errors')],
-                    ['Capture User Email', ($config['errors']['capture_user_email'] ?? false) ? 'Yes' : 'No'],
+                    ['Queue name', BatchConfig::describeFeatureQueue('ranetrace.errors')],
+                    ['Capture user email', ($config['errors']['capture_user_email'] ?? false) ? 'Yes' : 'No'],
                 ]
             );
             $this->newLine();

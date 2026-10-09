@@ -91,8 +91,8 @@ test('ranetrace:test names the connection default queue for an unset feature que
             ['Setting', 'Value'],
             [
                 ['Timeout', '10 seconds'],
-                ['Queue Name', "the connection's default queue"],
-                ['Capture User Email', 'No'],
+                ['Queue name', "the connection's default queue"],
+                ['Capture user email', 'No'],
             ],
         )
         ->assertSuccessful();
@@ -132,11 +132,11 @@ test('the queue worker check does not count an unset feature queue name as a que
 function featureTableRows(array $queues): array
 {
     $names = [
-        'errors' => 'Error Reporting',
-        'events' => 'Event Tracking',
-        'website_analytics' => 'Website Analytics',
-        'javascript_errors' => 'JavaScript Errors',
-        'logging' => 'Centralized Logging',
+        'errors' => 'Error reporting',
+        'events' => 'Event tracking',
+        'website_analytics' => 'Website analytics',
+        'javascript_errors' => 'JavaScript errors',
+        'logging' => 'Centralized logging',
     ];
 
     return array_map(
