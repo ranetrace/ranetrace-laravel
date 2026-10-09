@@ -148,13 +148,14 @@ class Ranetrace
 
     /**
      * Determine whether capture is enabled for the given feature: the package
-     * must be enabled, the feature itself enabled, and an API key configured.
+     * must be enabled, the feature itself enabled, and an API key configured. A
+     * key of nothing but whitespace cannot authenticate, so it counts as missing.
      */
     private function isCaptureEnabled(string $feature): bool
     {
         return config('ranetrace.enabled', true)
             && config("ranetrace.{$feature}.enabled", true)
-            && ! empty(config('ranetrace.key'));
+            && ! blank(config('ranetrace.key'));
     }
 
     /**

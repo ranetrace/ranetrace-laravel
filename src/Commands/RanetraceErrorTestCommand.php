@@ -106,7 +106,7 @@ class RanetraceErrorTestCommand extends Command
                 ['Queue name', BatchConfig::describeFeatureQueue('ranetrace.errors')],
                 ['Timeout', config('ranetrace.errors.timeout', 10).' seconds'],
                 ['Capture user email', config('ranetrace.errors.capture_user_email', false) ? 'Yes' : 'No'],
-                ['API key set', config('ranetrace.key') ? 'Yes' : 'No'],
+                ['API key set', blank(config('ranetrace.key')) ? 'No' : 'Yes'],
             ]
         );
 

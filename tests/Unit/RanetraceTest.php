@@ -15,6 +15,17 @@ beforeEach(function (): void {
     Queue::fake();
 });
 
+/**
+ * An unset `RANETRACE_KEY` arrives as null and `RANETRACE_KEY=` as an empty
+ * string. A key of nothing but whitespace cannot authenticate either.
+ */
+dataset('missing ingest keys', [
+    'null' => [null],
+    'empty' => [''],
+    'a space' => [' '],
+    'whitespace' => ["\t\n "],
+]);
+
 // --- report(): capture gating ---
 
 test('report does nothing when the package is disabled', function (): void {
@@ -33,13 +44,13 @@ test('report does nothing when error tracking is disabled', function (): void {
     Queue::assertNothingPushed();
 });
 
-test('report does nothing when no API key is configured', function (): void {
-    Config::set('ranetrace.key', null);
+test('report does nothing when no API key is configured', function (?string $key): void {
+    Config::set('ranetrace.key', $key);
 
     (new Ranetrace)->report(new RuntimeException('boom'));
 
     Queue::assertNothingPushed();
-});
+})->with('missing ingest keys');
 
 test('report dispatches HandleErrorJob when enabled and configured', function (): void {
     (new Ranetrace)->report(new RuntimeException('boom'));
@@ -119,13 +130,13 @@ test('trackEvent does nothing when the package is disabled', function (): void {
     Queue::assertNothingPushed();
 });
 
-test('trackEvent does nothing when no API key is configured', function (): void {
-    Config::set('ranetrace.key', null);
+test('trackEvent does nothing when no API key is configured', function (?string $key): void {
+    Config::set('ranetrace.key', $key);
 
     (new Ranetrace)->trackEvent('button_clicked');
 
     Queue::assertNothingPushed();
-});
+})->with('missing ingest keys');
 
 test('trackEvent dispatches HandleEventJob for a valid event', function (): void {
     (new Ranetrace)->trackEvent('button_clicked', ['page' => 'home']);
@@ -184,6 +195,7 @@ test('trackEvent throws on an invalid event name while capture is off', function
     Queue::assertNothingPushed();
 })->with([
     'no API key' => ['ranetrace.key', null],
+    'a whitespace-only API key' => ['ranetrace.key', '   '],
     'events disabled' => ['ranetrace.events.enabled', false],
     'package disabled' => ['ranetrace.enabled', false],
 ]);

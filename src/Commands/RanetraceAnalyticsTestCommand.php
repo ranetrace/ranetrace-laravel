@@ -75,7 +75,7 @@ class RanetraceAnalyticsTestCommand extends Command
             return self::SUCCESS;
         }
 
-        if (empty(config('ranetrace.key'))) {
+        if (blank(config('ranetrace.key'))) {
             $this->error('❌ Ranetrace API key is not set!');
             $this->info('💡 Add your API key to .env:');
             $this->line('   RANETRACE_KEY=your-api-key-here');

@@ -85,10 +85,14 @@ test('ranetrace:test-javascript-errors dispatches nothing when JavaScript error 
     Bus::assertNotDispatched(HandleJavaScriptErrorJob::class);
 });
 
-test('ranetrace:test-javascript-errors dispatches nothing and fails when the key is missing', function (): void {
-    Config::set('ranetrace.key', null);
+test('ranetrace:test-javascript-errors dispatches nothing and fails when the key is missing', function (?string $key): void {
+    Config::set('ranetrace.key', $key);
 
     $this->artisan('ranetrace:test-javascript-errors')->assertFailed();
 
     Bus::assertNotDispatched(HandleJavaScriptErrorJob::class);
-});
+})->with([
+    'null' => [null],
+    'empty' => [''],
+    'whitespace' => ['   '],
+]);

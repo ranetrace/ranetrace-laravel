@@ -157,7 +157,7 @@ class RanetraceEventTestCommand extends Command
                 ['Events enabled', config('ranetrace.events.enabled') ? 'Yes' : 'No'],
                 ['Queue enabled', config('ranetrace.events.queue') ? 'Yes' : 'No'],
                 ['Queue name', BatchConfig::describeFeatureQueue('ranetrace.events')],
-                ['API key set', config('ranetrace.key') ? 'Yes' : 'No'],
+                ['API key set', blank(config('ranetrace.key')) ? 'No' : 'Yes'],
             ]
         );
     }

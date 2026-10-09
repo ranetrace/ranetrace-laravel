@@ -139,7 +139,7 @@ class RanetraceLogTestCommand extends Command
                 ['Queue name', BatchConfig::describeFeatureQueue('ranetrace.logging')],
                 ['Minimum level', config('ranetrace.logging.level', 'notice')],
                 ['Excluded channels', implode(', ', config('ranetrace.logging.excluded_channels', [])) ?: '(none)'],
-                ['API key set', config('ranetrace.key') ? 'Yes' : 'No'],
+                ['API key set', blank(config('ranetrace.key')) ? 'No' : 'Yes'],
             ]
         );
 
