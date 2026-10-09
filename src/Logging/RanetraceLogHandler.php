@@ -7,6 +7,7 @@ namespace Ranetrace\Laravel\Logging;
 use Monolog\Handler\AbstractProcessingHandler;
 use Monolog\LogRecord;
 use Ranetrace\Laravel\Jobs\HandleLogJob;
+use Ranetrace\Laravel\Ranetrace;
 use Ranetrace\Laravel\Support\Core;
 use Ranetrace\Laravel\Support\CoreConfig;
 use Ranetrace\Laravel\Support\InternalLogger;
@@ -34,13 +35,7 @@ class RanetraceLogHandler extends AbstractProcessingHandler
     protected function write(LogRecord $record): void
     {
         try {
-            // Skip if Ranetrace is not enabled globally
-            if (! config('ranetrace.enabled', true)) {
-                return;
-            }
-
-            // Skip if logging is not enabled
-            if (! config('ranetrace.logging.enabled', false)) {
+            if (! Ranetrace::isCaptureEnabled('logging')) {
                 return;
             }
 

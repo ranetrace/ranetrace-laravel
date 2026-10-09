@@ -14,6 +14,7 @@ use Ranetrace\Laravel\Analytics\Contracts\RequestFilter;
 use Ranetrace\Laravel\Analytics\HumanProbabilityScorer;
 use Ranetrace\Laravel\Analytics\VisitDataCollector;
 use Ranetrace\Laravel\Jobs\HandlePageVisitJob;
+use Ranetrace\Laravel\Ranetrace;
 use Ranetrace\Laravel\Support\BatchConfig;
 use Ranetrace\Laravel\Support\InternalLogger;
 use Symfony\Component\HttpFoundation\Response;
@@ -148,7 +149,7 @@ class TrackPageVisit
      */
     private function captureVisit(Request $request): void
     {
-        if (! config('ranetrace.enabled', true) || ! config('ranetrace.website_analytics.enabled', false)) {
+        if (! Ranetrace::isCaptureEnabled('website_analytics')) {
             return;
         }
 

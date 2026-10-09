@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Validator;
 use Ranetrace\Laravel\Jobs\HandleJavaScriptErrorJob;
+use Ranetrace\Laravel\Ranetrace;
 use Ranetrace\Laravel\Support\Core;
 use Ranetrace\Laravel\Support\CoreConfig;
 use Ranetrace\Laravel\Support\InternalLogger;
@@ -46,7 +47,8 @@ class JavaScriptErrorController extends Controller
 
     /**
      * Whether this relay is mounted, and so whether the capture script may be
-     * rendered at all.
+     * rendered at all: the capture rule every feature uses, so without an
+     * ingest key there is no route and no script, as with the flag off.
      *
      * The service provider mounts the route on this answer and the
      * `error-tracker` view renders the script on it, and that script calls
@@ -58,7 +60,7 @@ class JavaScriptErrorController extends Controller
      */
     public static function isMounted(): bool
     {
-        return config('ranetrace.enabled', true) && config('ranetrace.javascript_errors.enabled');
+        return Ranetrace::isCaptureEnabled('javascript_errors');
     }
 
     public function store(Request $request): JsonResponse
@@ -89,7 +91,7 @@ class JavaScriptErrorController extends Controller
             ], 403);
         }
 
-        if (! config('ranetrace.javascript_errors.enabled', false)) {
+        if (! Ranetrace::isCaptureEnabled('javascript_errors')) {
             return response()->json([
                 'success' => false,
                 'message' => 'JavaScript error tracking is not enabled',

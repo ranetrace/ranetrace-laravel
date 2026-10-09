@@ -33,9 +33,32 @@ use Throwable;
  */
 class Ranetrace
 {
+    /**
+     * The features `config/ranetrace.php` ships switched on.
+     *
+     * @var list<string>
+     */
+    private const array FEATURES_ON_BY_DEFAULT = ['errors', 'events'];
+
+    /**
+     * Determine whether capture is enabled for the given feature: the package
+     * must be enabled, the feature itself enabled, and an API key configured. A
+     * key of nothing but whitespace cannot authenticate, so it counts as missing.
+     *
+     * Every capture entry point asks this one rule, so an item is never
+     * buffered that could not be sent. A feature whose flag the host's config
+     * leaves out falls back to its shipped default in `config/ranetrace.php`.
+     */
+    public static function isCaptureEnabled(string $feature): bool
+    {
+        return config('ranetrace.enabled', true)
+            && config("ranetrace.{$feature}.enabled", in_array($feature, self::FEATURES_ON_BY_DEFAULT, true))
+            && ! blank(config('ranetrace.key'));
+    }
+
     public function report(Throwable $exception): void
     {
-        if (! $this->isCaptureEnabled('errors')) {
+        if (! self::isCaptureEnabled('errors')) {
             return;
         }
 
@@ -76,7 +99,7 @@ class Ranetrace
             EventTracker::ensureValidEventName($eventName);
         }
 
-        if (! $this->isCaptureEnabled('events')) {
+        if (! self::isCaptureEnabled('events')) {
             return;
         }
 
@@ -144,18 +167,6 @@ class Ranetrace
     private function isInternalException(Throwable $exception): bool
     {
         return str_starts_with($exception->getFile(), __DIR__.DIRECTORY_SEPARATOR);
-    }
-
-    /**
-     * Determine whether capture is enabled for the given feature: the package
-     * must be enabled, the feature itself enabled, and an API key configured. A
-     * key of nothing but whitespace cannot authenticate, so it counts as missing.
-     */
-    private function isCaptureEnabled(string $feature): bool
-    {
-        return config('ranetrace.enabled', true)
-            && config("ranetrace.{$feature}.enabled", true)
-            && ! blank(config('ranetrace.key'));
     }
 
     /**
