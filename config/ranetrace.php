@@ -23,9 +23,9 @@ return [
 
         /*
          * A few lines of source around each frame in your own code and around
-         * each throw site, secret-scrubbed, never argument values. Vendor
-         * frames carry none, and a frame in a compiled Blade view shows the
-         * template. Turn it off and no source line leaves the application.
+         * each throw site, secret-scrubbed. Vendor frames carry none, and a
+         * frame in a compiled Blade view shows the template. Turn it off and
+         * no source line leaves the application.
          */
         'capture_source' => env('RANETRACE_ERRORS_CAPTURE_SOURCE', true),
     ],
