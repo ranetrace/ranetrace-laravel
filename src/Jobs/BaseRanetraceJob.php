@@ -12,6 +12,7 @@ use Illuminate\Queue\SerializesModels;
 use Ranetrace\Laravel\Services\RanetraceBatchBuffer;
 use Ranetrace\Laravel\Support\BatchConfig;
 use Ranetrace\Laravel\Support\InternalLogger;
+use Ranetrace\Php\Errors\ErrorItemShedder;
 use Ranetrace\Php\Support\PayloadSizer;
 use Throwable;
 
@@ -47,6 +48,15 @@ abstract class BaseRanetraceJob implements ShouldQueue
     protected const int MAX_ITEM_FIELD_BYTES = 8_192; // 8 KB
 
     /**
+     * The error item's structured frame fields. The backend refuses a
+     * `_truncated` marker inside them, so they are shed by
+     * {@see ErrorItemShedder} and never handed to the generic per-field cut.
+     *
+     * @var list<string>
+     */
+    private const array ERROR_FRAME_FIELDS = ['frames', 'previous'];
+
+    /**
      * Total attempts for a capture job. Lets bufferOrRelease() re-queue an item
      * a couple of times when the buffer lock is briefly contended, instead of
      * dropping it on the first miss. Bounded so a permanently stuck lock cannot
@@ -76,6 +86,15 @@ abstract class BaseRanetraceJob implements ShouldQueue
             'job_class' => static::class,
             'exception' => $exception->getMessage(),
         ]);
+    }
+
+    /**
+     * Whether this job's items are error items, whose frames are shed before
+     * the generic cut runs, see {@see capItemBytes()}.
+     */
+    protected function shedsErrorFrames(): bool
+    {
+        return false;
     }
 
     /**
@@ -129,9 +148,12 @@ abstract class BaseRanetraceJob implements ShouldQueue
      * Hold a captured item to the per-item byte budget.
      *
      * Values arriving here have already been scrubbed, so shrinking them cannot
-     * expose a secret past a redaction. Oversize free-form strings are cut
-     * first, then oversize sub-arrays replaced wholesale (truncating a
-     * structure mid-way yields invalid JSON). An item that is somehow still
+     * expose a secret past a redaction. An error item first sheds frame
+     * sources, frames and previous exceptions through {@see ErrorItemShedder},
+     * and is kept as soon as it fits; its `frames` and `previous` are then
+     * exempt from the cut below. Oversize free-form strings are cut next, then
+     * oversize sub-arrays replaced wholesale (truncating a structure mid-way
+     * yields invalid JSON). An item that is somehow still
      * over budget after both is dropped outright: losing one item beats losing
      * the batch it would have poisoned.
      *
@@ -154,8 +176,27 @@ abstract class BaseRanetraceJob implements ShouldQueue
         }
 
         $encodable = $bytes !== null;
+        $isError = $this->shedsErrorFrames();
+
+        if ($isError) {
+            $payload = ErrorItemShedder::shed($payload, self::MAX_ITEM_BYTES);
+            $shedBytes = self::encodedBytes($payload);
+
+            if ($encodable && $shedBytes !== null && $shedBytes <= self::MAX_ITEM_BYTES) {
+                InternalLogger::warning('Captured item exceeded the per-item byte budget and was shrunk', [
+                    'type' => static::class,
+                    'max_bytes' => self::MAX_ITEM_BYTES,
+                ]);
+
+                return $payload;
+            }
+        }
 
         foreach ($payload as $key => $value) {
+            if ($isError && in_array($key, self::ERROR_FRAME_FIELDS, true)) {
+                continue;
+            }
+
             if (is_string($value) && mb_strlen($value, '8bit') > self::MAX_ITEM_FIELD_BYTES) {
                 $payload[$key] = mb_strcut($value, 0, self::MAX_ITEM_FIELD_BYTES).'... (truncated)';
 

@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Request;
 use Ranetrace\Laravel\Events\EventTracker;
 use Ranetrace\Laravel\Jobs\HandleErrorJob;
 use Ranetrace\Laravel\Jobs\HandleEventJob;
+use Ranetrace\Laravel\Support\BladeFrameMapper;
 use Ranetrace\Laravel\Support\Core;
 use Ranetrace\Laravel\Support\CoreConfig;
 use Ranetrace\Laravel\Support\CoreDiagnostics;
@@ -187,9 +188,20 @@ class Ranetrace
         );
     }
 
+    /**
+     * The Blade mapper maps frames and each previous exception's throw site,
+     * never the item's own `file` and `line`: those are part of the backend's
+     * error group key, and mapping them would split every existing group of a
+     * Blade error in two.
+     */
     private function payloadBuilder(): PayloadBuilder
     {
-        return new PayloadBuilder(CoreConfig::make(), Core::scrubber(), new CoreDiagnostics);
+        return new PayloadBuilder(
+            CoreConfig::make(),
+            Core::scrubber(),
+            new CoreDiagnostics,
+            [BladeFrameMapper::forApplication()],
+        );
     }
 
     /**

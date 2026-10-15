@@ -20,6 +20,14 @@ return [
         'queue_name' => env('RANETRACE_ERRORS_QUEUE_NAME', null), // unset: the connection's default queue
         'timeout' => env('RANETRACE_ERRORS_TIMEOUT', 10),
         'capture_user_email' => env('RANETRACE_ERRORS_CAPTURE_USER_EMAIL', false),
+
+        /*
+         * A few lines of source around each frame in your own code and around
+         * each throw site, secret-scrubbed, never argument values. Vendor
+         * frames carry none, and a frame in a compiled Blade view shows the
+         * template. Turn it off and no source line leaves the application.
+         */
+        'capture_source' => env('RANETRACE_ERRORS_CAPTURE_SOURCE', true),
     ],
 
     'events' => [

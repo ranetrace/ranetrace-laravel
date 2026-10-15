@@ -53,6 +53,14 @@ class HandleErrorJob extends BaseRanetraceJob
             'console_command',
             'console_arguments',
             'exception_context',
+            'frames',
+            'frames_omitted',
+            'previous',
         ];
+    }
+
+    protected function shedsErrorFrames(): bool
+    {
+        return true;
     }
 }

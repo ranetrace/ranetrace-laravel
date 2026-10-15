@@ -84,6 +84,18 @@ Test your setup with:
 php artisan ranetrace:test-errors
 ```
 
+#### Source lines leave your app by default
+
+Each error carries a few lines of your source code: five lines either side of the line that threw, and of each stack frame in your own code. Every line is secret-scrubbed first, and argument values are never read. Frames in `vendor` carry no source. A frame in a compiled Blade view shows the template you wrote, with its line and its lines, rather than the compiled file under `storage/framework/views`. Previous exceptions travel with the error, each with its own throw site and frames.
+
+To keep every source line inside your application, set:
+
+```env
+RANETRACE_ERRORS_CAPTURE_SOURCE=false
+```
+
+The stack frames still travel, as file, line, class and function, without the lines around them.
+
 ### JavaScript error tracking
 
 1. Enable it in your `.env`:
