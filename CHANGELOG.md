@@ -6,6 +6,8 @@ This file starts at 1.0.0. The package was re-versioned to share a major with `r
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-10-16
+
 Requires `ranetrace/ranetrace-php` 1.1.0 or later, the release that ships `FrameMapper` and the structured frames.
 
 ### Added
