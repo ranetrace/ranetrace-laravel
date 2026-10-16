@@ -126,8 +126,12 @@ Each log entry includes:
 
 Values stored under sensitive keys (`password`, `token`, `api_key`, `secret`,
 `authorization`, …), and `key=value` secrets written into the message string,
-are redacted to `[REDACTED]` before the entry is sent. Extend the sensitive-key
-list via `ranetrace.scrubbing.extra_keys`. Scrubbing is defense-in-depth; avoid
+are redacted to `[REDACTED]` before the entry is sent. The password in a URL
+(`pgsql://app:[REDACTED]@db/app`) and a token whose prefix says it is a
+credential (`sk_live_...`, `AKIA...`, `ghp_...`, a JWT) are redacted by their
+value, in the message and in every context string, whatever key it sits under.
+Any other secret under a name the list does not know is sent as written: extend
+the sensitive-key list via `ranetrace.scrubbing.extra_keys`. Scrubbing is defense-in-depth; avoid
 deliberately logging secrets regardless.
 
 ## Log driver details

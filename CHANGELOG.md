@@ -15,6 +15,7 @@ Requires the `ranetrace/ranetrace-php` release that ships `FrameMapper` and the 
 
 ### Fixed
 - **An oversized error no longer loses its frames to the per-field cut.** The per-item budget replaced any array over 8 KB with a `_truncated` marker, which inside `frames` or `previous` would have the backend refuse the whole error. An over-budget error now sheds source lines first, then middle frames, then previous exceptions, exactly as `ranetrace/ranetrace-php` does, and the generic cut never touches `frames` or `previous`. Nothing to do on upgrade
+- **Secret scrubbing catches more, through `ranetrace/ranetrace-php`'s shared scrubber.** In exception and log messages, traces, the Artisan command line and source lines, a quoted value is redacted up to its closing quote, a subscript key (`$config['password'] = '...'`) and a call whose name says it takes a secret (`setApiKey('...')`) count as keys, and the literals passed to a short list of credential-taking calls (`new PDO(...)`, `mysqli_connect(...)`, `Http::withBasicAuth(...)` and a few more) are redacted. Everywhere, log context, event properties, breadcrumbs and an exception's `context()` included, the password in a URL and a token whose prefix says it is a credential (`sk_live_`, `AKIA`, `ghp_`, a JWT and a few more) are redacted by their value, and `pwd` joins the sensitive key fragments. The `ranetrace/ranetrace-php` changelog lists every shape. Nothing to do on upgrade
 
 ## [1.1.19] - 2026-10-09
 
