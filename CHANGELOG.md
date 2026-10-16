@@ -6,6 +6,12 @@ This file starts at 1.0.0. The package was re-versioned to share a major with `r
 
 ## [Unreleased]
 
+Requires `ranetrace/ranetrace-php` 1.1.1 or later.
+
+### Fixed
+- **Errors, logs and JavaScript errors are captured again on PHP linked to a PCRE2 older than 10.43**, such as Ubuntu 22.04 and 24.04 and Debian 12. 1.2.0 required `ranetrace/ranetrace-php` 1.1.0, whose secret scrubber built a pattern those PCRE2 versions cannot compile, so every capture that scrubbed free-form text was dropped, and the JavaScript error endpoint answered 500. Nothing to do on upgrade
+- **Scrubbing a line of many sensitive calls, such as `$client->setToken('a');` repeated, takes time in proportion to its length** instead of quadratic time. Nothing to do on upgrade
+
 ## [1.2.0] - 2026-10-16
 
 Requires `ranetrace/ranetrace-php` 1.1.0 or later, the release that ships `FrameMapper` and the structured frames.
