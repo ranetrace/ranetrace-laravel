@@ -6,7 +6,7 @@ This file starts at 1.0.0. The package was re-versioned to share a major with `r
 
 ## [Unreleased]
 
-Requires the `ranetrace/ranetrace-php` release that ships `FrameMapper` and the structured frames: raise the `ranetrace/ranetrace-php` constraint in `composer.json` to that release before tagging.
+Requires `ranetrace/ranetrace-php` 1.1.0 or later, the release that ships `FrameMapper` and the structured frames.
 
 ### Added
 - **Errors now carry structured stack frames, source lines and previous exceptions.** Each error sends `frames` (up to 50, the middle dropped first and counted in `frames_omitted`), each a file, line, class and function, and `previous`, up to five previous exceptions with their own throw site and frames. A frame in your own code and every throw site carry five lines either side, secret-scrubbed; vendor frames carry none, and frames never carry argument values. Nothing to do on upgrade
