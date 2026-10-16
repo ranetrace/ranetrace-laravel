@@ -283,6 +283,66 @@ test('it scrubs both the path and the query when a token appears in each', funct
         ->and($data['url'])->toBe('https://example.com/invitations/[REDACTED]?token=[REDACTED]&utm_source=mail');
 });
 
+test('it redacts a JWT under an innocently named query parameter of the url', function (): void {
+    $jwt = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dozjgNryP4J3jVmNHl0w5N_XgL0n3I9PlFUP0THsR8U';
+    $request = requestWithRoute("https://example.com/magic?t={$jwt}&page=2", 'magic');
+
+    $data = VisitDataCollector::collect($request);
+
+    expect($data['url'])->toBe('https://example.com/magic?page=2&t=[REDACTED]');
+});
+
+test('it redacts a credential-prefixed token in a path segment the route does not name sensitive', function (): void {
+    $request = requestWithRoute('https://example.com/keys/sk_live_51HxYzAbCdEfGhIjKlMn/edit', 'keys/{slug}/edit');
+
+    $data = VisitDataCollector::collect($request);
+
+    expect($data['path'])->toBe('/keys/[REDACTED]/edit')
+        ->and($data['url'])->toBe('https://example.com/keys/[REDACTED]/edit');
+});
+
+test('it redacts a percent-encoded credential-prefixed token in the decoded path', function (): void {
+    $request = requestWithRoute('https://example.com/keys/sk%5Flive%5F51HxYzAbCdEfGhIjKlMn', 'keys/{slug}');
+
+    $data = VisitDataCollector::collect($request);
+
+    expect($data['path'])->toBe('/keys/[REDACTED]');
+});
+
+test('it redacts the password of a url in the referrer, keeping scheme, user and host', function (): void {
+    $request = Request::create('https://example.com/articles', 'GET');
+    $request->headers->set('User-Agent', 'Mozilla/5.0');
+    $request->headers->set('Referer', 'https://deploy:hunter2-pass@ci.example.org/builds/42?page=2');
+    $request->server->set('REMOTE_ADDR', '127.0.0.1');
+
+    $data = VisitDataCollector::collect($request);
+
+    expect($data['referrer'])->toBe('https://deploy:[REDACTED]@ci.example.org/builds/42?page=2');
+});
+
+test('it keeps a url, path and referrer that only resemble a token byte for byte', function (): void {
+    $request = requestWithRoute('https://example.com/docs/sk_live_/eyJ-intro?ref=AKIA-guide', 'docs/{a}/{b}');
+    $request->headers->set('Referer', 'https://example.com/docs/ghp_short?user=app@example.com');
+
+    $data = VisitDataCollector::collect($request);
+
+    expect($data['url'])->toBe('https://example.com/docs/sk_live_/eyJ-intro?ref=AKIA-guide')
+        ->and($data['path'])->toBe('/docs/sk_live_/eyJ-intro')
+        ->and($data['referrer'])->toBe('https://example.com/docs/ghp_short?user=app@example.com');
+});
+
+test('it keeps the route-token redaction alongside the value pass', function (): void {
+    $request = requestWithRoute(
+        'https://example.com/invitations/live-invite-token?ref=sk_live_51HxYzAbCdEfGhIjKlMn',
+        'invitations/{token}'
+    );
+
+    $data = VisitDataCollector::collect($request);
+
+    expect($data['path'])->toBe('/invitations/[REDACTED]')
+        ->and($data['url'])->toBe('https://example.com/invitations/[REDACTED]?ref=[REDACTED]');
+});
+
 test('it behaves exactly as before when no route is resolved', function (): void {
     $request = Request::create('https://example.com/invitations/secret-token-123', 'GET');
     $request->headers->set('User-Agent', 'Mozilla/5.0');

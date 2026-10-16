@@ -125,6 +125,16 @@ test('a token in the REFERRER path never reaches the dispatched visit job', func
         ->and($data['path'])->toBe('/articles/my-first-post');
 });
 
+test('a referrer with a url password still has its route token redacted', function () use ($browserHeaders, $visitData): void {
+    // The route lookup has to see the referrer as sent: once its password is
+    // the placeholder, `parse_url()` no longer finds the host or the path.
+    $this->withHeaders($browserHeaders + [
+        'Referer' => 'http://app:hunter2-pass@localhost/reset-password/live-reset-token-xyz789',
+    ])->get('/articles/my-first-post')->assertSuccessful();
+
+    expect($visitData()['referrer'])->toBe('http://app:[REDACTED]@localhost/reset-password/[REDACTED]');
+});
+
 test('a non-sensitive referrer path is preserved in full', function () use ($browserHeaders, $visitData): void {
     $this->withHeaders($browserHeaders + [
         'Referer' => 'http://localhost/articles/previous-post?utm_source=mail',

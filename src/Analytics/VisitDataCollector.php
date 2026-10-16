@@ -34,7 +34,8 @@ class VisitDataCollector
         // Secrets also live in the PATH (`password/reset/{token}`), where only
         // the resolved route can tell which segment is a secret. This middleware
         // runs in the `web` GROUP, so the route is already available here; when
-        // there is none, the list is empty and both fields are left untouched.
+        // there is none, the list is empty and no path segment of either field
+        // is redacted for its route.
         $sensitiveValues = RouteSecretResolver::forRequest($request);
 
         $scrubber = Core::scrubber();
@@ -48,24 +49,29 @@ class VisitDataCollector
         $referrer = Utf8::repairNullable($request->headers->get('referer'));
 
         return [
-            'url' => $scrubber->scrubUrlPath($scrubber->scrubUrl($url), $sensitiveValues),
+            'url' => $scrubber->scrubDeep($url, $sensitiveValues),
 
             // Reported decoded, so every spelling of one page (`/login`,
             // `/%6Cogin`) is a single entry rather than an attacker-chosen
             // supply of distinct ones, since the router resolved them all to the
-            // same route. Scrubbing runs FIRST and on the raw path: the values
-            // resolved from the route are compared against rawurldecoded
+            // same route. Segment scrubbing runs FIRST and on the raw path: the
+            // values resolved from the route are compared against rawurldecoded
             // segments, so decoding up front would stop a token that itself
-            // contains a `%` from matching.
-            'path' => Utf8::repair(rawurldecode($scrubber->scrubPathSegments($path, $sensitiveValues))),
+            // contains a `%` from matching. The value pass runs LAST, on the
+            // decoded path, so a percent-encoded token is caught in the form
+            // it is reported in.
+            'path' => $scrubber->scrubDeep(Utf8::repair(rawurldecode($scrubber->scrubPathSegments($path, $sensitiveValues)))),
             'ip' => $request->ip(), // Only used internally to resolve geo
             'user_agent' => Utf8::repairNullable($userAgent),
             'user_agent_hash' => $fingerprints->generateUserAgentHash($userAgent),
 
-            'referrer' => $scrubber->scrubUrlPath(
+            // The URL scrub is applied outside scrubDeep(), which URL-scrubs
+            // only a string shaped like a URL, because the header is any
+            // string the client sends and has its query scrubbed regardless.
+            'referrer' => $scrubber->scrubDeep($scrubber->scrubUrlPath(
                 $scrubber->scrubUrl($referrer),
                 RouteSecretResolver::forUrl($referrer)
-            ),
+            )),
 
             'device_type' => DeviceType::fromUserAgent($userAgent)?->value,
             'browser_name' => self::detectBrowser($userAgent),
