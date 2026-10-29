@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\File;
 use Pest\Plugins\Tia\Recorder;
 use Pest\Support\Container;
+use Ranetrace\Laravel\RanetraceServiceProvider;
 use Ranetrace\Laravel\Tests\TestCase;
 
 uses(TestCase::class)->in('Browser', 'Contract', 'Feature', 'Unit');
@@ -116,4 +117,18 @@ function dashboardPanelValue(string $html, string $label): string
     preg_match('/'.preg_quote($label, '/').'<\/span>\s*<span class="rt-kv__val rt-kv__val--mono">([^<]*)<\/span>/', $html, $matches);
 
     return html_entity_decode($matches[1] ?? '', ENT_QUOTES);
+}
+
+/**
+ * Boot the package over a host's published `config/ranetrace.php`: Laravel
+ * loads that file into `ranetrace` before any provider registers, and the
+ * provider then lays its own defaults underneath it.
+ *
+ * @param  array<string, mixed>  $published
+ */
+function registerWithPublishedConfig(array $published): void
+{
+    Config::set('ranetrace', $published);
+
+    (new RanetraceServiceProvider(app()))->register();
 }

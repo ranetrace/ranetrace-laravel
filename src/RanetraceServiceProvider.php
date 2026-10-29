@@ -6,6 +6,7 @@ namespace Ranetrace\Laravel;
 
 use Illuminate\Contracts\Auth\Access\Gate;
 use Illuminate\Contracts\Auth\Authenticatable;
+use Illuminate\Contracts\Foundation\CachesConfiguration;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\ServiceProvider;
 use Ranetrace\Laravel\Analytics\Middleware\TrackPageVisit;
@@ -29,11 +30,7 @@ class RanetraceServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        // Merge package config
-        $this->mergeConfigFrom(
-            __DIR__.'/../config/ranetrace.php',
-            'ranetrace'
-        );
+        $this->mergePublishedConfigOverDefaults();
 
         $this->registerLogChannels();
 
@@ -171,6 +168,32 @@ class RanetraceServiceProvider extends ServiceProvider
     }
 
     /**
+     * Lay the package's config underneath the host's published copy at every
+     * depth, so a key added after the host published `config/ranetrace.php`
+     * still reads its env var. Laravel's own `mergeConfigFrom()` merges the top
+     * level only, so a published block would hide every key added inside it.
+     *
+     * Only associative arrays are merged. A list (`excluded_paths`,
+     * `ignored_errors`, `dashboard.middleware`) is taken whole from the host:
+     * merged by index, as `replaceConfigRecursivelyFrom()` does, it would keep
+     * every package entry past the host's last one, and a host could never
+     * remove a default.
+     */
+    protected function mergePublishedConfigOverDefaults(): void
+    {
+        if ($this->app instanceof CachesConfiguration && $this->app->configurationIsCached()) {
+            return;
+        }
+
+        $config = $this->app->make('config');
+
+        $config->set('ranetrace', self::mergeOverDefaults(
+            require __DIR__.'/../config/ranetrace.php',
+            (array) $config->get('ranetrace', []),
+        ));
+    }
+
+    /**
      * Auto-register the package's log channels so the host application gets
      * zero-config diagnostics and centralized logging.
      *
@@ -237,5 +260,23 @@ class RanetraceServiceProvider extends ServiceProvider
         Blade::directive('ranetraceErrorTracking', function () {
             return "<?php echo view('ranetrace::error-tracker')->render(); ?>";
         });
+    }
+
+    /**
+     * @param  array<array-key, mixed>  $defaults
+     * @param  array<array-key, mixed>  $published
+     * @return array<array-key, mixed>
+     */
+    private static function mergeOverDefaults(array $defaults, array $published): array
+    {
+        foreach ($published as $key => $value) {
+            $default = $defaults[$key] ?? null;
+
+            $defaults[$key] = is_array($value) && is_array($default) && ! array_is_list($default)
+                ? self::mergeOverDefaults($default, $value)
+                : $value;
+        }
+
+        return $defaults;
     }
 }

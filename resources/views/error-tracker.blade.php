@@ -42,10 +42,7 @@
     'sampleRate' => (float) config('ranetrace.javascript_errors.sample_rate', 1.0),
     'captureConsoleErrors' => (bool) config('ranetrace.javascript_errors.capture_console_errors'),
     'maxBreadcrumbs' => (int) config('ranetrace.javascript_errors.max_breadcrumbs', 20),
-    'ignoredErrors' => array_values((array) config(
-        'ranetrace.javascript_errors.ignored_errors',
-        \Ranetrace\Laravel\Http\Controllers\JavaScriptErrorController::DEFAULT_IGNORED_ERRORS,
-    )),
+    'ignoredErrors' => array_values((array) config('ranetrace.javascript_errors.ignored_errors')),
     // This relay sits behind the `web` group's CSRF middleware, so the script is
     // given a token and sends `X-CSRF-TOKEN`. A host that configures no token
     // (the framework-agnostic SDK, whose relay checks Origin/Referer instead)

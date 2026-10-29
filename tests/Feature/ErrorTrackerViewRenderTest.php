@@ -119,11 +119,11 @@ test('the config block carries the laravel route and configured values', functio
         ]);
 });
 
-test('the config block defaults to the controller ignore list, so script and relay filter alike', function (): void {
+test('the config block defaults to the ignore list shared with ranetrace-php', function (): void {
     $config = renderedTrackerConfig(view('ranetrace::error-tracker')->render());
 
     expect($config['ignoredErrors'])
-        ->toBe(Ranetrace\Laravel\Http\Controllers\JavaScriptErrorController::DEFAULT_IGNORED_ERRORS)
+        ->toBe(Ranetrace\Php\Config::DEFAULT_IGNORED_JAVASCRIPT_ERRORS)
         ->and($config['sampleRate'])->toBe(1.0)
         ->and($config['captureConsoleErrors'])->toBeFalse()
         ->and($config['maxBreadcrumbs'])->toBe(20);
@@ -230,9 +230,11 @@ test('the beacon renders with its endpoint, token and a keepalive post', functio
         ]);
 });
 
-test('the beacon delay falls back to none when the config key is missing', function (): void {
-    // A published config from before the option existed carries no delay_ms.
-    config(['ranetrace.website_analytics.beacon' => ['enabled' => true]]);
+test('the beacon starts at once when a published config omits the delay', function (): void {
+    registerWithPublishedConfig([
+        ...config('ranetrace'),
+        'website_analytics' => [...config('ranetrace.website_analytics'), 'beacon' => ['enabled' => true]],
+    ]);
 
     expect(renderedBeaconConfig(renderWithViewToken('3f1b0c7e-1f4a-4a2b-9a2f-0d7f1a4b8c9d'))['delayMs'])
         ->toBe(0);

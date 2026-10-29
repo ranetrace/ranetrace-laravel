@@ -77,20 +77,6 @@ class TrackPageVisit
     ];
 
     /**
-     * Default first-path-segments excluded from analytics. Used as the in-code
-     * fallback so that a published config which removed the `excluded_paths`
-     * key restores these defaults rather than silently disabling all path
-     * exclusion. Mirrors config/ranetrace.php → website_analytics.excluded_paths.
-     *
-     * @var array<int, string>
-     */
-    protected const array DEFAULT_EXCLUDED_PATHS = [
-        'horizon', 'nova', 'telescope', 'admin', 'filament',
-        'api', 'debugbar', 'storage', 'livewire', '_debugbar',
-        'up', 'sanctum', '_ignition',
-    ];
-
-    /**
      * Per-worker cache of the CrawlerDetect instance: the library's internal
      * data structures are non-trivial to construct, and the middleware runs on
      * every request. One instance per worker is plenty.
@@ -140,9 +126,8 @@ class TrackPageVisit
      * - Correctness/safety skips (this method, in code): rules the package owns
      *   and must be able to fix for every installation. They are NOT expressed
      *   as `excluded_paths` entries, because a published config freezes that
-     *   array (the in-code fallback only applies when the key is absent), so
-     *   anything added there upstream never reaches an app that published the
-     *   config.
+     *   list (the service provider takes a published list whole), so anything
+     *   added there upstream never reaches an app that published the config.
      * - App-owned preferences (`website_analytics.excluded_paths`): which of
      *   *their* sections a host does not want in analytics. Editable, and the
      *   package never depends on an entry being present.
@@ -184,7 +169,7 @@ class TrackPageVisit
 
         $excludedPaths = array_map(
             static fn (mixed $path): string => mb_strtolower((string) $path),
-            (array) config('ranetrace.website_analytics.excluded_paths', self::DEFAULT_EXCLUDED_PATHS)
+            (array) config('ranetrace.website_analytics.excluded_paths')
         );
 
         // decodedPath(), not path(): the router matches on the rawurldecoded

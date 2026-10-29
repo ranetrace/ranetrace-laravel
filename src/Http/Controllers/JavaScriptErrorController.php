@@ -14,7 +14,6 @@ use Ranetrace\Laravel\Support\Core;
 use Ranetrace\Laravel\Support\CoreConfig;
 use Ranetrace\Laravel\Support\InternalLogger;
 use Ranetrace\Laravel\Utilities\RouteSecretResolver;
-use Ranetrace\Php\Config;
 use Ranetrace\Php\JavaScript\ErrorItemBuilder;
 use Throwable;
 
@@ -30,21 +29,6 @@ use Throwable;
  */
 class JavaScriptErrorController extends Controller
 {
-    /**
-     * Default ignored-error message patterns. Used as the in-code fallback so a
-     * published config that removed the `ignored_errors` key restores these
-     * defaults rather than silently un-filtering noise.
-     *
-     * The list itself lives in `ranetrace/ranetrace-php`, where the bundled
-     * capture script also reads it: the browser filters on it before posting
-     * and this endpoint filters on it again, so the two must be the same list
-     * rather than two copies that drift. `config/ranetrace.php` publishes the
-     * same values for a host that wants to edit them.
-     *
-     * @var array<int, string>
-     */
-    public const array DEFAULT_IGNORED_ERRORS = Config::DEFAULT_IGNORED_JAVASCRIPT_ERRORS;
-
     /**
      * Whether this relay is mounted, and so whether the capture script may be
      * rendered at all: the capture rule every feature uses, so without an
@@ -137,7 +121,7 @@ class JavaScriptErrorController extends Controller
             ], 422);
         }
 
-        $ignoredErrors = config('ranetrace.javascript_errors.ignored_errors', self::DEFAULT_IGNORED_ERRORS);
+        $ignoredErrors = (array) config('ranetrace.javascript_errors.ignored_errors');
         $errorMessage = $request->input('message');
 
         foreach ($ignoredErrors as $pattern) {

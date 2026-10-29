@@ -67,17 +67,16 @@ test('it respects excluded paths configuration', function (): void {
     Bus::assertNotDispatched(HandlePageVisitJob::class);
 });
 
-test('it falls back to default excluded paths when the config key is absent', function (): void {
+test('it excludes the default paths when a published config omits the key', function (): void {
     Bus::fake();
     Cache::flush();
 
     Route::get('/admin/dashboard', fn () => response('OK'))
         ->middleware(['web', TrackPageVisit::class]);
 
-    // Simulate a published config that removed the excluded_paths key entirely.
     $analytics = config('ranetrace.website_analytics');
     unset($analytics['excluded_paths']);
-    config(['ranetrace.website_analytics' => $analytics]);
+    registerWithPublishedConfig([...config('ranetrace'), 'website_analytics' => $analytics]);
 
     $this->withHeaders([
         'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
@@ -85,7 +84,6 @@ test('it falls back to default excluded paths when the config key is absent', fu
         'Accept-Language' => 'en-US',
     ])->get('/admin/dashboard')->assertStatus(200);
 
-    // 'admin' is still excluded via TrackPageVisit::DEFAULT_EXCLUDED_PATHS.
     Bus::assertNotDispatched(HandlePageVisitJob::class);
 });
 

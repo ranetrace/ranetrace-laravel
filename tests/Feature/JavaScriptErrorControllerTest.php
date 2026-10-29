@@ -265,11 +265,10 @@ test('it scrubs a sensitive segment from a url that came in via the Referer fall
     });
 });
 
-test('it falls back to default ignored errors when the config key is absent', function (): void {
-    // Simulate a published config that removed the ignored_errors key entirely.
+test('it ignores the default patterns when a published config omits the key', function (): void {
     $jsConfig = config('ranetrace.javascript_errors');
     unset($jsConfig['ignored_errors']);
-    config(['ranetrace.javascript_errors' => $jsConfig]);
+    registerWithPublishedConfig([...config('ranetrace'), 'javascript_errors' => $jsConfig]);
 
     $response = $this->postJson(route('ranetrace.javascript-errors.store'), [
         'message' => 'ResizeObserver loop limit exceeded',
