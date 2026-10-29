@@ -6,6 +6,8 @@ This file starts at 1.0.0. The package was re-versioned to share a major with `r
 
 ## [Unreleased]
 
+## [1.2.2] - 2026-10-29
+
 ### Fixed
 - **A published `config/ranetrace.php` no longer hides keys the package added after you published it.** The package's config was merged under yours at the top level only, so a published `website_analytics` block replaced the package's whole block, and a key added to it later, such as `beacon`, `min_human_score` or `bot_detection`, was missing and ignored its env var without a warning. On an app whose config predates the beacon, `RANETRACE_WEBSITE_ANALYTICS_BEACON_ENABLED=true` did nothing and no visit carried the beacon's verdict. The package's defaults now sit under your config at every depth: a value you publish still wins, and a key you never had reads its env var. A list, such as `excluded_paths`, `extra_bot_user_agents`, `ignored_errors` or `dashboard.middleware`, is still taken whole from your config, so a list you publish replaces the package's and an empty list removes every default. A cached config is used as cached. Run `php artisan config:cache` again after upgrading if you cache it; otherwise nothing to do on upgrade
 
