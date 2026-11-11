@@ -49,6 +49,8 @@ Each error report includes:
 - Environment name
 - Console command details (for CLI errors)
 
+A message that reads `[REDACTED]` and nothing else means the secret scrubber could not read it (a `ranetrace.scrubbing.extra_keys` list of several hundred entries is one cause). The error is still sent with its type, file, line and frames, and the internal log names the cause.
+
 ## Configuration
 
 ```php

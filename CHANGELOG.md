@@ -6,6 +6,11 @@ This file starts at 1.0.0. The package was re-versioned to share a major with `r
 
 ## [Unreleased]
 
+Needs the release of `ranetrace/ranetrace-php` that follows 1.1.2: the entry below is a change in the shared core, and the tests added here for it fail on 1.1.2.
+
+### Fixed
+- **An error, log record or browser error whose secret scrub fails is sent redacted instead of dropped.** When PCRE cannot compile the scrub pattern it says so with a warning, which Laravel turns into an exception. That exception escaped the scrubber, so the capture was dropped and the JavaScript error endpoint answered 500, with a line in the internal log as the only trace. A `ranetrace.scrubbing.extra_keys` list of about 500 entries or more is one way to get there. The string that could not be scrubbed now becomes `[REDACTED]` and the item is sent with every other field intact. Nothing to do on upgrade. An error whose message reads `[REDACTED]` means the scrubber is failing: the internal log names the cause
+
 ## [1.2.2] - 2026-10-29
 
 ### Fixed
