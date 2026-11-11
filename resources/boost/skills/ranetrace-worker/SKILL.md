@@ -35,8 +35,10 @@ The command must be scheduled in the application's `routes/console.php`. A one-m
 // routes/console.php
 use Illuminate\Support\Facades\Schedule;
 
-Schedule::command('ranetrace:work')->everyMinute()->withoutOverlapping()->runInBackground();
+Schedule::command('ranetrace:work')->everyMinute()->withoutOverlapping(5)->runInBackground();
 ```
+
+The `5` is the lock's expiry in minutes, and it matters. The scheduler removes the lock when a run finishes, but a run that is hard-killed (a deploy that stops the container, an out-of-memory kill, a lost machine) cannot remove it. Without an expiry the lock stays for Laravel's 24 hour default and every run in that time is skipped. The command only dispatches jobs and takes about a second, so five minutes is long enough.
 
 A queue worker must also be running to process the dispatched batch jobs. [Laravel Horizon](https://laravel.com/docs/horizon) is recommended for managing queue workers in production:
 
@@ -95,6 +97,7 @@ php artisan ranetrace:pause-clear --all
 - Verify `ranetrace:work` is scheduled in `routes/console.php`
 - Verify a queue worker is running: `php artisan queue:work`
 - Check for pauses: `php artisan ranetrace:status`
+- Check for a stuck scheduler lock when data stopped after a deploy, a restart or a crash: a schedule line whose `withoutOverlapping()` has no expiry keeps its lock for 24 hours after a hard-killed run. Release it with `php artisan schedule:clear-cache`, then change the line to `withoutOverlapping(5)`
 - Nothing is lost by time alone: items wait in the buffer until they are sent, up to `RANETRACE_BATCH_MAX_BUFFER_SIZE` per feature, after which the oldest are dropped first. A cache store that evicts keys under memory pressure (Redis with an eviction `maxmemory-policy`, Memcached) can still drop a buffer, so use a lock-capable store with room to spare
 
 **Features paused:**

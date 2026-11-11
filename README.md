@@ -41,9 +41,11 @@ Captured items (errors, events, logs, page visits, JS errors) are buffered local
 // In your scheduler (routes/console.php)
 Schedule::command('ranetrace:work')
     ->everyMinute()
-    ->withoutOverlapping()
+    ->withoutOverlapping(5)
     ->runInBackground();
 ```
+
+The `5` is the lock's expiry in minutes. Keep it: without an expiry, a run that is killed before it can release the lock (a deploy that stops the container, an out-of-memory kill) holds it for Laravel's 24 hour default, and nothing is sent in that time.
 
 > **Don't skip this step.** Without it, buffered telemetry never reaches Ranetrace. Run `php artisan ranetrace:status` at any time to verify health and see whether buffers are draining.
 

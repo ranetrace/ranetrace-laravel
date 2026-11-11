@@ -58,7 +58,7 @@ All features use queue-based processing by default. Captured items are buffered 
 
 @verbatim
 <code-snippet name="Schedule the Ranetrace batch worker" lang="php">
-Schedule::command('ranetrace:work')->everyMinute()->withoutOverlapping()->runInBackground();
+Schedule::command('ranetrace:work')->everyMinute()->withoutOverlapping(5)->runInBackground();
 </code-snippet>
 @endverbatim
 
