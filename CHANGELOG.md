@@ -6,7 +6,10 @@ This file starts at 1.0.0. The package was re-versioned to share a major with `r
 
 ## [Unreleased]
 
-Needs the release of `ranetrace/ranetrace-php` that follows 1.1.2: the entry below is a change in the shared core, and the tests added here for it fail on 1.1.2.
+Needs the release of `ranetrace/ranetrace-php` that follows 1.1.2: both entries below are changes in the shared core, and the tests added here for them fail on 1.1.2.
+
+### Changed
+- **The absolute path of your application no longer leaves it inside a text.** An error's `file` and its frames were already sent relative to the base path, but a path inside a text was sent as written: the `(View: /var/www/app/resources/views/profile.blade.php)` Laravel ends a view error's message in, the `PATH ... ENDPATH` comment at the end of a compiled Blade view when it is near the failing line, every frame line of the text trace, a console command started as `/var/www/app/artisan`, and a logged exception, whose string form holds its file and whole trace. The base path is now taken off every path under it in an error's message, trace, source lines, console command, `context()` array and previous exceptions, and in a log record's message, context and extra, so that message arrives as `(View: resources/views/profile.blade.php)`. The base path named on its own becomes `[project root]`. A path outside the application is sent as written, as before. Nothing to do on upgrade
 
 ### Fixed
 - **An error, log record or browser error whose secret scrub fails is sent redacted instead of dropped.** When PCRE cannot compile the scrub pattern it says so with a warning, which Laravel turns into an exception. That exception escaped the scrubber, so the capture was dropped and the JavaScript error endpoint answered 500, with a line in the internal log as the only trace. A `ranetrace.scrubbing.extra_keys` list of about 500 entries or more is one way to get there. The string that could not be scrubbed now becomes `[REDACTED]` and the item is sent with every other field intact. Nothing to do on upgrade. An error whose message reads `[REDACTED]` means the scrubber is failing: the internal log names the cause

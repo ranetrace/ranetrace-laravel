@@ -132,6 +132,21 @@ test('a view error reads as the template: message names it, previous carries the
         ->and($cause['source']['lines'][3])->toContain('{{ $startedAt->diffInSeconds(now()) }}');
 });
 
+test('a view error never names the server path of the application, in its message, its snippets or anywhere else', function (): void {
+    // Laravel ends the message in `(View: /absolute/path.blade.php)` and every
+    // compiled view in a `PATH /absolute/path.blade.php ENDPATH` comment, which
+    // the item's own snippet shows when the error is near the end of the view.
+    $template = bladeTemplate('performance.blade.php', performanceTemplate());
+
+    Ranetrace::report(renderBladeTemplate($template));
+
+    $item = bufferedBladeErrorItem();
+
+    expect($item['message'])->toEndWith("(View: {$this->viewDirectory}/performance.blade.php)")
+        ->and($item['context'])->toContain("/**PATH {$this->viewDirectory}/performance.blade.php ENDPATH**/")
+        ->and(json_encode($item, JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR))->not->toContain(base_path());
+});
+
 test('the item keeps the compiled throw site as its own file and line, so existing error groups hold', function (): void {
     $template = bladeTemplate('performance.blade.php', performanceTemplate());
     $exception = renderBladeTemplate($template);

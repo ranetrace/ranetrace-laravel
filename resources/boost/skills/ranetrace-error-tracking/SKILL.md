@@ -49,6 +49,8 @@ Each error report includes:
 - Environment name
 - Console command details (for CLI errors)
 
+Every file path is sent relative to the application's base path, and the base path is taken off the paths inside the message, the text trace, the source lines, the console command and the `context()` array too: a view error ends in `(View: resources/views/profile.blade.php)`, not in the server's absolute path. The base path named on its own arrives as `[project root]`.
+
 A message that reads `[REDACTED]` and nothing else means the secret scrubber could not read it (a `ranetrace.scrubbing.extra_keys` list of several hundred entries is one cause). The error is still sent with its type, file, line and frames, and the internal log names the cause.
 
 ## Configuration

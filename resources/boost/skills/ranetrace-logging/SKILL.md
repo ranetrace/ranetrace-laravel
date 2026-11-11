@@ -118,7 +118,7 @@ reserved for Ranetrace; do not use it in application code.)
 Each log entry includes:
 
 - Log level (emergency, alert, critical, error, warning, notice, info, debug)
-- Message (secrets redacted, then truncated to 50,000 characters)
+- Message (secrets redacted, then truncated to 50,000 characters; a path under the application's base path is sent relative to it, here and in the context and extra)
 - Context data (secrets redacted, then capped at 50KB; a float JSON cannot spell, INF, -INF or NAN, arrives as the string `"INF"`, `"-INF"` or `"NAN"`)
 - Channel name
 - ISO 8601 timestamp
