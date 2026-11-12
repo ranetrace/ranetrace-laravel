@@ -27,11 +27,15 @@ environment:
 'channels' => [
     'stack' => [
         'driver' => 'stack',
-        'channels' => ['single', 'ranetrace'],
+        'channels' => [...explode(',', (string) env('LOG_STACK', 'single')), 'ranetrace'],
         'ignore_exceptions' => false,
     ],
 ],
 ```
+
+Append `'ranetrace'` to the list `LOG_STACK` names, as above, and keep that list:
+replacing it with a fixed one such as `['single', 'ranetrace']` takes away the
+destination an environment set for itself (`daily`, `stderr`).
 
 The package registers the `ranetrace` channel for you, so this stack entry is
 valid everywhere. Where logging is turned off the channel is inert: records

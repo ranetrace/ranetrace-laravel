@@ -167,21 +167,17 @@ RANETRACE_LOGGING_ENABLED=true
 The package always registers a `ranetrace` log channel, so no `config/logging.php` edit is required to define it. It stays inert until logging is enabled, so you can add it to your existing log stack right away to route application logs to both your normal destination and Ranetrace:
 
 ```php
-// config/logging.php: example stacked channel
+// config/logging.php
 'channels' => [
-    'production' => [
+    'stack' => [
         'driver' => 'stack',
-        'channels' => array_merge(explode(',', env('LOG_STACK', 'single')), ['ranetrace']),
+        'channels' => [...explode(',', (string) env('LOG_STACK', 'single')), 'ranetrace'],
         'ignore_exceptions' => false,
     ],
 ],
 ```
 
-Then point Laravel at it:
-
-```env
-LOG_CHANNEL=production
-```
+That is Laravel's own `stack` channel with `'ranetrace'` appended, so the channels `LOG_STACK` names in each environment keep receiving the log.
 
 By default the package captures `notice` and above. Tune via `RANETRACE_LOGGING_LEVEL`.
 

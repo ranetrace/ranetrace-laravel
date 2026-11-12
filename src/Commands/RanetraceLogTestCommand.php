@@ -121,13 +121,11 @@ class RanetraceLogTestCommand extends Command
 
         $this->newLine();
         $this->info('Add the channel to your log stack to capture all application logs:');
-        $this->line("'production' => [");
+        $this->line("'stack' => [");
         $this->line("    'driver' => 'stack',");
-        $this->line("    'channels' => array_merge(explode(',', env('LOG_STACK', 'single')), ['ranetrace']),");
+        $this->line("    'channels' => [...explode(',', (string) env('LOG_STACK', 'single')), 'ranetrace'],");
         $this->line("    'ignore_exceptions' => false,");
         $this->line('],');
-        $this->line('');
-        $this->line('Then set LOG_CHANNEL=production in your .env file.');
 
         $this->newLine();
         $this->info('Logging configuration:');
