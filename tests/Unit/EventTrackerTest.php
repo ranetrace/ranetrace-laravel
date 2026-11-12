@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Queue;
 use Psr\Log\LoggerInterface;
@@ -67,6 +68,24 @@ test('it includes user agent hash in event data', function (): void {
 
         return isset($eventData['user_agent_hash'])
             && ! empty($eventData['user_agent_hash']);
+    });
+});
+
+test('an event tracked without a user agent carries a null user agent hash, not an empty string', function (): void {
+    Queue::fake();
+
+    $request = Request::create('/');
+    $request->headers->remove('User-Agent');
+    app()->instance('request', $request);
+
+    Ranetrace::trackEvent('test_event', []);
+
+    Queue::assertPushed(HandleEventJob::class, function (HandleEventJob $job): bool {
+        $eventData = $job->getEventData();
+
+        return array_key_exists('user_agent_hash', $eventData)
+            && $eventData['user_agent_hash'] === null
+            && array_key_exists('user_agent_hash', (array) $job->bufferedItem());
     });
 });
 
