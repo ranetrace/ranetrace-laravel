@@ -33,6 +33,7 @@ beforeEach(function (): void {
 dataset('ingest keys that cannot authenticate', [
     'null' => [null],
     'whitespace' => ['   '],
+    'true, as env() reads RANETRACE_KEY=true' => [true],
 ]);
 
 /**
@@ -68,7 +69,7 @@ function javaScriptErrorWithoutIngestKey(): array
 
 // --- logging ---
 
-test('a log is not captured without an ingest key, and logging still does not throw', function (?string $key): void {
+test('a log is not captured without an ingest key, and logging still does not throw', function (mixed $key): void {
     Config::set('ranetrace.key', $key);
     Config::set('ranetrace.logging.queue', false);
 
@@ -78,7 +79,7 @@ test('a log is not captured without an ingest key, and logging still does not th
     Http::assertNothingSent();
 })->with('ingest keys that cannot authenticate');
 
-test('a queued log is not dispatched without an ingest key', function (?string $key): void {
+test('a queued log is not dispatched without an ingest key', function (mixed $key): void {
     Bus::fake();
     Config::set('ranetrace.key', $key);
 
@@ -97,7 +98,7 @@ test('a log is still captured with an ingest key', function (): void {
 
 // --- JavaScript errors ---
 
-test('the JavaScript error endpoint answers without an ingest key as it does with the feature off', function (?string $key): void {
+test('the JavaScript error endpoint answers without an ingest key as it does with the feature off', function (mixed $key): void {
     Bus::fake();
     $this->withoutMiddleware(VerifyCsrfToken::class);
 
@@ -116,7 +117,7 @@ test('the JavaScript error endpoint answers without an ingest key as it does wit
     Bus::assertNotDispatched(HandleJavaScriptErrorJob::class);
 })->with('ingest keys that cannot authenticate');
 
-test('a JavaScript error is not buffered or sent without an ingest key', function (?string $key): void {
+test('a JavaScript error is not buffered or sent without an ingest key', function (mixed $key): void {
     $this->withoutMiddleware(VerifyCsrfToken::class);
     Config::set('ranetrace.javascript_errors.queue', false);
     Config::set('ranetrace.key', $key);
@@ -138,7 +139,7 @@ test('a JavaScript error is still buffered with an ingest key', function (): voi
     expect(app(RanetraceBatchBuffer::class)->count('javascript_errors'))->toBe(1);
 });
 
-test('an app booted without an ingest key mounts no relay and renders no capture script, as with the feature off', function (?string $key): void {
+test('an app booted without an ingest key mounts no relay and renders no capture script, as with the feature off', function (mixed $key): void {
     // The provider decides at boot whether to mount the relay route, so the
     // app is rebuilt without a key rather than having it removed afterwards.
     $this->configOverrides = [
@@ -153,7 +154,7 @@ test('an app booted without an ingest key mounts no relay and renders no capture
 
 // --- page visits ---
 
-test('a page visit is not captured without an ingest key and the page answers unchanged', function (?string $key): void {
+test('a page visit is not captured without an ingest key and the page answers unchanged', function (mixed $key): void {
     Config::set('ranetrace.website_analytics.queue', false);
 
     $withKey = $this->withHeaders(browserHeadersWithoutIngestKey())->get('/test-page');
@@ -171,7 +172,7 @@ test('a page visit is not captured without an ingest key and the page answers un
     Http::assertNothingSent();
 })->with('ingest keys that cannot authenticate');
 
-test('a queued page visit is not dispatched without an ingest key', function (?string $key): void {
+test('a queued page visit is not dispatched without an ingest key', function (mixed $key): void {
     Bus::fake();
     Config::set('ranetrace.key', $key);
 
@@ -188,7 +189,7 @@ test('a page visit is still captured with an ingest key', function (): void {
     expect(app(RanetraceBatchBuffer::class)->count('page_visits'))->toBe(1);
 });
 
-test('a page without an ingest key renders no verification beacon', function (?string $key): void {
+test('a page without an ingest key renders no verification beacon', function (mixed $key): void {
     // The beacon's token comes only from a captured visit, so with no capture
     // there is no token and nothing to render.
     Bus::fake();

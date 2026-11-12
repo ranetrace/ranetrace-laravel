@@ -8,6 +8,7 @@ use Illuminate\Console\Command;
 use Ranetrace\Laravel\Ranetrace;
 use Ranetrace\Laravel\Services\RanetraceTestRun;
 use Ranetrace\Laravel\Support\BatchConfig;
+use Ranetrace\Laravel\Support\CoreConfig;
 use Ranetrace\Laravel\Support\InternalLogger;
 use Ranetrace\Php\Worker\TestResult;
 use Symfony\Component\Console\Formatter\OutputFormatter;
@@ -165,14 +166,14 @@ class RanetraceTestCommand extends Command
         // Check the ingest key. This is the credential that sends captured data
         // to Ranetrace, and every feature validated below depends on it, so a
         // missing one fails the command.
-        if (blank($config['key'] ?? null)) {
+        if (! CoreConfig::hasIngestKey()) {
             $this->error('❌ Ranetrace ingest API key is not set.');
             $this->info('💡 Set it in the environment that reports to Ranetrace (on a server, in its .env): RANETRACE_KEY=your-api-key-here');
 
             return self::FAILURE;
         }
 
-        $this->info('✅ Ingest API key configured: '.mb_substr($config['key'], 0, 4).'******');
+        $this->info('✅ Ingest API key configured: '.mb_substr(CoreConfig::ingestKey(), 0, 4).'******');
 
         $this->newLine();
 

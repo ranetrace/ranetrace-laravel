@@ -37,12 +37,35 @@ final class CoreConfig
 
         return new Config([
             ...(is_array($values) ? $values : []),
+            'key' => self::ingestKey(),
             'environment' => config('app.env'),
             'project_root' => base_path(),
             'framework' => self::FRAMEWORK,
             'framework_version' => app()->version(),
             'user_resolver' => self::resolveUser(...),
         ]);
+    }
+
+    /**
+     * The ingest key as it would be sent, trimmed, or `''` when there is none.
+     *
+     * A value that is not a string is no key: `RANETRACE_KEY=true` arrives
+     * from `env()` as a boolean, and a number typed into the published config
+     * as an integer. The shared core throws on such a key, and Laravel's
+     * `blank()` lets it through, so a capture gate built on `blank()` let every
+     * capture start and fail. Every reader of the key asks here, so capture,
+     * the commands, the dashboard and the client agree on one answer.
+     */
+    public static function ingestKey(): string
+    {
+        $key = config('ranetrace.key');
+
+        return is_string($key) ? mb_trim($key) : '';
+    }
+
+    public static function hasIngestKey(): bool
+    {
+        return self::ingestKey() !== '';
     }
 
     /**

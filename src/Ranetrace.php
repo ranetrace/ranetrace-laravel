@@ -42,8 +42,8 @@ class Ranetrace
 
     /**
      * Determine whether capture is enabled for the given feature: the package
-     * must be enabled, the feature itself enabled, and an API key configured. A
-     * key of nothing but whitespace cannot authenticate, so it counts as missing.
+     * must be enabled, the feature itself enabled, and an API key configured
+     * ({@see CoreConfig::ingestKey()} says what counts as one).
      *
      * Every capture entry point asks this one rule, so an item is never
      * buffered that could not be sent. A feature whose flag the host's config
@@ -51,7 +51,7 @@ class Ranetrace
      */
     public static function isCaptureEnabled(string $feature): bool
     {
-        return self::isSwitchedOn($feature) && ! blank(config('ranetrace.key'));
+        return self::isSwitchedOn($feature) && CoreConfig::hasIngestKey();
     }
 
     /**

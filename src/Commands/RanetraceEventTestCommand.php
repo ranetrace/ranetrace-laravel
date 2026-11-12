@@ -10,6 +10,7 @@ use Ranetrace\Laravel\Events\EventTracker;
 use Ranetrace\Laravel\Facades\Ranetrace;
 use Ranetrace\Laravel\Facades\RanetraceEvents;
 use Ranetrace\Laravel\Support\BatchConfig;
+use Ranetrace\Laravel\Support\CoreConfig;
 use Ranetrace\Laravel\Support\GuardsFeatureTest;
 
 class RanetraceEventTestCommand extends Command
@@ -169,7 +170,7 @@ class RanetraceEventTestCommand extends Command
                 ['Events enabled', config('ranetrace.events.enabled') ? 'Yes' : 'No'],
                 ['Queue enabled', config('ranetrace.events.queue') ? 'Yes' : 'No'],
                 ['Queue name', BatchConfig::describeFeatureQueue('ranetrace.events')],
-                ['API key set', blank(config('ranetrace.key')) ? 'No' : 'Yes'],
+                ['API key set', CoreConfig::hasIngestKey() ? 'Yes' : 'No'],
             ]
         );
 

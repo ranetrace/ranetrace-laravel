@@ -43,7 +43,7 @@ trait GuardsFeatureTest
             return Command::SUCCESS;
         }
 
-        if (blank(config('ranetrace.key'))) {
+        if (! CoreConfig::hasIngestKey()) {
             $this->error('❌ Ranetrace API key is not set!');
             $this->info('💡 Set your API key in the environment that reports to Ranetrace (on a server, in its .env):');
             $this->line('   RANETRACE_KEY=your-api-key-here');

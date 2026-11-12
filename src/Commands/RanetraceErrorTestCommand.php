@@ -9,6 +9,7 @@ use Exception;
 use Illuminate\Console\Command;
 use Ranetrace\Laravel\Facades\Ranetrace;
 use Ranetrace\Laravel\Support\BatchConfig;
+use Ranetrace\Laravel\Support\CoreConfig;
 use Ranetrace\Laravel\Support\GuardsFeatureTest;
 
 class RanetraceErrorTestCommand extends Command
@@ -86,7 +87,7 @@ class RanetraceErrorTestCommand extends Command
                 ['Queue name', BatchConfig::describeFeatureQueue('ranetrace.errors')],
                 ['Timeout', config('ranetrace.errors.timeout', 10).' seconds'],
                 ['Capture user email', config('ranetrace.errors.capture_user_email', false) ? 'Yes' : 'No'],
-                ['API key set', blank(config('ranetrace.key')) ? 'No' : 'Yes'],
+                ['API key set', CoreConfig::hasIngestKey() ? 'Yes' : 'No'],
             ]
         );
 

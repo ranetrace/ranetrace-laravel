@@ -22,6 +22,7 @@ use Ranetrace\Laravel\Jobs\SendBatchToRanetraceJob;
 use Ranetrace\Laravel\Services\RanetraceBatchBuffer;
 use Ranetrace\Laravel\Services\RanetracePauseManager;
 use Ranetrace\Laravel\Support\BatchConfig;
+use Ranetrace\Laravel\Support\CoreConfig;
 use Ranetrace\Laravel\Support\InternalLogger;
 use Ranetrace\Php\Http\ResponsePolicy;
 use Throwable;
@@ -200,7 +201,7 @@ class DashboardData
         $failedJobsCount = $this->getFailedJobsCount();
 
         $isEnabled = (bool) config('ranetrace.enabled', true);
-        $isApiKeyConfigured = ! blank(config('ranetrace.key'));
+        $isApiKeyConfigured = CoreConfig::hasIngestKey();
 
         // Overall health: an enabled installation has an ingest key (without one
         // nothing is captured or sent), no single buffer is near

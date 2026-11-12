@@ -8,6 +8,7 @@ use Illuminate\Console\Command;
 use Ranetrace\Laravel\Jobs\SendBatchToRanetraceJob;
 use Ranetrace\Laravel\Services\RanetraceBatchBuffer;
 use Ranetrace\Laravel\Services\RanetracePauseManager;
+use Ranetrace\Laravel\Support\CoreConfig;
 use Ranetrace\Laravel\Support\InternalLogger;
 use Throwable;
 
@@ -51,7 +52,7 @@ class RanetraceWorkCommand extends Command
     protected function dispatchBatches(RanetraceBatchBuffer $buffer, RanetracePauseManager $pauseManager, ?string $specificType): int
     {
         // A pause says nothing to a process that cannot send at all.
-        if (blank(config('ranetrace.key'))) {
+        if (! CoreConfig::hasIngestKey()) {
             return $this->reportMissingKey($buffer, $specificType);
         }
 

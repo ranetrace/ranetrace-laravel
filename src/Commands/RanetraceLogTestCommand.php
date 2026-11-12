@@ -7,6 +7,7 @@ namespace Ranetrace\Laravel\Commands;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 use Ranetrace\Laravel\Support\BatchConfig;
+use Ranetrace\Laravel\Support\CoreConfig;
 use Ranetrace\Laravel\Support\GuardsFeatureTest;
 use Throwable;
 
@@ -135,7 +136,7 @@ class RanetraceLogTestCommand extends Command
                 ['Queue name', BatchConfig::describeFeatureQueue('ranetrace.logging')],
                 ['Minimum level', config('ranetrace.logging.level', 'notice')],
                 ['Excluded channels', implode(', ', config('ranetrace.logging.excluded_channels', [])) ?: '(none)'],
-                ['API key set', blank(config('ranetrace.key')) ? 'No' : 'Yes'],
+                ['API key set', CoreConfig::hasIngestKey() ? 'Yes' : 'No'],
             ]
         );
 
