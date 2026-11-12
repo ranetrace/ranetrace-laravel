@@ -21,7 +21,7 @@ Install the package via Composer:
 composer require ranetrace/ranetrace-laravel
 ```
 
-Add your Ranetrace key to `.env`:
+Add your Ranetrace key to the environment that reports to Ranetrace (on a server, its `.env`):
 
 ```env
 RANETRACE_KEY=your-key-here

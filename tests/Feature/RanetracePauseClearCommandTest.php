@@ -78,7 +78,7 @@ test('--feature ends with the troubleshooting tip for the pause reason', functio
         ->expectsOutput('  • '.$tip)
         ->assertSuccessful();
 })->with([
-    '401' => ['401', 'Check that RANETRACE_KEY in .env is valid and not revoked'],
+    '401' => ['401', 'Check that RANETRACE_KEY is valid and not revoked'],
     '403' => ['403', 'Verify subscription is active, email is verified, and feature access is enabled'],
     '413' => ['413', 'Payload too large, which indicates a client bug. Investigate the batch sizes'],
     '422' => ['422', 'The request body was rejected as malformed, which indicates a client bug. The wrapper key is missing, its value is not a list, or the list is empty. Check recent changes to how batches are sent'],

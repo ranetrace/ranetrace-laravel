@@ -45,7 +45,7 @@ trait GuardsFeatureTest
 
         if (blank(config('ranetrace.key'))) {
             $this->error('❌ Ranetrace API key is not set!');
-            $this->info('💡 Add your API key to .env:');
+            $this->info('💡 Set your API key in the environment that reports to Ranetrace (on a server, in its .env):');
             $this->line('   RANETRACE_KEY=your-api-key-here');
             $this->newLine();
 

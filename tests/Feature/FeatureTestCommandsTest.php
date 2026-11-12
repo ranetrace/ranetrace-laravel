@@ -63,7 +63,7 @@ test('a feature test command with a blank key says so, captures nothing and fail
     [$exitCode, $output] = featureTestRun($command);
 
     expect($exitCode)->toBe(1)
-        ->and($output)->toContain("❌ Ranetrace API key is not set!\n💡 Add your API key to .env:\n   RANETRACE_KEY=your-api-key-here\n")
+        ->and($output)->toContain("❌ Ranetrace API key is not set!\n💡 Set your API key in the environment that reports to Ranetrace (on a server, in its .env):\n   RANETRACE_KEY=your-api-key-here\n")
         ->and($output)->not->toContain('for Ranetrace.')
         ->and(featureTestBufferedCount())->toBe(0);
 

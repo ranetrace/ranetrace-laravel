@@ -6,9 +6,9 @@ Ranetrace is an all-in-one monitoring package for Laravel providing error tracki
 
 - Config: `config/ranetrace.php` (publish with `php artisan vendor:publish --tag=ranetrace-laravel-config`)
 - All env vars are prefixed with `RANETRACE_`
-- Required: set `RANETRACE_KEY` in `.env`; without it nothing is captured. `RANETRACE_ENABLED` is the master switch over every feature and defaults to `true`
+- Required: set `RANETRACE_KEY` in the environment that reports to Ranetrace (on a server, in its `.env`); without it nothing is captured. `RANETRACE_ENABLED` is the master switch over every feature and defaults to `true`
 - Each feature has its own `enabled` toggle and can run via queue or synchronously
-- **`RANETRACE_KEY` is the ingest key and nothing else.** It writes captured telemetry in and belongs on every server, in `.env`. Reading data back out is the MCP server's job, and it uses its own credential, held by the MCP client rather than by the application: an OAuth connection the user approves in the browser. Sending the ingest key to an MCP endpoint returns a 401 with `error_code: MCP_OAUTH_REQUIRED`. Never put an MCP credential in `.env`.
+- **`RANETRACE_KEY` is the ingest key and nothing else.** It writes captured telemetry in. Reading data back out is the MCP server's job, and it uses its own credential, held by the MCP client rather than by the application: an OAuth connection the user approves in the browser. Sending the ingest key to an MCP endpoint returns a 401 with `error_code: MCP_OAUTH_REQUIRED`. Never put an MCP credential in `.env`.
 
 ### Features & env vars
 

@@ -107,7 +107,7 @@ php artisan ranetrace:pause-clear --all
 
 **Features paused:**
 - Check the reason in `ranetrace:status` output
-- 401: verify `RANETRACE_KEY` in `.env` is valid
+- 401: verify `RANETRACE_KEY` is valid
 - 403: check subscription status and feature access
 - 429: wait for auto-resume or reduce schedule frequency
 - Clear manually: `php artisan ranetrace:pause-clear --feature=<type>`

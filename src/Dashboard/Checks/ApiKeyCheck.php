@@ -28,14 +28,14 @@ class ApiKeyCheck implements Check
             return CheckResult::warn(
                 'api_key',
                 'Ingest API key is missing',
-                'Ranetrace is disabled, so nothing is sent yet. Set RANETRACE_KEY in .env before you set RANETRACE_ENABLED=true.'
+                'Ranetrace is disabled, so nothing is sent yet. Set RANETRACE_KEY in the environment that reports to Ranetrace (on a server, in its .env) before you set RANETRACE_ENABLED=true.'
             );
         }
 
         return CheckResult::fail(
             'api_key',
             'Ingest API key is missing',
-            'Set RANETRACE_KEY in .env. Without it, nothing is captured or sent. '
+            'Set RANETRACE_KEY in the environment that reports to Ranetrace (on a server, in its .env). Without it, nothing is captured or sent. '
                 .'This is the ingest key; the MCP tools use an OAuth connection, held by your MCP client.'
         );
     }

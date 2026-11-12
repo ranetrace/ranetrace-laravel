@@ -59,7 +59,7 @@ test('api key check says that nothing is captured or sent without the key', func
     Config::set('ranetrace.key', null);
 
     expect(runChecks()['api_key']->remediation)->toBe(
-        'Set RANETRACE_KEY in .env. Without it, nothing is captured or sent. '
+        'Set RANETRACE_KEY in the environment that reports to Ranetrace (on a server, in its .env). Without it, nothing is captured or sent. '
             .'This is the ingest key; the MCP tools use an OAuth connection, held by your MCP client.'
     );
 });

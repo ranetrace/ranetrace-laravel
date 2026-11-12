@@ -167,7 +167,7 @@ class RanetraceTestCommand extends Command
         // missing one fails the command.
         if (blank($config['key'] ?? null)) {
             $this->error('❌ Ranetrace ingest API key is not set.');
-            $this->info('💡 Add to your .env file: RANETRACE_KEY=your-api-key-here');
+            $this->info('💡 Set it in the environment that reports to Ranetrace (on a server, in its .env): RANETRACE_KEY=your-api-key-here');
 
             return self::FAILURE;
         }

@@ -201,7 +201,7 @@ class RanetraceStatusCommand extends Command
             $this->line('─────────────────────────────────────────────────────────────');
 
             if ($status['config']['enabled'] && ! $status['config']['api_key_configured']) {
-                $this->line('• Configure RANETRACE_KEY in .env (the ingest key; the MCP tools use an OAuth connection, held by your MCP client)');
+                $this->line('• Set RANETRACE_KEY in the environment that reports to Ranetrace (on a server, in its .env). It is the ingest key; the MCP tools use an OAuth connection, held by your MCP client');
             }
 
             if ($status['pauses']['global']) {

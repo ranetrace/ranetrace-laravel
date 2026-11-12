@@ -324,7 +324,7 @@ test('an enabled app with no ingest key is reported as unhealthy, with the key r
     expect($output)->toContain('✗ Overall status: issues detected')
         ->and($output)->toContain('Ingest API key: Not configured')
         ->and($output)->toContain('Recommendations')
-        ->and(mb_substr_count($output, '• Configure RANETRACE_KEY in .env (the ingest key; the MCP tools use an OAuth connection, held by your MCP client)'))->toBe(1)
+        ->and(mb_substr_count($output, '• Set RANETRACE_KEY in the environment that reports to Ranetrace (on a server, in its .env). It is the ingest key; the MCP tools use an OAuth connection, held by your MCP client'))->toBe(1)
         ->and($output)->not->toContain('RANETRACE_ENABLED');
 });
 
@@ -379,7 +379,7 @@ test('a disabled app lists neither the enable hint nor the key in Recommendation
         ->and($output)->toContain('Recommendations')
         ->and(mb_substr_count($output, 'RANETRACE_ENABLED'))->toBe(1)
         ->and($output)->not->toContain('Enable Ranetrace')
-        ->and($output)->not->toContain('Configure RANETRACE_KEY');
+        ->and($output)->not->toContain('• Set RANETRACE_KEY');
 });
 
 test('a blank ingest key counts as missing', function (string $key): void {
@@ -389,7 +389,7 @@ test('a blank ingest key counts as missing', function (string $key): void {
 
     expect($output)->toContain('✗ Overall status: issues detected')
         ->and($output)->toContain('Ingest API key: Not configured')
-        ->and($output)->toContain('• Configure RANETRACE_KEY in .env');
+        ->and($output)->toContain('• Set RANETRACE_KEY in the environment that reports to Ranetrace (on a server, in its .env)');
 })->with([
     'empty' => [''],
     'a space' => [' '],
