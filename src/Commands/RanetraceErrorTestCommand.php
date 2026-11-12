@@ -40,24 +40,30 @@ class RanetraceErrorTestCommand extends Command
 
         $exceptions = $this->testExceptions();
 
-        $this->info('1. Testing simple exception...');
-        Ranetrace::report($exceptions['simple']());
-        $this->info('   ✓ Simple exception reported');
+        $buffered = $this->countBuffered('errors', 'errors', function () use ($exceptions): void {
+            $this->info('1. Testing simple exception...');
+            Ranetrace::report($exceptions['simple']());
+            $this->info('   ✓ Simple exception reported');
 
-        $this->info('2. Testing RuntimeException...');
-        Ranetrace::report($exceptions['runtime']());
-        $this->info('   ✓ RuntimeException reported');
+            $this->info('2. Testing RuntimeException...');
+            Ranetrace::report($exceptions['runtime']());
+            $this->info('   ✓ RuntimeException reported');
 
-        $this->info('3. Testing exception with deeper stack trace...');
-        Ranetrace::report($exceptions['deep']());
-        $this->info('   ✓ Exception with stack trace reported');
+            $this->info('3. Testing exception with deeper stack trace...');
+            Ranetrace::report($exceptions['deep']());
+            $this->info('   ✓ Exception with stack trace reported');
 
-        $this->info('4. Testing exception with custom message...');
-        Ranetrace::report($exceptions['custom']());
-        $this->info('   ✓ Custom exception reported');
+            $this->info('4. Testing exception with custom message...');
+            Ranetrace::report($exceptions['custom']());
+            $this->info('   ✓ Custom exception reported');
+        });
 
         $this->newLine();
-        $this->reportCaptured('errors', self::TEST_COUNT.' test errors');
+
+        if (! $this->reportCaptured('errors', 'test errors', self::TEST_COUNT, $buffered)) {
+            return self::FAILURE;
+        }
+
         $this->newLine();
         $this->info('Check your Ranetrace dashboard once the errors have been sent.');
 

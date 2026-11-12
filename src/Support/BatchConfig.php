@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Ranetrace\Laravel\Support;
 
 use Illuminate\Contracts\Cache\Repository;
+use Illuminate\Contracts\Queue\Queue;
+use Illuminate\Queue\SyncQueue;
 use Illuminate\Support\Facades\Cache;
 use InvalidArgumentException;
 use Ranetrace\Laravel\Jobs\BaseRanetraceJob;
@@ -15,6 +17,7 @@ use Ranetrace\Laravel\Jobs\HandleLogJob;
 use Ranetrace\Laravel\Jobs\HandlePageVisitJob;
 use Ranetrace\Laravel\Jobs\SendBatchToRanetraceJob;
 use ReflectionClass;
+use Throwable;
 
 /**
  * The batch pipeline's cache store and the queues Ranetrace jobs go to, read
@@ -178,6 +181,40 @@ final class BatchConfig
     }
 
     /**
+     * Whether a feature's captured item waits for a queue worker before it is
+     * buffered. It does not when the feature's queue is off, or when its job's
+     * connection runs a job itself: `sync`, and `deferred` and `background`,
+     * which extend it. A connection that cannot be resolved counts as one
+     * that waits.
+     *
+     * @param  string  $featureConfigPath  Such as `ranetrace.errors`.
+     */
+    public static function featureWaitsForWorker(string $featureConfigPath): bool
+    {
+        return config($featureConfigPath.'.queue', true)
+            && ! self::featureQueueConnection($featureConfigPath) instanceof SyncQueue;
+    }
+
+    /**
+     * Whether a feature's captured item is in the buffer by the time the call
+     * that captured it returns: its queue is off, or its job's connection is
+     * `sync` itself. `deferred` runs the job once the command or request has
+     * ended and `background` in another process, so neither qualifies.
+     *
+     * @param  string  $featureConfigPath  Such as `ranetrace.errors`.
+     */
+    public static function featureBuffersBeforeReturning(string $featureConfigPath): bool
+    {
+        if (! config($featureConfigPath.'.queue', true)) {
+            return true;
+        }
+
+        $connection = self::featureQueueConnection($featureConfigPath);
+
+        return $connection !== null && $connection::class === SyncQueue::class;
+    }
+
+    /**
      * A queue as the status output and the dashboard print it: the queue
      * name, the connection when one is given and it is not `queue.default`,
      * and the configured name when a forward sent the job elsewhere.
@@ -211,6 +248,19 @@ final class BatchConfig
             self::jobConnectionName($job),
             self::featureQueueName($featureConfigPath),
         );
+    }
+
+    /**
+     * The queue connection a feature's job is dispatched on, resolved, or null
+     * when it cannot be resolved.
+     */
+    private static function featureQueueConnection(string $featureConfigPath): ?Queue
+    {
+        try {
+            return app('queue')->connection(self::jobConnectionName(self::jobAsDispatched($featureConfigPath)));
+        } catch (Throwable) {
+            return null;
+        }
     }
 
     /**

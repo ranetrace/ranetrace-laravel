@@ -85,13 +85,23 @@ class RanetraceJavaScriptErrorTestCommand extends Command
             timestampFallback: now()->format('c'),
         );
 
-        if (config('ranetrace.javascript_errors.queue', true)) {
-            HandleJavaScriptErrorJob::dispatch($errorData);
+        $buffered = $this->countBuffered('javascript_errors', 'javascript_errors', function () use ($errorData): void {
+            config('ranetrace.javascript_errors.queue', true)
+                ? HandleJavaScriptErrorJob::dispatch($errorData)
+                : HandleJavaScriptErrorJob::dispatchSync($errorData);
+        });
+
+        if ($buffered === 0) {
+            $this->error('❌ The test JavaScript error was not buffered: the capture failed. '.$this->whyNotCaptured());
+
+            return self::FAILURE;
+        }
+
+        if (BatchConfig::featureWaitsForWorker('ranetrace.javascript_errors')) {
             $this->info('✅ Test JavaScript error queued for Ranetrace.');
             $this->info('Once a queue worker runs it, it will be sent the next time the ranetrace:work command runs.');
             $this->info('To send it immediately after that, run: php artisan ranetrace:work');
         } else {
-            HandleJavaScriptErrorJob::dispatchSync($errorData);
             $this->info('✅ Test JavaScript error buffered for Ranetrace.');
             $this->info('To send it now, run: php artisan ranetrace:work');
         }

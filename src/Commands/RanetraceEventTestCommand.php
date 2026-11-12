@@ -40,85 +40,91 @@ class RanetraceEventTestCommand extends Command
             return $stop;
         }
 
-        // Test event name validation
-        $this->info('1. Testing event name validation...');
+        $buffered = $this->countBuffered('events', 'events', function (): void {
+            // Test event name validation
+            $this->info('1. Testing event name validation...');
 
-        $this->info('   ✓ Valid event name: user_registered');
-        RanetraceEvents::custom('user_registered', ['source' => 'test']);
+            $this->info('   ✓ Valid event name: user_registered');
+            RanetraceEvents::custom('user_registered', ['source' => 'test']);
 
-        $this->info('   ✓ Using predefined constant: EventTracker::PRODUCT_ADDED_TO_CART');
-        Ranetrace::trackEvent(EventTracker::PRODUCT_ADDED_TO_CART, ['test' => true]);
+            $this->info('   ✓ Using predefined constant: EventTracker::PRODUCT_ADDED_TO_CART');
+            Ranetrace::trackEvent(EventTracker::PRODUCT_ADDED_TO_CART, ['test' => true]);
 
-        $this->info('   ⚠ Testing invalid event name (this will show validation error)...');
-        try {
-            // Direct call (not via the RanetraceEvents facade) so static
-            // analysis can see the InvalidArgumentException throw path.
-            EventTracker::custom('Invalid Event Name!', []);
-        } catch (InvalidArgumentException $e) {
-            $this->warn('   Expected validation error: '.$e->getMessage());
-        }
+            $this->info('   ⚠ Testing invalid event name (this will show validation error)...');
+            try {
+                // Direct call (not via the RanetraceEvents facade) so static
+                // analysis can see the InvalidArgumentException throw path.
+                EventTracker::custom('Invalid Event Name!', []);
+            } catch (InvalidArgumentException $e) {
+                $this->warn('   Expected validation error: '.$e->getMessage());
+            }
 
-        // Test basic event tracking
-        $this->info('2. Tracking basic custom event...');
-        Ranetrace::trackEvent('test_event', [
-            'test_property' => 'test_value',
-            'timestamp' => now()->toISOString(),
-        ]);
+            // Test basic event tracking
+            $this->info('2. Tracking basic custom event...');
+            Ranetrace::trackEvent('test_event', [
+                'test_property' => 'test_value',
+                'timestamp' => now()->toISOString(),
+            ]);
 
-        // Test e-commerce events using the helper
-        $this->info('3. Tracking product added to cart event...');
-        RanetraceEvents::productAddedToCart(
-            productId: 'PROD-123',
-            productName: 'Awesome Widget',
-            price: 29.99,
-            quantity: 2,
-            category: 'Widgets',
-            additionalProperties: ['color' => 'blue', 'size' => 'large']
-        );
+            // Test e-commerce events using the helper
+            $this->info('3. Tracking product added to cart event...');
+            RanetraceEvents::productAddedToCart(
+                productId: 'PROD-123',
+                productName: 'Awesome Widget',
+                price: 29.99,
+                quantity: 2,
+                category: 'Widgets',
+                additionalProperties: ['color' => 'blue', 'size' => 'large']
+            );
 
-        $this->info('4. Tracking sale event...');
-        RanetraceEvents::sale(
-            orderId: 'ORDER-456',
-            totalAmount: 89.97,
-            products: [
-                [
-                    'id' => 'PROD-123',
-                    'name' => 'Awesome Widget',
-                    'price' => 29.99,
-                    'quantity' => 2,
+            $this->info('4. Tracking sale event...');
+            RanetraceEvents::sale(
+                orderId: 'ORDER-456',
+                totalAmount: 89.97,
+                products: [
+                    [
+                        'id' => 'PROD-123',
+                        'name' => 'Awesome Widget',
+                        'price' => 29.99,
+                        'quantity' => 2,
+                    ],
+                    [
+                        'id' => 'PROD-789',
+                        'name' => 'Super Gadget',
+                        'price' => 29.99,
+                        'quantity' => 1,
+                    ],
                 ],
-                [
-                    'id' => 'PROD-789',
-                    'name' => 'Super Gadget',
-                    'price' => 29.99,
-                    'quantity' => 1,
-                ],
-            ],
-            currency: 'USD',
-            additionalProperties: ['payment_method' => 'credit_card']
-        );
+                currency: 'USD',
+                additionalProperties: ['payment_method' => 'credit_card']
+            );
 
-        $this->info('5. Tracking user registration event...');
-        RanetraceEvents::userRegistered(
-            userId: 123,
-            additionalProperties: ['registration_source' => 'website']
-        );
+            $this->info('5. Tracking user registration event...');
+            RanetraceEvents::userRegistered(
+                userId: 123,
+                additionalProperties: ['registration_source' => 'website']
+            );
 
-        $this->info('6. Tracking page view event...');
-        RanetraceEvents::pageView(
-            pageName: 'Product Details',
-            additionalProperties: ['product_id' => 'PROD-123']
-        );
+            $this->info('6. Tracking page view event...');
+            RanetraceEvents::pageView(
+                pageName: 'Product Details',
+                additionalProperties: ['product_id' => 'PROD-123']
+            );
 
-        $this->info('7. Tracking custom event using validated method...');
-        RanetraceEvents::custom(
-            eventName: 'newsletter_signup',
-            properties: ['source' => 'footer', 'email_provided' => true],
-            userId: 123
-        );
+            $this->info('7. Tracking custom event using validated method...');
+            RanetraceEvents::custom(
+                eventName: 'newsletter_signup',
+                properties: ['source' => 'footer', 'email_provided' => true],
+                userId: 123
+            );
+        });
 
         $this->newLine();
-        $this->reportCaptured('events', self::TEST_COUNT.' test events');
+
+        if (! $this->reportCaptured('events', 'test events', self::TEST_COUNT, $buffered)) {
+            return self::FAILURE;
+        }
+
         $this->newLine();
         $this->info('Check your Ranetrace dashboard once the events have been sent.');
 

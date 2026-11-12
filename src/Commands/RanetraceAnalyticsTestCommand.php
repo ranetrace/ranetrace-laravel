@@ -90,11 +90,21 @@ class RanetraceAnalyticsTestCommand extends Command
 
         $visitData = TrackPageVisit::buildVisitData($request, HumanProbabilityScorer::score($request));
 
-        if (config('ranetrace.website_analytics.queue', true)) {
-            HandlePageVisitJob::dispatch($visitData);
+        $buffered = $this->countBuffered('website_analytics', 'page_visits', function () use ($visitData): void {
+            config('ranetrace.website_analytics.queue', true)
+                ? HandlePageVisitJob::dispatch($visitData)
+                : HandlePageVisitJob::dispatchSync($visitData);
+        });
+
+        if ($buffered === 0) {
+            $this->error('❌ The test page visit was not buffered: the capture failed. '.$this->whyNotCaptured());
+
+            return self::FAILURE;
+        }
+
+        if (BatchConfig::featureWaitsForWorker('ranetrace.website_analytics')) {
             $this->info('✅ Test page visit queued for Ranetrace. Once a queue worker runs it, run php artisan ranetrace:work to send it.');
         } else {
-            HandlePageVisitJob::dispatchSync($visitData);
             $this->info('✅ Test page visit buffered for Ranetrace. Run php artisan ranetrace:work to send it.');
         }
         $this->newLine();

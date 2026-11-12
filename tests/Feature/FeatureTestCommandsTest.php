@@ -6,10 +6,14 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Queue;
+use Ranetrace\Laravel\Facades\Ranetrace as RanetraceFacade;
 use Ranetrace\Laravel\Jobs\HandleErrorJob;
 use Ranetrace\Laravel\Jobs\HandleEventJob;
 use Ranetrace\Laravel\Jobs\HandleLogJob;
+use Ranetrace\Laravel\Ranetrace;
+use Ranetrace\Laravel\Services\CountingBatchBuffer;
 use Ranetrace\Laravel\Services\RanetraceBatchBuffer;
+use Ranetrace\Laravel\Support\InternalLogger;
 
 beforeEach(function (): void {
     Config::set('ranetrace.batch.cache_driver', 'array');
@@ -130,14 +134,6 @@ test('with the queue off a feature test command says its items are buffered, as 
 
     [$exitCode, $output] = featureTestRun($command);
 
-    expect($exitCode)->toBe(0)
-        ->and($output)->toContain(
-            "✅ {$items} buffered for Ranetrace.\n"
-            ."To send them now, run: php artisan ranetrace:work\n"
-            ."To see whether the API accepts your key, run: php artisan ranetrace:test\n",
-        )
-        ->and($output)->not->toContain('have been sent to Ranetrace');
-
     // A sync dispatch goes through the queue's sync connection, which a
     // faked queue would swallow, so this test runs the jobs for real.
     $buffered = app(RanetraceBatchBuffer::class)->count($type);
@@ -145,6 +141,17 @@ test('with the queue off a feature test command says its items are buffered, as 
     $count === null
         ? expect($buffered)->toBeGreaterThan(0)
         : expect($buffered)->toBe($count);
+
+    // The log test has no fixed count, so it prints the one it counted.
+    $counted = $count === null ? "{$buffered} test logs" : $items;
+
+    expect($exitCode)->toBe(0)
+        ->and($output)->toContain(
+            "✅ {$counted} buffered for Ranetrace.\n"
+            ."To send them now, run: php artisan ranetrace:work\n"
+            ."To see whether the API accepts your key, run: php artisan ranetrace:test\n",
+        )
+        ->and($output)->not->toContain('have been sent to Ranetrace');
 })->with('capturing feature test commands');
 
 test('the logging test says its logs are written, not sent', function (): void {
@@ -224,4 +231,149 @@ test('an unknown feature in a list fails the summary', function (): void {
 
     expect($exitCode)->toBe(1)
         ->and(featureTestSummaryResult($output, 'Nonsense'))->toBe('✗ Failed');
+});
+
+/**
+ * Hold the buffer lock of a type, so nothing can be added to its buffer: the
+ * one way a capture fails that needs no test double.
+ */
+function featureTestHoldBufferLock(string $type): void
+{
+    Config::set('ranetrace.batch.lock_wait', 0);
+
+    Cache::store('array')->lock("ranetrace:buffer:{$type}:lock", 60)->get();
+}
+
+dataset('every feature test command', [
+    'errors' => ['ranetrace:test-errors', 'errors', 'errors', '❌ No test errors were buffered: the capture failed.'],
+    'events' => ['ranetrace:test-events', 'events', 'events', '❌ No test events were buffered: the capture failed.'],
+    'logging' => ['ranetrace:test-logging', 'logging', 'logs', '❌ No test logs were buffered: the capture failed.'],
+    'javascript errors' => ['ranetrace:test-javascript-errors', 'javascript_errors', 'javascript_errors', '❌ The test JavaScript error was not buffered: the capture failed.'],
+    'analytics' => ['ranetrace:test-analytics', 'website_analytics', 'page_visits', '❌ The test page visit was not buffered: the capture failed.'],
+]);
+
+test('a feature test command whose items never reach the buffer says so, names the internal log and fails', function (string $command, string $feature, string $type, string $line): void {
+    Config::set("ranetrace.{$feature}.enabled", true);
+    Config::set("ranetrace.{$feature}.queue", false);
+    featureTestHoldBufferLock($type);
+
+    [$exitCode, $output] = featureTestRun($command);
+
+    expect($exitCode)->toBe(1)
+        ->and($output)->toContain($line.' The reason is in '.InternalLogger::todaysFile()."\n")
+        ->and($output)->not->toContain('for Ranetrace.')
+        ->and($output)->not->toContain('php artisan ranetrace:test')
+        ->and(file_get_contents(InternalLogger::todaysFile()))->toContain('Could not acquire cache lock to add items to buffer')
+        ->and(featureTestBufferedCount())->toBe(0);
+})->with('every feature test command');
+
+test('a failed capture with internal logging off says to turn it on', function (): void {
+    Config::set('ranetrace.errors.queue', false);
+    Config::set('ranetrace.internal_logging.enabled', false);
+    featureTestHoldBufferLock('errors');
+
+    [$exitCode, $output] = featureTestRun('ranetrace:test-errors');
+
+    expect($exitCode)->toBe(1)
+        ->and($output)->toContain("❌ No test errors were buffered: the capture failed. Turn internal logging on to see why\n");
+});
+
+test('a feature test command that buffered some of its items says how many, and still succeeds', function (): void {
+    Config::set('ranetrace.errors.queue', false);
+
+    // The third report finds the buffer lock held, the others find it free.
+    RanetraceFacade::swap(new class extends Ranetrace
+    {
+        private int $reports = 0;
+
+        public function report(Throwable $exception): void
+        {
+            $lock = Cache::store('array')->lock('ranetrace:buffer:errors:lock', 60);
+            $isThird = ++$this->reports === 3;
+
+            if ($isThird) {
+                Config::set('ranetrace.batch.lock_wait', 0);
+                $lock->get();
+            }
+
+            parent::report($exception);
+
+            if ($isThird) {
+                $lock->forceRelease();
+            }
+        }
+    });
+
+    [$exitCode, $output] = featureTestRun('ranetrace:test-errors');
+
+    expect($exitCode)->toBe(0)
+        ->and($output)->toContain(
+            '⚠ 3 of 4 test errors buffered for Ranetrace. The others were not captured. The reason is in '.InternalLogger::todaysFile()."\n"
+            ."To send them now, run: php artisan ranetrace:work\n"
+            ."To see whether the API accepts your key, run: php artisan ranetrace:test\n",
+        )
+        ->and(app(RanetraceBatchBuffer::class)->count('errors'))->toBe(3);
+});
+
+test('with the queue on and a connection that runs its jobs at once, a feature test command counts its items and says buffered', function (string $command, string $feature, string $type, string $job, string $items, ?int $count): void {
+    Config::set('queue.default', 'sync');
+    Config::set("ranetrace.{$feature}.queue", true);
+
+    [$exitCode, $output] = featureTestRun($command);
+
+    $buffered = app(RanetraceBatchBuffer::class)->count($type);
+    $counted = $count === null ? "{$buffered} test logs" : $items;
+
+    expect($exitCode)->toBe(0)
+        ->and($buffered)->toBeGreaterThan(0)
+        ->and($output)->toContain("✅ {$counted} buffered for Ranetrace.\nTo send them now, run: php artisan ranetrace:work\n")
+        ->and($output)->not->toContain('queue worker');
+})->with('capturing feature test commands');
+
+test('on a connection that runs its jobs after the command, a feature test command says buffered without a count', function (string $command, string $feature, string $type, string $job, string $items, ?int $count): void {
+    Config::set('queue.default', 'deferred');
+    Config::set("ranetrace.{$feature}.queue", true);
+
+    [$exitCode, $output] = featureTestRun($command);
+
+    expect($exitCode)->toBe(0)
+        ->and($output)->toContain("✅ {$items} buffered for Ranetrace.\nTo send them now, run: php artisan ranetrace:work\n")
+        ->and($output)->not->toContain('queue worker');
+})->with('capturing feature test commands');
+
+test('the single-item test commands say buffered, not queued, on a connection that needs no worker', function (string $command, string $feature, string $line): void {
+    Config::set("ranetrace.{$feature}.enabled", true);
+    Config::set("ranetrace.{$feature}.queue", true);
+    Config::set('queue.default', 'sync');
+
+    [$exitCode, $output] = featureTestRun($command);
+
+    expect($exitCode)->toBe(0)
+        ->and($output)->toContain($line)
+        ->and($output)->not->toContain('queue worker');
+})->with([
+    'javascript errors' => ['ranetrace:test-javascript-errors', 'javascript_errors', "✅ Test JavaScript error buffered for Ranetrace.\nTo send it now, run: php artisan ranetrace:work\n"],
+    'analytics' => ['ranetrace:test-analytics', 'website_analytics', "✅ Test page visit buffered for Ranetrace. Run php artisan ranetrace:work to send it.\n"],
+]);
+
+test('a feature test command leaves the buffer binding as it found it', function (): void {
+    Config::set('ranetrace.errors.queue', false);
+
+    featureTestRun('ranetrace:test-errors');
+
+    expect(app()->bound(RanetraceBatchBuffer::class))->toBeFalse()
+        ->and(app(RanetraceBatchBuffer::class))->not->toBeInstanceOf(CountingBatchBuffer::class);
+});
+
+test('a host that binds its own buffer is not counted, and its buffer is the one used', function (): void {
+    Config::set('ranetrace.errors.queue', false);
+    $own = new RanetraceBatchBuffer;
+    app()->instance(RanetraceBatchBuffer::class, $own);
+
+    [$exitCode, $output] = featureTestRun('ranetrace:test-errors');
+
+    expect($exitCode)->toBe(0)
+        ->and($output)->toContain("✅ 4 test errors buffered for Ranetrace.\n")
+        ->and(app(RanetraceBatchBuffer::class))->toBe($own)
+        ->and($own->count('errors'))->toBe(4);
 });

@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Illuminate\Bus\Dispatcher;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Config;
@@ -9,6 +10,7 @@ use Jaybizzle\CrawlerDetect\CrawlerDetect;
 use Ranetrace\Laravel\Analytics\BotSignals;
 use Ranetrace\Laravel\Analytics\VisitDataCollector;
 use Ranetrace\Laravel\Jobs\HandlePageVisitJob;
+use Ranetrace\Laravel\Services\RanetraceBatchBuffer;
 
 /**
  * @return array<string, mixed>
@@ -155,13 +157,14 @@ test('ranetrace:test-analytics queues its visit when the analytics queue is on, 
 
 test('ranetrace:test-analytics buffers its visit at once when the analytics queue is off, like the middleware', function (): void {
     Config::set('ranetrace.website_analytics.queue', false);
+    Bus::swap(app(Dispatcher::class));
 
     $this->artisan('ranetrace:test-analytics')
-        ->expectsOutputToContain('Run php artisan ranetrace:work to send it')
+        ->expectsOutputToContain('✅ Test page visit buffered for Ranetrace. Run php artisan ranetrace:work to send it.')
         ->doesntExpectOutputToContain('Test page visit sent to Ranetrace')
         ->assertSuccessful();
 
-    Bus::assertDispatchedSync(HandlePageVisitJob::class);
+    expect(app(RanetraceBatchBuffer::class)->count('page_visits'))->toBe(1);
 });
 
 test('ranetrace:test-analytics is a no-op when analytics is disabled', function (): void {

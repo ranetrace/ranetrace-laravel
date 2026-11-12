@@ -2,9 +2,11 @@
 
 declare(strict_types=1);
 
+use Illuminate\Bus\Dispatcher;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Config;
 use Ranetrace\Laravel\Jobs\HandleJavaScriptErrorJob;
+use Ranetrace\Laravel\Services\RanetraceBatchBuffer;
 use Ranetrace\Laravel\Support\Core;
 use Ranetrace\Laravel\Support\CoreConfig;
 use Ranetrace\Php\JavaScript\ErrorItemBuilder;
@@ -68,13 +70,15 @@ test('ranetrace:test-javascript-errors queues its item when the JavaScript error
 
 test('ranetrace:test-javascript-errors buffers its item at once when the JavaScript errors queue is off, like the relay', function (): void {
     Config::set('ranetrace.javascript_errors.queue', false);
+    Bus::swap(app(Dispatcher::class));
 
     $this->artisan('ranetrace:test-javascript-errors')
+        ->expectsOutputToContain('✅ Test JavaScript error buffered for Ranetrace.')
         ->expectsOutputToContain('php artisan ranetrace:work')
         ->doesntExpectOutputToContain('Test JavaScript error sent to Ranetrace')
         ->assertSuccessful();
 
-    Bus::assertDispatchedSync(HandleJavaScriptErrorJob::class);
+    expect(app(RanetraceBatchBuffer::class)->count('javascript_errors'))->toBe(1);
 });
 
 test('ranetrace:test-javascript-errors dispatches nothing when JavaScript error tracking is disabled', function (): void {
