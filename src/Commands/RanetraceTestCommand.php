@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Ranetrace\Laravel\Commands;
 
 use Illuminate\Console\Command;
+use Ranetrace\Laravel\Ranetrace;
 use Ranetrace\Laravel\Services\RanetraceTestRun;
 use Ranetrace\Laravel\Support\BatchConfig;
 use Ranetrace\Laravel\Support\InternalLogger;
@@ -19,6 +20,20 @@ class RanetraceTestCommand extends Command
      * test report sets it.
      */
     private const int LABEL_WIDTH = 9;
+
+    /**
+     * The features `--feature` and `--all` test, each with its test command
+     * and its key under `ranetrace.`.
+     *
+     * @var array<string, array{command: string, config: string}>
+     */
+    private const array FEATURES = [
+        'errors' => ['command' => 'ranetrace:test-errors', 'config' => 'errors'],
+        'events' => ['command' => 'ranetrace:test-events', 'config' => 'events'],
+        'logging' => ['command' => 'ranetrace:test-logging', 'config' => 'logging'],
+        'javascript_errors' => ['command' => 'ranetrace:test-javascript-errors', 'config' => 'javascript_errors'],
+        'analytics' => ['command' => 'ranetrace:test-analytics', 'config' => 'website_analytics'],
+    ];
 
     public $signature = 'ranetrace:test
                         {--feature= : Test specific feature(s) - comma-separated or use "all"}
@@ -55,33 +70,12 @@ class RanetraceTestCommand extends Command
         $this->info('🧪 Testing all Ranetrace features...');
         $this->newLine();
 
-        $features = ['errors', 'events', 'logging', 'javascript_errors', 'analytics'];
-        $results = [];
-
-        foreach ($features as $feature) {
-            $this->line("Running test for: <fg=cyan>{$feature}</>");
-            $exitCode = $this->testSpecificFeature($feature, false);
-            $results[$feature] = $exitCode === self::SUCCESS;
-            $this->newLine();
-        }
-
-        // Summary
-        $this->info('📊 Test summary:');
-        $this->table(
-            ['Feature', 'Result'],
-            collect($results)->map(function ($passed, $feature) {
-                return [
-                    ucfirst(str_replace('_', ' ', $feature)),
-                    $passed ? '<fg=green>✓ Passed</>' : '<fg=red>✗ Failed</>',
-                ];
-            })->values()->toArray()
-        );
-
-        $allPassed = collect($results)->every(fn ($passed) => $passed);
-
-        return $allPassed ? self::SUCCESS : self::FAILURE;
+        return $this->testFeatures(array_keys(self::FEATURES), announceEach: true);
     }
 
+    /**
+     * @param  list<string>  $features
+     */
     protected function testMultipleFeatures(array $features): int
     {
         $features = array_map('trim', $features);
@@ -89,56 +83,69 @@ class RanetraceTestCommand extends Command
         $this->info('🧪 Testing multiple features: '.implode(', ', $features));
         $this->newLine();
 
+        return $this->testFeatures($features, announceEach: false);
+    }
+
+    /**
+     * Run each feature's test command, then print one summary of them.
+     *
+     * A feature that is switched off, or every feature while the package is,
+     * shows as skipped and does not fail the run, by the rule capture itself
+     * follows. Any other feature passes or fails by its command's exit code.
+     *
+     * @param  list<string>  $features
+     */
+    protected function testFeatures(array $features, bool $announceEach): int
+    {
         $results = [];
 
         foreach ($features as $feature) {
+            if ($announceEach) {
+                $this->line("Running test for: <fg=cyan>{$feature}</>");
+            }
+
             $exitCode = $this->testSpecificFeature($feature, false);
-            $results[$feature] = $exitCode === self::SUCCESS;
+
+            $results[$feature] = match (true) {
+                isset(self::FEATURES[$feature]) && ! Ranetrace::isSwitchedOn(self::FEATURES[$feature]['config']) => 'skipped',
+                $exitCode === self::SUCCESS => 'passed',
+                default => 'failed',
+            };
+
             $this->newLine();
         }
 
-        // Summary
         $this->info('📊 Test summary:');
         $this->table(
             ['Feature', 'Result'],
-            collect($results)->map(function ($passed, $feature) {
-                return [
-                    ucfirst(str_replace('_', ' ', $feature)),
-                    $passed ? '<fg=green>✓ Passed</>' : '<fg=red>✗ Failed</>',
-                ];
-            })->values()->toArray()
+            collect($results)->map(fn (string $result, string $feature): array => [
+                ucfirst(str_replace('_', ' ', $feature)),
+                match ($result) {
+                    'skipped' => '<fg=yellow>○ Skipped: disabled</>',
+                    'passed' => '<fg=green>✓ Passed</>',
+                    default => '<fg=red>✗ Failed</>',
+                },
+            ])->values()->toArray()
         );
 
-        $allPassed = collect($results)->every(fn ($passed) => $passed);
-
-        return $allPassed ? self::SUCCESS : self::FAILURE;
+        return in_array('failed', $results, true) ? self::FAILURE : self::SUCCESS;
     }
 
     protected function testSpecificFeature(string $feature, bool $showHeader = true): int
     {
-        $featureCommands = [
-            'errors' => 'ranetrace:test-errors',
-            'events' => 'ranetrace:test-events',
-            'logging' => 'ranetrace:test-logging',
-            'javascript_errors' => 'ranetrace:test-javascript-errors',
-            'analytics' => 'ranetrace:test-analytics',
-        ];
-
-        if (! isset($featureCommands[$feature])) {
+        if (! isset(self::FEATURES[$feature])) {
             $this->error("❌ Unknown feature: {$feature}");
-            $this->info('💡 Available features: '.implode(', ', array_keys($featureCommands)));
+            $this->info('💡 Available features: '.implode(', ', array_keys(self::FEATURES)));
 
             return self::FAILURE;
         }
-
-        $command = $featureCommands[$feature];
 
         if ($showHeader) {
             $this->info("Running feature test: {$feature}");
             $this->newLine();
         }
 
-        return $this->call($command);
+        return $this->call(self::FEATURES[$feature]['command']);
     }
 
     protected function validateConfiguration(): int

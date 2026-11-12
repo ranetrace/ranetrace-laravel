@@ -9,10 +9,13 @@ use Ranetrace\Laravel\Jobs\HandleJavaScriptErrorJob;
 use Ranetrace\Laravel\Support\BatchConfig;
 use Ranetrace\Laravel\Support\Core;
 use Ranetrace\Laravel\Support\CoreConfig;
+use Ranetrace\Laravel\Support\GuardsFeatureTest;
 use Ranetrace\Php\JavaScript\ErrorItemBuilder;
 
 class RanetraceJavaScriptErrorTestCommand extends Command
 {
+    use GuardsFeatureTest;
+
     /**
      * A real desktop Chrome user agent, so the test item carries the browser
      * `name` and `version` a real report derives from it.
@@ -45,22 +48,15 @@ class RanetraceJavaScriptErrorTestCommand extends Command
 
         $this->newLine();
 
-        if (! config('ranetrace.javascript_errors.enabled')) {
+        $stop = $this->stopBeforeCapture('javascript_errors', function (): void {
             $this->warn('⚠️  JavaScript error tracking is currently disabled.');
             $this->info('💡 To enable it, add to your .env file:');
             $this->line('   RANETRACE_JAVASCRIPT_ERRORS_ENABLED=true');
             $this->newLine();
+        });
 
-            return self::SUCCESS;
-        }
-
-        if (blank(config('ranetrace.key'))) {
-            $this->error('❌ Ranetrace API key is not set!');
-            $this->info('💡 Add your API key to .env:');
-            $this->line('   RANETRACE_KEY=your-api-key-here');
-            $this->newLine();
-
-            return self::FAILURE;
+        if ($stop !== null) {
+            return $stop;
         }
 
         $this->info('✅ JavaScript error tracking is enabled and configured!');

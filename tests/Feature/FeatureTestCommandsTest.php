@@ -1,0 +1,227 @@
+<?php
+
+declare(strict_types=1);
+
+use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\Queue;
+use Ranetrace\Laravel\Jobs\HandleErrorJob;
+use Ranetrace\Laravel\Jobs\HandleEventJob;
+use Ranetrace\Laravel\Jobs\HandleLogJob;
+use Ranetrace\Laravel\Services\RanetraceBatchBuffer;
+
+beforeEach(function (): void {
+    Config::set('ranetrace.batch.cache_driver', 'array');
+    Cache::store('array')->flush();
+});
+
+/**
+ * Every buffered item, of every type.
+ */
+function featureTestBufferedCount(): int
+{
+    $buffer = app(RanetraceBatchBuffer::class);
+
+    return array_sum(array_map($buffer->count(...), RanetraceBatchBuffer::TYPES));
+}
+
+/**
+ * Run a command and return its exit code and its output.
+ *
+ * @param  array<string, mixed>  $parameters
+ * @return array{0: int, 1: string}
+ */
+function featureTestRun(string $command, array $parameters = []): array
+{
+    $exitCode = Artisan::call($command, $parameters);
+
+    return [$exitCode, Artisan::output()];
+}
+
+/**
+ * The cell a summary table row shows beside a feature.
+ */
+function featureTestSummaryResult(string $output, string $feature): string
+{
+    preg_match('/\|\s*'.preg_quote($feature, '/').'\s*\|\s*([^|]+?)\s*\|/', $output, $matches);
+
+    return $matches[1] ?? '';
+}
+
+dataset('capturing feature test commands', [
+    'errors' => ['ranetrace:test-errors', 'errors', 'errors', HandleErrorJob::class, '4 test errors', 4],
+    'events' => ['ranetrace:test-events', 'events', 'events', HandleEventJob::class, '8 test events', 8],
+    'logging' => ['ranetrace:test-logging', 'logging', 'logs', HandleLogJob::class, 'Test logs', null],
+]);
+
+test('a feature test command with a blank key says so, captures nothing and fails', function (string $command, string $feature, string $type, string $job, string $items, ?int $count, ?string $key): void {
+    Queue::fake();
+    Config::set('ranetrace.key', $key);
+    Config::set("ranetrace.{$feature}.queue", false);
+
+    [$exitCode, $output] = featureTestRun($command);
+
+    expect($exitCode)->toBe(1)
+        ->and($output)->toContain("❌ Ranetrace API key is not set!\n💡 Add your API key to .env:\n   RANETRACE_KEY=your-api-key-here\n")
+        ->and($output)->not->toContain('for Ranetrace.')
+        ->and(featureTestBufferedCount())->toBe(0);
+
+    Queue::assertNothingPushed();
+})->with('capturing feature test commands')->with([
+    'null' => [null],
+    'empty' => [''],
+    'whitespace' => ['   '],
+]);
+
+test('every feature test command stops without capturing while the master switch is off', function (string $command): void {
+    Queue::fake();
+    Config::set('ranetrace.enabled', false);
+
+    [$exitCode, $output] = featureTestRun($command);
+
+    expect($exitCode)->toBe(0)
+        ->and($output)->toContain('⚠ Ranetrace is disabled (RANETRACE_ENABLED is false), so nothing is captured.')
+        ->and(featureTestBufferedCount())->toBe(0);
+
+    Queue::assertNothingPushed();
+})->with([
+    'errors' => ['ranetrace:test-errors'],
+    'events' => ['ranetrace:test-events'],
+    'logging' => ['ranetrace:test-logging'],
+    'javascript errors' => ['ranetrace:test-javascript-errors'],
+    'analytics' => ['ranetrace:test-analytics'],
+]);
+
+test('a feature test command whose feature is off says so and captures nothing', function (string $command, string $feature, string $type, string $job, string $items, ?int $count): void {
+    Queue::fake();
+    Config::set("ranetrace.{$feature}.enabled", false);
+    $variable = 'RANETRACE_'.mb_strtoupper($feature).'_ENABLED';
+
+    [$exitCode, $output] = featureTestRun($command);
+
+    expect($exitCode)->toBe(0)
+        ->and($output)->toContain("is disabled. Set {$variable}=true in your .env file\nConfiguration check completed.\n")
+        ->and(featureTestBufferedCount())->toBe(0);
+
+    Queue::assertNothingPushed();
+})->with('capturing feature test commands');
+
+test('with the queue on a feature test command says its items are queued, not sent, and points at ranetrace:test', function (string $command, string $feature, string $type, string $job, string $items, ?int $count): void {
+    Queue::fake();
+    Config::set("ranetrace.{$feature}.queue", true);
+
+    [$exitCode, $output] = featureTestRun($command);
+
+    expect($exitCode)->toBe(0)
+        ->and($output)->toContain(
+            "✅ {$items} queued for Ranetrace.\n"
+            ."Once a queue worker runs them, they will be sent the next time the ranetrace:work command runs.\n"
+            ."To send them immediately after that, run: php artisan ranetrace:work\n"
+            ."To see whether the API accepts your key, run: php artisan ranetrace:test\n",
+        )
+        ->and(featureTestBufferedCount())->toBe(0);
+
+    $count === null ? Queue::assertPushed($job) : Queue::assertPushed($job, $count);
+})->with('capturing feature test commands');
+
+test('with the queue off a feature test command says its items are buffered, as many as the buffer holds', function (string $command, string $feature, string $type, string $job, string $items, ?int $count): void {
+    Config::set("ranetrace.{$feature}.queue", false);
+
+    [$exitCode, $output] = featureTestRun($command);
+
+    expect($exitCode)->toBe(0)
+        ->and($output)->toContain(
+            "✅ {$items} buffered for Ranetrace.\n"
+            ."To send them now, run: php artisan ranetrace:work\n"
+            ."To see whether the API accepts your key, run: php artisan ranetrace:test\n",
+        )
+        ->and($output)->not->toContain('have been sent to Ranetrace');
+
+    // A sync dispatch goes through the queue's sync connection, which a
+    // faked queue would swallow, so this test runs the jobs for real.
+    $buffered = app(RanetraceBatchBuffer::class)->count($type);
+
+    $count === null
+        ? expect($buffered)->toBeGreaterThan(0)
+        : expect($buffered)->toBe($count);
+})->with('capturing feature test commands');
+
+test('the logging test says its logs are written, not sent', function (): void {
+    Queue::fake();
+    [, $output] = featureTestRun('ranetrace:test-logging');
+
+    expect($output)->toContain('✓ Emergency log written via Laravel Log')
+        ->toContain('✓ Multiple logs written')
+        ->not->toContain('log sent');
+});
+
+test('the events test says it tracks its events, not that it sends them', function (): void {
+    Queue::fake();
+    [, $output] = featureTestRun('ranetrace:test-events');
+
+    expect($output)->toContain('2. Tracking basic custom event...')
+        ->not->toContain('Sending');
+});
+
+test('the summary shows a switched-off feature as skipped and does not fail on it', function (string $off, string $feature, string $row): void {
+    Queue::fake();
+    Config::set("ranetrace.{$off}.enabled", false);
+
+    [$exitCode, $output] = featureTestRun('ranetrace:test', ['--all' => true]);
+
+    expect($exitCode)->toBe(0)
+        ->and(featureTestSummaryResult($output, $row))->toBe('○ Skipped: disabled')
+        ->and(featureTestSummaryResult($output, $row === 'Errors' ? 'Events' : 'Errors'))->toBe('✓ Passed');
+})->with([
+    'errors' => ['errors', 'errors', 'Errors'],
+    'events' => ['events', 'events', 'Events'],
+    'logging' => ['logging', 'logging', 'Logging'],
+    'javascript errors' => ['javascript_errors', 'javascript_errors', 'Javascript errors'],
+    'analytics' => ['website_analytics', 'analytics', 'Analytics'],
+]);
+
+test('the summary fails every enabled feature on a blank key', function (): void {
+    Queue::fake();
+    Config::set('ranetrace.key', '');
+
+    [$exitCode, $output] = featureTestRun('ranetrace:test', ['--all' => true]);
+
+    expect($exitCode)->toBe(1);
+
+    foreach (['Errors', 'Events', 'Logging', 'Javascript errors', 'Analytics'] as $row) {
+        expect(featureTestSummaryResult($output, $row))->toBe('✗ Failed');
+    }
+});
+
+test('the summary skips every feature while the master switch is off', function (): void {
+    Queue::fake();
+    Config::set('ranetrace.enabled', false);
+
+    [$exitCode, $output] = featureTestRun('ranetrace:test', ['--feature' => 'all']);
+
+    expect($exitCode)->toBe(0);
+
+    foreach (['Errors', 'Events', 'Logging', 'Javascript errors', 'Analytics'] as $row) {
+        expect(featureTestSummaryResult($output, $row))->toBe('○ Skipped: disabled');
+    }
+});
+
+test('a list of features gets the same summary, a switched-off one skipped', function (): void {
+    Queue::fake();
+    Config::set('ranetrace.logging.enabled', false);
+
+    [$exitCode, $output] = featureTestRun('ranetrace:test', ['--feature' => 'errors,logging']);
+
+    expect($exitCode)->toBe(0)
+        ->and(featureTestSummaryResult($output, 'Errors'))->toBe('✓ Passed')
+        ->and(featureTestSummaryResult($output, 'Logging'))->toBe('○ Skipped: disabled');
+});
+
+test('an unknown feature in a list fails the summary', function (): void {
+    Queue::fake();
+    [$exitCode, $output] = featureTestRun('ranetrace:test', ['--feature' => 'errors,nonsense']);
+
+    expect($exitCode)->toBe(1)
+        ->and(featureTestSummaryResult($output, 'Nonsense'))->toBe('✗ Failed');
+});

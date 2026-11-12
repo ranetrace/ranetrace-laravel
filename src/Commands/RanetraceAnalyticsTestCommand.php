@@ -10,9 +10,12 @@ use Ranetrace\Laravel\Analytics\HumanProbabilityScorer;
 use Ranetrace\Laravel\Analytics\Middleware\TrackPageVisit;
 use Ranetrace\Laravel\Jobs\HandlePageVisitJob;
 use Ranetrace\Laravel\Support\BatchConfig;
+use Ranetrace\Laravel\Support\GuardsFeatureTest;
 
 class RanetraceAnalyticsTestCommand extends Command
 {
+    use GuardsFeatureTest;
+
     private const string TEST_PATH = '/ranetrace-test-analytics';
 
     /**
@@ -66,22 +69,15 @@ class RanetraceAnalyticsTestCommand extends Command
 
         $this->newLine();
 
-        if (! config('ranetrace.website_analytics.enabled')) {
+        $stop = $this->stopBeforeCapture('website_analytics', function (): void {
             $this->warn('⚠️  Website analytics is currently disabled.');
             $this->info('💡 To enable it, add to your .env file:');
             $this->line('   RANETRACE_WEBSITE_ANALYTICS_ENABLED=true');
             $this->newLine();
+        });
 
-            return self::SUCCESS;
-        }
-
-        if (blank(config('ranetrace.key'))) {
-            $this->error('❌ Ranetrace API key is not set!');
-            $this->info('💡 Add your API key to .env:');
-            $this->line('   RANETRACE_KEY=your-api-key-here');
-            $this->newLine();
-
-            return self::FAILURE;
+        if ($stop !== null) {
+            return $stop;
         }
 
         $this->info('✅ Website analytics is enabled and configured!');

@@ -10,16 +10,34 @@ use Ranetrace\Laravel\Events\EventTracker;
 use Ranetrace\Laravel\Facades\Ranetrace;
 use Ranetrace\Laravel\Facades\RanetraceEvents;
 use Ranetrace\Laravel\Support\BatchConfig;
+use Ranetrace\Laravel\Support\GuardsFeatureTest;
 
 class RanetraceEventTestCommand extends Command
 {
+    use GuardsFeatureTest;
+
+    /**
+     * The events the steps below track, the invalid name aside, which is
+     * refused before capture.
+     */
+    private const int TEST_COUNT = 8;
+
     protected $signature = 'ranetrace:test-events';
 
     protected $description = 'Test Ranetrace event tracking functionality';
 
-    public function handle(): void
+    public function handle(): int
     {
         $this->info('Testing Ranetrace event tracking...');
+
+        $stop = $this->stopBeforeCapture('events', function (): void {
+            $this->warn('⚠ Ranetrace event tracking is disabled. Set RANETRACE_EVENTS_ENABLED=true in your .env file');
+            $this->info('Configuration check completed.');
+        });
+
+        if ($stop !== null) {
+            return $stop;
+        }
 
         // Test event name validation
         $this->info('1. Testing event name validation...');
@@ -40,14 +58,14 @@ class RanetraceEventTestCommand extends Command
         }
 
         // Test basic event tracking
-        $this->info('2. Sending basic custom event...');
+        $this->info('2. Tracking basic custom event...');
         Ranetrace::trackEvent('test_event', [
             'test_property' => 'test_value',
             'timestamp' => now()->toISOString(),
         ]);
 
         // Test e-commerce events using the helper
-        $this->info('3. Sending product added to cart event...');
+        $this->info('3. Tracking product added to cart event...');
         RanetraceEvents::productAddedToCart(
             productId: 'PROD-123',
             productName: 'Awesome Widget',
@@ -57,7 +75,7 @@ class RanetraceEventTestCommand extends Command
             additionalProperties: ['color' => 'blue', 'size' => 'large']
         );
 
-        $this->info('4. Sending sale event...');
+        $this->info('4. Tracking sale event...');
         RanetraceEvents::sale(
             orderId: 'ORDER-456',
             totalAmount: 89.97,
@@ -79,19 +97,19 @@ class RanetraceEventTestCommand extends Command
             additionalProperties: ['payment_method' => 'credit_card']
         );
 
-        $this->info('5. Sending user registration event...');
+        $this->info('5. Tracking user registration event...');
         RanetraceEvents::userRegistered(
             userId: 123,
             additionalProperties: ['registration_source' => 'website']
         );
 
-        $this->info('6. Sending page view event...');
+        $this->info('6. Tracking page view event...');
         RanetraceEvents::pageView(
             pageName: 'Product Details',
             additionalProperties: ['product_id' => 'PROD-123']
         );
 
-        $this->info('7. Sending custom event using validated method...');
+        $this->info('7. Tracking custom event using validated method...');
         RanetraceEvents::custom(
             eventName: 'newsletter_signup',
             properties: ['source' => 'footer', 'email_provided' => true],
@@ -99,13 +117,7 @@ class RanetraceEventTestCommand extends Command
         );
 
         $this->newLine();
-        if (config('ranetrace.events.queue', true)) {
-            $this->info('✅ 8 test events have been queued for Ranetrace.');
-            $this->info('They will be sent the next time the ranetrace:work command runs.');
-            $this->info('To send them immediately, run: php artisan ranetrace:work');
-        } else {
-            $this->info('✅ 8 test events have been sent to Ranetrace.');
-        }
+        $this->reportCaptured('events', self::TEST_COUNT.' test events');
         $this->newLine();
         $this->info('Check your Ranetrace dashboard once the events have been sent.');
 
@@ -160,5 +172,7 @@ class RanetraceEventTestCommand extends Command
                 ['API key set', blank(config('ranetrace.key')) ? 'No' : 'Yes'],
             ]
         );
+
+        return self::SUCCESS;
     }
 }

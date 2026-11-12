@@ -7,24 +7,28 @@ namespace Ranetrace\Laravel\Commands;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 use Ranetrace\Laravel\Support\BatchConfig;
+use Ranetrace\Laravel\Support\GuardsFeatureTest;
 use Throwable;
 
 class RanetraceLogTestCommand extends Command
 {
+    use GuardsFeatureTest;
+
     protected $signature = 'ranetrace:test-logging';
 
     protected $description = 'Test Ranetrace logging functionality';
 
-    public function handle(): void
+    public function handle(): int
     {
         $this->info('Testing Ranetrace logging...');
 
-        // Check if logging is enabled
-        if (! config('ranetrace.logging.enabled', false)) {
+        $stop = $this->stopBeforeCapture('logging', function (): void {
             $this->warn('⚠ Ranetrace logging is disabled. Set RANETRACE_LOGGING_ENABLED=true in your .env file');
             $this->info('Configuration check completed.');
+        });
 
-            return;
+        if ($stop !== null) {
+            return $stop;
         }
 
         $this->info('✅ Ranetrace logging is enabled');
@@ -37,13 +41,13 @@ class RanetraceLogTestCommand extends Command
             'test_context' => 'laravel_log_test',
             'timestamp' => now()->toISOString(),
         ]);
-        $this->info('   ✓ Emergency log sent via Laravel Log');
+        $this->info('   ✓ Emergency log written via Laravel Log');
 
         Log::channel('ranetrace')->error('Test error via Laravel Log', [
             'test_context' => 'laravel_log_test',
             'error_code' => 'TEST_001',
         ]);
-        $this->info('   ✓ Error log sent via Laravel Log');
+        $this->info('   ✓ Error log written via Laravel Log');
 
         // Test stack logging if available
         if (config('logging.channels.production') || config('logging.channels.development')) {
@@ -52,7 +56,7 @@ class RanetraceLogTestCommand extends Command
                     'test_context' => 'stack_test',
                     'component' => 'testing',
                 ]);
-                $this->info('   ✓ Stack log sent');
+                $this->info('   ✓ Stack log written');
             } catch (Throwable $e) {
                 $this->warn('   ⚠ Stack logging failed: '.$e->getMessage());
             }
@@ -65,13 +69,13 @@ class RanetraceLogTestCommand extends Command
             'test_context' => 'level_test',
             'level' => 'warning',
         ]);
-        $this->info('   ✓ Warning log sent');
+        $this->info('   ✓ Warning log written');
 
         Log::channel('ranetrace')->notice('Test notice via Laravel Log', [
             'test_context' => 'level_test',
             'level' => 'notice',
         ]);
-        $this->info('   ✓ Notice log sent');
+        $this->info('   ✓ Notice log written');
 
         // Test with context
         $this->info('3. Testing with context data...');
@@ -85,7 +89,7 @@ class RanetraceLogTestCommand extends Command
                 'max_attempts' => 5,
             ],
         ]);
-        $this->info('   ✓ Context-rich log sent');
+        $this->info('   ✓ Context-rich log written');
 
         // Test closure serialization fix
         $this->info('4. Testing closure serialization handling...');
@@ -99,23 +103,17 @@ class RanetraceLogTestCommand extends Command
                 'normal_data' => 'This should work fine',
             ],
         ]);
-        $this->info('   ✓ Log with closures sent (closures should be replaced with [Closure])');
+        $this->info('   ✓ Log with closures written (closures should be replaced with [Closure])');
 
         // Test multiple logs (simulating batch)
         $this->info('5. Testing multiple log entries...');
         Log::channel('ranetrace')->error('First error', ['sequence' => 1]);
         Log::channel('ranetrace')->warning('Second warning', ['sequence' => 2]);
         Log::channel('ranetrace')->critical('Third critical', ['sequence' => 3]);
-        $this->info('   ✓ Multiple logs sent');
+        $this->info('   ✓ Multiple logs written');
 
         $this->newLine();
-        if (config('ranetrace.logging.queue', true)) {
-            $this->info('✅ Test logs have been queued for Ranetrace.');
-            $this->info('They will be sent the next time the ranetrace:work command runs.');
-            $this->info('To send them immediately, run: php artisan ranetrace:work');
-        } else {
-            $this->info('✅ Test logs have been sent to Ranetrace.');
-        }
+        $this->reportCaptured('logging', 'Test logs');
         $this->newLine();
         $this->info('Check your Ranetrace dashboard once the logs have been sent.');
 
@@ -151,5 +149,7 @@ class RanetraceLogTestCommand extends Command
                 ['Log::error() with stack config', 'Automatic dual logging', '✅ Primary method'],
             ]
         );
+
+        return self::SUCCESS;
     }
 }

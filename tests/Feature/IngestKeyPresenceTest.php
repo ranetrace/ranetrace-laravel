@@ -63,13 +63,14 @@ test('ranetrace:test fails on a key of only whitespace', function (): void {
     Http::assertNothingSent();
 });
 
-test('the feature test commands report a key of only whitespace as not set', function (string $command): void {
+test('the feature test commands report a key of only whitespace as not set, and fail', function (string $command): void {
     Queue::fake();
     Config::set('ranetrace.key', '   ');
 
-    Artisan::call($command);
+    $exitCode = Artisan::call($command);
 
-    expect(Artisan::output())->toMatch('/API key set\s*\|\s*No\s*\|/');
+    expect($exitCode)->toBe(1)
+        ->and(Artisan::output())->toContain('❌ Ranetrace API key is not set!');
 })->with([
     'errors' => ['ranetrace:test-errors'],
     'events' => ['ranetrace:test-events'],

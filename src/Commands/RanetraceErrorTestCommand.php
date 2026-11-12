@@ -9,25 +9,29 @@ use Exception;
 use Illuminate\Console\Command;
 use Ranetrace\Laravel\Facades\Ranetrace;
 use Ranetrace\Laravel\Support\BatchConfig;
+use Ranetrace\Laravel\Support\GuardsFeatureTest;
 
 class RanetraceErrorTestCommand extends Command
 {
+    use GuardsFeatureTest;
+
     private const int TEST_COUNT = 4;
 
     protected $signature = 'ranetrace:test-errors';
 
     protected $description = 'Test Ranetrace error reporting functionality';
 
-    public function handle(): void
+    public function handle(): int
     {
         $this->info('Testing Ranetrace error reporting...');
 
-        // Check if error reporting is enabled
-        if (! config('ranetrace.errors.enabled', true)) {
+        $stop = $this->stopBeforeCapture('errors', function (): void {
             $this->warn('⚠ Ranetrace error reporting is disabled. Set RANETRACE_ERRORS_ENABLED=true in your .env file');
             $this->info('Configuration check completed.');
+        });
 
-            return;
+        if ($stop !== null) {
+            return $stop;
         }
 
         $this->info('✅ Ranetrace error reporting is enabled');
@@ -52,13 +56,7 @@ class RanetraceErrorTestCommand extends Command
         $this->info('   ✓ Custom exception reported');
 
         $this->newLine();
-        if (config('ranetrace.errors.queue', true)) {
-            $this->info('✅ '.self::TEST_COUNT.' test errors have been queued for Ranetrace.');
-            $this->info('They will be sent the next time the ranetrace:work command runs.');
-            $this->info('To send them immediately, run: php artisan ranetrace:work');
-        } else {
-            $this->info('✅ '.self::TEST_COUNT.' test errors have been sent to Ranetrace.');
-        }
+        $this->reportCaptured('errors', self::TEST_COUNT.' test errors');
         $this->newLine();
         $this->info('Check your Ranetrace dashboard once the errors have been sent.');
 
@@ -127,6 +125,8 @@ class RanetraceErrorTestCommand extends Command
             WIRING);
         $this->newLine();
         $this->warn('Without this wiring, the package will not auto-capture unhandled exceptions.');
+
+        return self::SUCCESS;
     }
 
     /**
