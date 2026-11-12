@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace Ranetrace\Laravel\Commands;
 
+use Closure;
 use Exception;
 use Illuminate\Console\Command;
 use Ranetrace\Laravel\Facades\Ranetrace;
 use Ranetrace\Laravel\Support\BatchConfig;
-use RuntimeException;
 
 class RanetraceErrorTestCommand extends Command
 {
@@ -33,41 +33,23 @@ class RanetraceErrorTestCommand extends Command
         $this->info('✅ Ranetrace error reporting is enabled');
         $this->newLine();
 
-        // Test 1: Simple Exception
+        $exceptions = $this->testExceptions();
+
         $this->info('1. Testing simple exception...');
-        try {
-            throw new Exception('Test exception from Ranetrace');
-        } catch (Exception $e) {
-            Ranetrace::report($e);
-            $this->info('   ✓ Simple exception reported');
-        }
+        Ranetrace::report($exceptions['simple']());
+        $this->info('   ✓ Simple exception reported');
 
-        // Test 2: RuntimeException
         $this->info('2. Testing RuntimeException...');
-        try {
-            throw new RuntimeException('Test runtime exception', 500);
-        } catch (RuntimeException $e) {
-            Ranetrace::report($e);
-            $this->info('   ✓ RuntimeException reported');
-        }
+        Ranetrace::report($exceptions['runtime']());
+        $this->info('   ✓ RuntimeException reported');
 
-        // Test 3: Exception with context (simulated by adding more stack depth)
         $this->info('3. Testing exception with deeper stack trace...');
-        try {
-            $this->simulateDeepError();
-        } catch (Exception $e) {
-            Ranetrace::report($e);
-            $this->info('   ✓ Exception with stack trace reported');
-        }
+        Ranetrace::report($exceptions['deep']());
+        $this->info('   ✓ Exception with stack trace reported');
 
-        // Test 4: Custom exception with context
         $this->info('4. Testing exception with custom message...');
-        try {
-            throw new Exception('Database connection failed: Connection refused on localhost:5432');
-        } catch (Exception $e) {
-            Ranetrace::report($e);
-            $this->info('   ✓ Custom exception reported');
-        }
+        Ranetrace::report($exceptions['custom']());
+        $this->info('   ✓ Custom exception reported');
 
         $this->newLine();
         if (config('ranetrace.errors.queue', true)) {
@@ -148,25 +130,12 @@ class RanetraceErrorTestCommand extends Command
     }
 
     /**
-     * Simulate a deeper call stack for testing.
+     * The test exceptions, made outside `src/`: the file says why.
+     *
+     * @return array{simple: Closure(): Exception, runtime: Closure(): Exception, deep: Closure(): Exception, custom: Closure(): Exception}
      */
-    protected function simulateDeepError(): void
+    protected function testExceptions(): array
     {
-        $this->levelOne();
-    }
-
-    protected function levelOne(): void
-    {
-        $this->levelTwo();
-    }
-
-    protected function levelTwo(): void
-    {
-        $this->levelThree();
-    }
-
-    protected function levelThree(): void
-    {
-        throw new Exception('Test exception with deeper stack trace');
+        return require dirname(__DIR__, 2).'/resources/test-exceptions.php';
     }
 }
