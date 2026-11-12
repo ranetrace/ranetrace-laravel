@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Illuminate\Http\Request;
 use Illuminate\Routing\Route;
 use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Queue;
 use Psr\Log\LoggerInterface;
@@ -375,6 +376,44 @@ test('a file outside base_path keeps its absolute path', function (): void {
     $payload = invokeBuildErrorPayload(exceptionThrownAt('/usr/local/share/elsewhere/File.php'));
 
     expect($payload['file'])->toBe('/usr/local/share/elsewhere/File.php');
+});
+
+/*
+ * With zero-downtime deploys cron runs `/home/forge/site/current/artisan`,
+ * where `current` is a symlink to the release PHP runs from. base_path() names
+ * the release, so the script path as it was typed is not under it.
+ */
+test('a console command started through a symlinked deployment names no server path', function (): void {
+    $current = sys_get_temp_dir().'/ranetrace-current-'.bin2hex(random_bytes(4));
+    symlink(base_path(), $current);
+
+    try {
+        $request = Request::create('/');
+        $request->server->set('argv', [$current.'/artisan', 'schedule:run']);
+
+        $ranetrace = new Ranetrace;
+        $context = new ReflectionMethod($ranetrace, 'errorContext')->invoke($ranetrace, $request, true);
+        $payload = new ReflectionMethod($ranetrace, 'payloadBuilder')->invoke($ranetrace)
+            ->build(new RuntimeException('boom'), $context);
+    } finally {
+        unlink($current);
+    }
+
+    expect($payload['console_arguments'])->toBe(['artisan', 'schedule:run']);
+});
+
+test('an anonymous exception class is typed by its place in the application, without the server path', function (): void {
+    // Under base_path() itself: the suite moves storage_path() out of it.
+    $relative = 'app/AnonymousFailure'.bin2hex(random_bytes(4)).'.php';
+    File::put(base_path($relative), "<?php\n\nreturn new class('boom') extends RuntimeException {};\n");
+
+    try {
+        $payload = invokeBuildErrorPayload(require base_path($relative));
+    } finally {
+        File::delete(base_path($relative));
+    }
+
+    expect($payload['type'])->toBe("RuntimeException@anonymous {$relative}:3");
 });
 
 // --- path secrets resolved from the ROUTER (R4-4) ---
