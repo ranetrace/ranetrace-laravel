@@ -6,7 +6,6 @@ namespace Ranetrace\Laravel;
 
 use Illuminate\Http\Request as HttpRequest;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Request;
 use Ranetrace\Laravel\Events\EventTracker;
 use Ranetrace\Laravel\Jobs\HandleErrorJob;
@@ -107,17 +106,8 @@ class Ranetrace
         // Everything past validation must never throw into the caller's
         // business logic: fail silently per the package's Core Rule.
         try {
-            // getAuthIdentifier() is the safe contract method: it works for any
-            // Authenticatable, Eloquent or not. Skip the Auth lookup entirely
-            // when the caller already provided a userId.
-            if ($userId !== null) {
-                $user = ['id' => $userId];
-            } else {
-                $authenticated = Auth::user();
-                $user = $authenticated !== null
-                    ? ['id' => $authenticated->getAuthIdentifier()]
-                    : null;
-            }
+            $userId ??= CoreConfig::authenticatedUserId();
+            $user = $userId === null ? null : ['id' => $userId];
 
             $isConsole = app()->runningInConsole();
             $request = request();

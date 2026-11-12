@@ -3,8 +3,11 @@
 declare(strict_types=1);
 
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
+use Illuminate\Routing\Middleware\ThrottleRequests;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
+use Psr\Log\LoggerInterface;
 use Ranetrace\Laravel\Jobs\HandleJavaScriptErrorJob;
 
 beforeEach(function (): void {
@@ -437,4 +440,32 @@ test('it scrubs sensitive query params inside URL-valued breadcrumb and context 
         return $data['context']['endpoint'] === 'https://api.test/x?token=[REDACTED]&page=2'
             && $data['breadcrumbs'][0]['data']['request_url'] === 'https://api.test/y?api_key=[REDACTED]';
     });
+});
+
+test('an auth guard that throws costs the browser error its user id, never the error', function (): void {
+    $logger = Mockery::spy(LoggerInterface::class);
+    Log::shouldReceive('channel')->with('ranetrace_internal')->andReturn($logger);
+    useThrowingAuthGuard('Session store unreachable');
+
+    // The route's `throttle` middleware keys its limit on `$request->user()`,
+    // so with this guard it throws before the relay runs. Taken out here to
+    // reach the relay's own lookup.
+    $this->withoutMiddleware(ThrottleRequests::class);
+
+    $this->postJson(route('ranetrace.javascript-errors.store'), [
+        'message' => 'Test error',
+        'url' => 'https://example.com/',
+    ])->assertStatus(200)
+        ->assertExactJson(['success' => true, 'message' => 'Error received']);
+
+    Bus::assertDispatched(HandleJavaScriptErrorJob::class, function ($job): bool {
+        $data = $job->getErrorData();
+
+        return $data['user_id'] === null
+            && $data['message'] === 'Test error';
+    });
+
+    $logger->shouldHaveReceived('warning')->once()
+        ->with('Ranetrace user resolver failed', ['exception' => 'Session store unreachable']);
+    $logger->shouldNotHaveReceived('error');
 });

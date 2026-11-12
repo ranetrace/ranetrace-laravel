@@ -143,15 +143,10 @@ class JavaScriptErrorController extends Controller
 
         $reportedUrl = (string) $request->input('url');
 
-        // Contract method on Authenticatable, safe for non-Eloquent user
-        // models, and typed `mixed` because a host may key users any way it
-        // likes. Only a scalar identifier is shippable as `user_id`.
-        $userId = $request->user()?->getAuthIdentifier();
-
         $errorData = (new ErrorItemBuilder(CoreConfig::make(), Core::scrubber()))->build(
             payload: $request->all(),
             userAgent: $request->userAgent(),
-            userId: is_int($userId) || is_string($userId) ? $userId : null,
+            userId: CoreConfig::authenticatedUserId(),
             // Hashed (not raw) so a leaked payload can't be used to hijack the
             // session, while still grouping errors within the same session.
             sessionId: Core::fingerprints()->hash(session()->getId()),

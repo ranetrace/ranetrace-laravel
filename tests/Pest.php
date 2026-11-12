@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\File;
 use Pest\Plugins\Tia\Recorder;
@@ -77,6 +78,19 @@ function commentsIn(string $rendered): array
     }
 
     return $found;
+}
+
+/**
+ * Make the default auth guard one whose user lookup throws $message, the way a
+ * host's guard does when its session store or user provider is down. It is a
+ * real guard behind `Auth::user()` and `$request->user()` alike, not a mocked
+ * facade, so every lookup the package makes meets the throw.
+ */
+function useThrowingAuthGuard(string $message): void
+{
+    Auth::viaRequest('ranetrace-throwing', static fn (): never => throw new RuntimeException($message));
+    Config::set('auth.guards.throwing', ['driver' => 'ranetrace-throwing']);
+    Auth::shouldUse('throwing');
 }
 
 /**

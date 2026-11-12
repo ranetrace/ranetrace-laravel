@@ -2,7 +2,9 @@
 
 declare(strict_types=1);
 
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Queue;
+use Psr\Log\LoggerInterface;
 use Ranetrace\Laravel\Events\EventTracker;
 use Ranetrace\Laravel\Facades\Ranetrace;
 use Ranetrace\Laravel\Jobs\HandleEventJob;
@@ -143,6 +145,26 @@ test('it allows explicit user id override', function (): void {
 
         return $eventData['user']['id'] === 456;
     });
+});
+
+test('an auth guard that throws costs the event its user, never the event', function (): void {
+    Queue::fake();
+    $logger = Mockery::spy(LoggerInterface::class);
+    Log::shouldReceive('channel')->with('ranetrace_internal')->andReturn($logger);
+    useThrowingAuthGuard('Session store unreachable');
+
+    Ranetrace::trackEvent('test_event', ['plan' => 'pro']);
+
+    Queue::assertPushed(HandleEventJob::class, function ($job): bool {
+        $eventData = $job->getEventData();
+
+        return $eventData['user'] === null
+            && $eventData['properties'] === ['plan' => 'pro'];
+    });
+
+    $logger->shouldHaveReceived('warning')->once()
+        ->with('Ranetrace user resolver failed', ['exception' => 'Session store unreachable']);
+    $logger->shouldNotHaveReceived('error');
 });
 
 test('event constants have valid names', function (): void {
