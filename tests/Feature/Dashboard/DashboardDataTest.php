@@ -116,6 +116,10 @@ test('ranetrace:status --json output is unchanged after the DashboardData extrac
 
     $serviceData = app(DashboardData::class)->collectStatus();
 
+    // The command adds the schedule, which only a console process can read.
+    expect($commandJson)->toHaveKey('schedule');
+    unset($commandJson['schedule']);
+
     expect($commandJson)->toEqual($serviceData);
 });
 

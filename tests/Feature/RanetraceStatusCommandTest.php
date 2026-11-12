@@ -2,15 +2,22 @@
 
 declare(strict_types=1);
 
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Config;
 use Ranetrace\Laravel\Services\RanetraceBatchBuffer;
 use Ranetrace\Laravel\Services\RanetracePauseManager;
 
+/*
+ * The worker is scheduled as documented, so the schedule section stays quiet
+ * in the tests of every other section. RanetraceStatusScheduleTest covers it.
+ */
 beforeEach(function (): void {
     Config::set('ranetrace.batch.cache_driver', 'array');
     Cache::store('array')->flush();
+
+    app(Schedule::class)->command('ranetrace:work')->everyMinute()->withoutOverlapping(5)->runInBackground();
 });
 
 /**

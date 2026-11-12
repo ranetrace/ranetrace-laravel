@@ -8,6 +8,7 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Route;
 use Ranetrace\Laravel\Dashboard\DashboardData;
 use Ranetrace\Laravel\Support\BatchConfig;
+use Ranetrace\Laravel\Support\WorkerSchedule;
 use Throwable;
 
 class RanetraceStatusCommand extends Command
@@ -17,9 +18,16 @@ class RanetraceStatusCommand extends Command
 
     protected $description = 'Display Ranetrace health status including pauses, buffers, and recent activity';
 
-    public function handle(DashboardData $data): int
+    /**
+     * The status is `DashboardData::collectStatus()` with a `schedule` key
+     * added, the shape `WorkerSchedule::inspect()` documents. It is added
+     * here rather than in the shared status because only a console process
+     * has a schedule to read.
+     */
+    public function handle(DashboardData $data, WorkerSchedule $workerSchedule): int
     {
         $status = $data->collectStatus();
+        $status['schedule'] = $workerSchedule->inspect($status);
 
         if ($this->option('json')) {
             $this->line(json_encode($status, JSON_PRETTY_PRINT));
@@ -158,8 +166,12 @@ class RanetraceStatusCommand extends Command
         if (! empty($status['drain']['stalled'])) {
             $this->warn('! No recent batch drain for: '.implode(', ', $status['drain']['stalled']));
             $this->line('  Buffered items are not being sent to Ranetrace.');
-            $this->line('  Is the <fg=cyan>ranetrace:work</> command scheduled (every minute)?');
+            $this->line('  '.$this->stalledDrainCause($status['schedule']));
             $this->newLine();
+        }
+
+        if ($status['schedule'] !== null) {
+            $this->displaySchedule($status['schedule']);
         }
 
         // Failed jobs
@@ -174,8 +186,10 @@ class RanetraceStatusCommand extends Command
         }
         $this->newLine();
 
+        $scheduleWarnings = $status['schedule']['warnings'] ?? [];
+
         // Recommendations
-        if (! $status['healthy'] || ! empty($status['drain']['stalled'])) {
+        if (! $status['healthy'] || ! empty($status['drain']['stalled']) || $scheduleWarnings !== []) {
             $this->line('<fg=cyan>Recommendations</>');
             $this->line('─────────────────────────────────────────────────────────────');
 
@@ -199,7 +213,15 @@ class RanetraceStatusCommand extends Command
 
             if (! empty($status['drain']['stalled'])) {
                 $this->line('• No recent drain for: '.implode(', ', $status['drain']['stalled']));
-                $this->line('• Ensure ranetrace:work is scheduled every minute (see documentation)');
+
+                $advice = $this->stalledDrainAdvice($status['schedule']);
+                if ($advice !== null) {
+                    $this->line('• '.$advice);
+                }
+            }
+
+            foreach ($this->scheduleRecommendations($status['schedule']) as $recommendation) {
+                $this->line('• '.$recommendation);
             }
 
             if ($status['failed_jobs_last_24h'] >= 10) {
@@ -214,6 +236,175 @@ class RanetraceStatusCommand extends Command
         $this->newLine();
 
         $this->displayDashboardHint();
+    }
+
+    /**
+     * The Schedule section: one line per scheduled ranetrace:work, followed by
+     * what each warning on it costs and the fix.
+     *
+     * @param  array<string, mixed>  $schedule
+     */
+    protected function displaySchedule(array $schedule): void
+    {
+        $this->line('<fg=cyan>Schedule</>');
+        $this->line('─────────────────────────────────────────────────────────────');
+
+        if (! $schedule['scheduled']) {
+            if (in_array(WorkerSchedule::WARNING_NOT_SCHEDULED, $schedule['warnings'], true)) {
+                $this->error('✗ '.WorkerSchedule::COMMAND.' was not found in the schedule');
+                $this->line('  Nothing is sent to Ranetrace until it runs every minute.');
+                $this->line('  → Add this line to routes/console.php:');
+                $this->line('    '.WorkerSchedule::DOCUMENTED_LINE);
+            } else {
+                $this->info(sprintf(
+                    '✓ %s was not found in the schedule, but a batch was sent in the last %d minutes, so it runs some other way',
+                    WorkerSchedule::COMMAND,
+                    $this->staleMinutes(),
+                ));
+            }
+
+            $this->newLine();
+
+            return;
+        }
+
+        foreach ($schedule['entries'] as $entry) {
+            $summary = $entry['command'].' '.$this->describeEntry($entry);
+
+            if (in_array(WorkerSchedule::WARNING_LOCK_STUCK, $entry['warnings'], true)) {
+                $this->error('✗ '.$summary);
+                $this->line(sprintf(
+                    '  The overlap lock is held while buffered items have waited over %d minutes with no batch sent, so it looks stuck.',
+                    $this->staleMinutes(),
+                ));
+                $this->line('  → Release it with php artisan schedule:clear-cache');
+            } elseif ($entry['warnings'] !== []) {
+                $this->warn('! '.$summary);
+            } else {
+                $this->info('✓ '.$summary);
+            }
+
+            if (in_array(WorkerSchedule::WARNING_DEFAULT_LOCK_EXPIRY, $entry['warnings'], true)) {
+                $this->line('  1440 minutes is Laravel\'s 24 hour default. A run that is killed before it finishes (a deploy, an out-of-memory kill)');
+                $this->line('  leaves the lock behind, and every run is skipped until it expires, so nothing is sent for up to 24 hours.');
+                $this->line('  → Change the line in routes/console.php to ->withoutOverlapping(5)');
+            }
+        }
+
+        $this->newLine();
+    }
+
+    /**
+     * How an entry runs, such as "runs every minute, overlap lock expires
+     * after 5 minutes".
+     *
+     * @param  array<string, mixed>  $entry
+     */
+    protected function describeEntry(array $entry): string
+    {
+        $runs = WorkerSchedule::runsEveryMinute($entry['expression'])
+            ? 'runs every minute'
+            : 'runs on the cron expression '.$entry['expression'];
+
+        if (! $entry['without_overlapping']) {
+            return $runs.', without an overlap lock';
+        }
+
+        $minutes = $entry['lock_expires_after_minutes'];
+
+        return sprintf('%s, overlap lock expires after %d %s', $runs, $minutes, $minutes === 1 ? 'minute' : 'minutes');
+    }
+
+    /**
+     * The line under the stalled-drain warning that points at the likely
+     * cause. Only an unread schedule leaves the question of whether the worker
+     * is scheduled open.
+     *
+     * @param  array<string, mixed>|null  $schedule
+     */
+    protected function stalledDrainCause(?array $schedule): string
+    {
+        if ($schedule === null) {
+            return 'Is the <fg=cyan>ranetrace:work</> command scheduled (every minute)?';
+        }
+
+        if (! $schedule['scheduled']) {
+            return '<fg=cyan>ranetrace:work</> was not found in the schedule (see Schedule below).';
+        }
+
+        if (in_array(WorkerSchedule::WARNING_LOCK_STUCK, $schedule['warnings'], true)) {
+            return '<fg=cyan>ranetrace:work</> is scheduled, and its overlap lock looks stuck (see Schedule below).';
+        }
+
+        return '<fg=cyan>ranetrace:work</> is scheduled. Check that the scheduler\'s own cron entry runs schedule:run every minute, and that a queue worker processes the batch jobs.';
+    }
+
+    /**
+     * The Recommendations line under a stalled drain, or null when a schedule
+     * warning already says what to do.
+     *
+     * @param  array<string, mixed>|null  $schedule
+     */
+    protected function stalledDrainAdvice(?array $schedule): ?string
+    {
+        if ($schedule === null) {
+            return 'Ensure ranetrace:work is scheduled every minute (see documentation)';
+        }
+
+        $warnings = $schedule['warnings'];
+
+        if (in_array(WorkerSchedule::WARNING_NOT_SCHEDULED, $warnings, true) || in_array(WorkerSchedule::WARNING_LOCK_STUCK, $warnings, true)) {
+            return null;
+        }
+
+        if (! $schedule['scheduled']) {
+            return 'Check that ranetrace:work runs every minute and that a queue worker processes the batch jobs';
+        }
+
+        return 'Check that the scheduler\'s own cron entry runs schedule:run every minute, and that a queue worker processes the batch jobs';
+    }
+
+    /**
+     * One Recommendations line per schedule warning, naming the entry it is
+     * about.
+     *
+     * @param  array<string, mixed>|null  $schedule
+     * @return list<string>
+     */
+    protected function scheduleRecommendations(?array $schedule): array
+    {
+        if ($schedule === null) {
+            return [];
+        }
+
+        $recommendations = [];
+
+        if (in_array(WorkerSchedule::WARNING_NOT_SCHEDULED, $schedule['warnings'], true)) {
+            $recommendations[] = 'Schedule ranetrace:work every minute in routes/console.php (the line is under Schedule above)';
+        }
+
+        foreach ($schedule['entries'] as $entry) {
+            if (in_array(WorkerSchedule::WARNING_LOCK_STUCK, $entry['warnings'], true)) {
+                $recommendations[] = "Release the stuck overlap lock of {$entry['command']}: php artisan schedule:clear-cache";
+            }
+        }
+
+        foreach ($schedule['entries'] as $entry) {
+            if (in_array(WorkerSchedule::WARNING_DEFAULT_LOCK_EXPIRY, $entry['warnings'], true)) {
+                $recommendations[] = "Give the overlap lock of {$entry['command']} an expiry: change its line in routes/console.php to ->withoutOverlapping(5)";
+            }
+        }
+
+        return $recommendations;
+    }
+
+    /**
+     * The stalled-drain window in whole minutes, the one definition the
+     * schedule messages quote.
+     */
+    protected function staleMinutes(): int
+    {
+        return intdiv(DashboardData::DRAIN_STALE_SECONDS, 60);
     }
 
     /**

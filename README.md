@@ -45,7 +45,7 @@ Schedule::command('ranetrace:work')
     ->runInBackground();
 ```
 
-The `5` is the lock's expiry in minutes. Keep it: without an expiry, a run that is killed before it can release the lock (a deploy that stops the container, an out-of-memory kill) holds it for Laravel's 24 hour default, and nothing is sent in that time.
+The `5` is the lock's expiry in minutes. Keep it: without an expiry, a run that is killed before it can release the lock (a deploy that stops the container, an out-of-memory kill) holds it for Laravel's 24 hour default, and nothing is sent in that time. `php artisan ranetrace:status` warns when your line still has that default, and when the lock is held while buffered items wait unsent, which means it looks stuck: `php artisan schedule:clear-cache` releases it.
 
 > **Don't skip this step.** Without it, buffered telemetry never reaches Ranetrace. Run `php artisan ranetrace:status` at any time to verify health and see whether buffers are draining.
 
@@ -299,6 +299,8 @@ php artisan ranetrace:status
 ```
 
 Reports overall health, configured features, buffer sizes, pause states (if the API has rate-limited you), and recent failed jobs, both as formatted output and via `--json` for monitoring integrations. When the dashboard is enabled, it also prints a one-line link to it.
+
+It also reads your schedule and lists each `ranetrace:work` entry with its overlap lock. It warns when the worker is not in the schedule and no batch was sent in the last ten minutes, when a lock keeps Laravel's 24 hour default expiry, and when a lock is held while buffered items wait unsent, which means it looks stuck. In `--json` these are the `schedule` key's `warnings`: `not_scheduled`, `default_lock_expiry` and `lock_stuck`. The dashboard cannot show this part, because Laravel defines the schedule only in console processes.
 
 ### Diagnostics dashboard
 
