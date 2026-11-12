@@ -6,7 +6,8 @@ namespace Ranetrace\Laravel\Dashboard\Checks;
 
 /**
  * Buffers holding items with no recent successful batch send almost always mean
- * the worker isn't running, i.e. `ranetrace:work` isn't scheduled.
+ * the worker isn't running. Why is for `ranetrace:status` to say: the schedule
+ * exists only in a console process, so this page cannot read it.
  */
 class DrainStalledCheck implements Check
 {
@@ -21,7 +22,7 @@ class DrainStalledCheck implements Check
         return CheckResult::fail(
             'drain_stalled',
             'Drain stalled for: '.implode(', ', $stalled),
-            'Buffered items are not being sent. Ensure `ranetrace:work` is scheduled to run every minute.'
+            'Buffered items are not being sent. Run `php artisan ranetrace:status` to see why: it reads your schedule, which this page cannot.'
         );
     }
 }

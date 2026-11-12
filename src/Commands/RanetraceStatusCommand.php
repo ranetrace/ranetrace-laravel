@@ -208,7 +208,11 @@ class RanetraceStatusCommand extends Command
             ));
             if (! empty($nearCapacity)) {
                 $this->line('• Buffers approaching capacity, data may be dropped: '.implode(', ', $nearCapacity));
-                $this->line('• Check if ranetrace:work command is running on schedule');
+
+                $advice = $this->nearCapacityAdvice($status['schedule'], ! empty($status['drain']['stalled']));
+                if ($advice !== null) {
+                    $this->line('• '.$advice);
+                }
             }
 
             if (! empty($status['drain']['stalled'])) {
@@ -362,6 +366,41 @@ class RanetraceStatusCommand extends Command
         }
 
         return 'Check that the scheduler\'s own cron entry runs schedule:run every minute, and that a queue worker processes the batch jobs';
+    }
+
+    /**
+     * The Recommendations line under a buffer near capacity, or null when
+     * another line already says what to do: the stalled-drain advice, or the
+     * recommendation of a schedule warning.
+     *
+     * @param  array<string, mixed>|null  $schedule
+     */
+    protected function nearCapacityAdvice(?array $schedule, bool $isDrainStalled): ?string
+    {
+        if ($schedule === null) {
+            return 'Check if ranetrace:work command is running on schedule';
+        }
+
+        $warnings = $schedule['warnings'];
+
+        if ($isDrainStalled || in_array(WorkerSchedule::WARNING_NOT_SCHEDULED, $warnings, true) || in_array(WorkerSchedule::WARNING_LOCK_STUCK, $warnings, true)) {
+            return null;
+        }
+
+        if (! $schedule['scheduled']) {
+            return 'ranetrace:work is not in the schedule. Check that whatever runs it does so every minute';
+        }
+
+        $runsEveryMinute = array_any(
+            $schedule['entries'],
+            fn (array $entry): bool => WorkerSchedule::runsEveryMinute($entry['expression']),
+        );
+
+        if (! $runsEveryMinute) {
+            return 'ranetrace:work is scheduled, but not every minute. A run sends at most 1000 items per feature, so schedule it every minute';
+        }
+
+        return 'ranetrace:work is scheduled every minute. Check for a paused feature above, and that a queue worker processes the batch jobs: a run sends at most 1000 items per feature';
     }
 
     /**

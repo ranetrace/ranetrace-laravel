@@ -117,7 +117,12 @@ test('drain stalled check fails when buffered items wait past the drain window w
     // Age the item past the stale window so it is genuinely overdue.
     $this->travel(DashboardData::DRAIN_STALE_SECONDS + 1)->seconds();
 
-    expect(runChecks()['drain_stalled']->level)->toBe(CheckLevel::Fail);
+    $result = runChecks()['drain_stalled'];
+
+    // The page cannot read the schedule, so it sends the reader to the
+    // command that can.
+    expect($result->level)->toBe(CheckLevel::Fail)
+        ->and($result->remediation)->toContain('`php artisan ranetrace:status`');
 });
 
 test('drain stalled check passes for a freshly buffered item awaiting its first drain', function (): void {

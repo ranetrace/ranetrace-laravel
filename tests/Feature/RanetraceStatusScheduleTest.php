@@ -58,6 +58,21 @@ function stallTheEventsDrain(): void
 }
 
 /**
+ * Fill the events buffer to 80 percent of its capacity, where status counts
+ * it as near capacity.
+ */
+function fillTheEventsBufferNearCapacity(): void
+{
+    Config::set('ranetrace.batch.max_buffer_size', 10);
+
+    $buffer = app(RanetraceBatchBuffer::class);
+
+    for ($i = 0; $i < 8; $i++) {
+        $buffer->addItem('events', ['event_name' => "e{$i}"]);
+    }
+}
+
+/**
  * Record a successful events batch this many seconds ago.
  */
 function recordEventsBatchSecondsAgo(int $seconds): void
@@ -319,6 +334,77 @@ test('a schedule that cannot be resolved leaves the schedule out and keeps the o
         ->and($output)->toContain('  Is the ranetrace:work command scheduled (every minute)?')
         ->and($output)->toContain('• Ensure ranetrace:work is scheduled every minute (see documentation)')
         ->and(scheduleStatusJson())->toBeNull();
+});
+
+test('a buffer near capacity under a worker scheduled every minute points at pauses and the queue worker', function (): void {
+    fillTheEventsBufferNearCapacity();
+    app(Schedule::class)->command('ranetrace:work')->everyMinute()->withoutOverlapping(5);
+
+    expect(scheduleStatusText())
+        ->toContain('• Buffers approaching capacity, data may be dropped: events')
+        ->toContain('• ranetrace:work is scheduled every minute. Check for a paused feature above, and that a queue worker processes the batch jobs: a run sends at most 1000 items per feature')
+        ->not->toContain('running on schedule');
+});
+
+test('a buffer near capacity under a worker scheduled less often than every minute says to schedule it every minute', function (): void {
+    fillTheEventsBufferNearCapacity();
+    app(Schedule::class)->command('ranetrace:work')->everyFiveMinutes()->withoutOverlapping(5);
+
+    expect(scheduleStatusText())
+        ->toContain('• ranetrace:work is scheduled, but not every minute. A run sends at most 1000 items per feature, so schedule it every minute')
+        ->not->toContain('running on schedule');
+});
+
+test('a buffer near capacity with the worker missing from the schedule leaves the advice to the schedule recommendation', function (): void {
+    fillTheEventsBufferNearCapacity();
+
+    $output = scheduleStatusText();
+
+    expect($output)
+        ->toContain('• Buffers approaching capacity, data may be dropped: events')
+        ->toContain('• Schedule ranetrace:work every minute in routes/console.php (the line is under Schedule above)')
+        ->not->toContain('running on schedule')
+        ->and(mb_substr_count($output, '• '))->toBe(2);
+});
+
+test('a buffer near capacity under a worker that runs some other way says to check that it runs every minute', function (): void {
+    fillTheEventsBufferNearCapacity();
+    recordEventsBatchSecondsAgo(60);
+
+    expect(scheduleStatusText())
+        ->toContain('• ranetrace:work is not in the schedule. Check that whatever runs it does so every minute')
+        ->not->toContain('running on schedule');
+});
+
+test('a buffer near capacity whose drain is also stalled gets the stalled advice once and no second one', function (): void {
+    fillTheEventsBufferNearCapacity();
+    $this->travel(DashboardData::DRAIN_STALE_SECONDS + 1)->seconds();
+    app(Schedule::class)->command('ranetrace:work')->everyMinute()->withoutOverlapping(5);
+
+    $output = scheduleStatusText();
+
+    expect($output)
+        ->toContain('• Buffers approaching capacity, data may be dropped: events')
+        ->toContain("• Check that the scheduler's own cron entry runs schedule:run every minute, and that a queue worker processes the batch jobs")
+        ->not->toContain('ranetrace:work is scheduled every minute. Check for a paused feature')
+        ->not->toContain('running on schedule');
+});
+
+test('a buffer near capacity with a schedule that cannot be read keeps the old question', function (): void {
+    fillTheEventsBufferNearCapacity();
+    app()->bind(Schedule::class, fn (): never => throw new RuntimeException('No schedule here'));
+
+    expect(scheduleStatusText())->toContain('• Check if ranetrace:work command is running on schedule');
+});
+
+test('a disabled installation is still told when the worker is missing from the schedule', function (): void {
+    // The schedule line lives in code that is the same in every environment,
+    // so its absence is worth knowing where Ranetrace is switched off too.
+    Config::set('ranetrace.enabled', false);
+
+    expect(scheduleStatusText())
+        ->toContain('✗ ranetrace:work was not found in the schedule')
+        ->toContain('• Schedule ranetrace:work every minute in routes/console.php (the line is under Schedule above)');
 });
 
 test('a scheduled command that is not valid UTF-8 still gives valid JSON', function (): void {
