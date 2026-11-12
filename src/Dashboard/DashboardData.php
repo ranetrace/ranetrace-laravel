@@ -22,6 +22,7 @@ use Ranetrace\Laravel\Jobs\SendBatchToRanetraceJob;
 use Ranetrace\Laravel\Services\RanetraceBatchBuffer;
 use Ranetrace\Laravel\Services\RanetracePauseManager;
 use Ranetrace\Laravel\Support\BatchConfig;
+use Ranetrace\Laravel\Support\InternalLogger;
 use Ranetrace\Php\Http\ResponsePolicy;
 use Throwable;
 
@@ -346,22 +347,18 @@ class DashboardData
      * latest daily file written by the `ranetrace_internal` channel; an
      * absent/unreadable file yields an empty feed rather than an error.
      *
-     * The directory and basename come from that channel's own configured path,
-     * so the reader follows the writer through one seam. Both calling
-     * storage_path() would make them agree only by coincidence: point the
-     * channel elsewhere and this panel would keep reading the old directory.
-     * The service provider always sets the path, so the fallback only covers a
-     * host that has torn the channel out of its config.
+     * The directory and basename come from that channel's own configured path
+     * ({@see InternalLogger::channelPath()}), so the reader follows the writer.
+     * Both calling storage_path() would make them agree only by coincidence:
+     * point the channel elsewhere and this panel would keep reading the old
+     * directory.
      *
      * @return array<int, array{time: string, level: string, message: string}>
      */
     public function internalLogTail(int $limit = self::LOG_TAIL_LIMIT): array
     {
         try {
-            $configured = config('logging.channels.ranetrace_internal.path');
-            $path = is_string($configured) && $configured !== ''
-                ? $configured
-                : storage_path('logs/ranetrace-internal.log');
+            $path = InternalLogger::channelPath();
 
             $files = glob(dirname($path).'/'.basename($path, '.log').'-*.log') ?: [];
 

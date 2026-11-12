@@ -76,6 +76,40 @@ class InternalLogger
     }
 
     /**
+     * The path the `ranetrace_internal` channel is configured with: the one
+     * seam its readers follow the writer through. The service provider always
+     * sets it, so the fallback only covers a host that has torn the channel
+     * out of its config.
+     */
+    public static function channelPath(): string
+    {
+        $configured = config('logging.channels.ranetrace_internal.path');
+
+        return is_string($configured) && $configured !== ''
+            ? $configured
+            : storage_path('logs/ranetrace-internal.log');
+    }
+
+    /**
+     * Today's file of the channel, or `''` when internal logging is off and
+     * nothing is written. The channel is the daily driver, which puts the date
+     * before the extension of its path.
+     */
+    public static function todaysFile(): string
+    {
+        if (! config('ranetrace.internal_logging.enabled', true)) {
+            return '';
+        }
+
+        $path = self::channelPath();
+        $extension = pathinfo($path, PATHINFO_EXTENSION);
+
+        // date() rather than Carbon: the daily driver names its file by the
+        // real clock, so a frozen Carbon clock must not move the name.
+        return dirname($path).'/'.pathinfo($path, PATHINFO_FILENAME).'-'.date('Y-m-d').($extension === '' ? '' : ".{$extension}");
+    }
+
+    /**
      * Internal logging implementation with fallback.
      *
      * @param  array<string, mixed>  $context

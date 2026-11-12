@@ -99,7 +99,7 @@ class RanetraceTestRun
         $item = $this->build($type);
 
         if ($item === null) {
-            return TestResult::notCaptured($this->internalLogFile());
+            return TestResult::notCaptured(InternalLogger::todaysFile());
         }
 
         $tested = TestResult::fromResponse($this->client->sendBatchOfType($type, [$item]));
@@ -148,29 +148,6 @@ class RanetraceTestRun
         $exceptions = require dirname(__DIR__, 2).'/resources/test-exceptions.php';
 
         return $exceptions['simple']();
-    }
-
-    /**
-     * Today's file of the `ranetrace_internal` channel, where a failed build
-     * was written, or `''` when internal logging is off. The channel is the
-     * daily driver, which puts the date before the extension of its path.
-     */
-    protected function internalLogFile(): string
-    {
-        if (! config('ranetrace.internal_logging.enabled', true)) {
-            return '';
-        }
-
-        $configured = config('logging.channels.ranetrace_internal.path');
-        $path = is_string($configured) && $configured !== ''
-            ? $configured
-            : storage_path('logs/ranetrace-internal.log');
-
-        $extension = pathinfo($path, PATHINFO_EXTENSION);
-
-        // date() rather than Carbon: the daily driver names its file by the
-        // real clock, so a frozen Carbon clock must not move the name.
-        return dirname($path).'/'.pathinfo($path, PATHINFO_FILENAME).'-'.date('Y-m-d').($extension === '' ? '' : ".{$extension}");
     }
 
     /**
