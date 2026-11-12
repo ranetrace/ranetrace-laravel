@@ -178,10 +178,11 @@ class RanetraceApiClient
     /**
      * Format an API response into the package's standard result shape.
      *
-     * A failed response carries the API's error envelope
-     * (`{success, message, error_code}`), so the message and the stable code
-     * are lifted out here rather than at each call site, which then reports
-     * what the API actually said instead of a generic "unknown error".
+     * The body of a failed response is passed on under `data` as the API sent
+     * it, `{success: false, error: {message}}`, and its message is read where
+     * it is needed, by the shared core's `ResponsePolicy::errorMessage()`.
+     * The result's own `error` key is this client's word for a request that
+     * got no usable answer, and is never set from a body.
      *
      * @return array<string, mixed>
      */
@@ -201,23 +202,6 @@ class RanetraceApiClient
 
         if (! $isValidData && $response->successful()) {
             $result['error'] = 'Invalid response format';
-
-            return $result;
-        }
-
-        if (! $response->successful() && $isValidData) {
-            $errorCode = is_string($data['error_code'] ?? null) ? $data['error_code'] : null;
-            $message = is_string($data['message'] ?? null) && $data['message'] !== ''
-                ? $data['message']
-                : null;
-
-            if ($errorCode !== null) {
-                $result['error_code'] = $errorCode;
-            }
-
-            if ($message !== null) {
-                $result['error'] = $message;
-            }
         }
 
         return $result;

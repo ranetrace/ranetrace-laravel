@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Illuminate\Support\Facades\Http;
 use Ranetrace\Laravel\Services\RanetraceApiClient;
+use Ranetrace\Php\Http\ResponsePolicy;
 
 test('it sends error batch to correct endpoint', function (): void {
     Http::fake();
@@ -153,15 +154,18 @@ test('it says whether it holds a key by the key it would send', function (?strin
     'a key padded with whitespace' => [' ingest-key ', true],
 ]);
 
-test('it returns error on failed response', function (): void {
+test('it passes a refused request on with the body the api sent, where the shared reader finds the message', function (): void {
     Http::fake([
-        '*' => Http::response(['error' => 'Failed'], 500),
+        '*' => Http::response(['success' => false, 'error' => ['message' => 'Invalid API key.']], 401),
     ]);
 
     $client = new RanetraceApiClient('test-key');
     $result = $client->sendErrorBatch([['message' => 'Test']]);
 
-    expect($result['success'])->toBeFalse();
+    expect($result['success'])->toBeFalse()
+        ->and($result['status'])->toBe(401)
+        ->and(ResponsePolicy::errorMessage($result['data'], 'Unauthorized'))->toBe('Invalid API key.')
+        ->and($result)->not->toHaveKey('error');
 });
 
 test('it handles network exceptions gracefully', function (): void {
