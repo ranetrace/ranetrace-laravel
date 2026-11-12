@@ -155,6 +155,25 @@ test('a pause with an unknown reason prints no guidance line', function (): void
         ->and($output)->not->toContain('→');
 });
 
+test('a pause whose stored reason is not a string is shown with its guidance, not a crash', function (): void {
+    // The pause store only writes strings, so this takes an entry another
+    // writer or a damaged cache left behind.
+    Cache::store('array')->forever('ranetrace.feature.errors.pause', [
+        'paused_until' => now()->addMinutes(10)->toIso8601String(),
+        'reason' => 429,
+    ]);
+    Cache::store('array')->forever('ranetrace.feature.events.pause', [
+        'paused_until' => now()->addMinutes(10)->toIso8601String(),
+        'reason' => ['429'],
+    ]);
+
+    $output = statusOutput();
+
+    expect($output)->toContain('errors               Paused (reason: 429, remaining: ')
+        ->toContain('→ Rate limited, auto-resumes')
+        ->toContain('events               Paused (reason: , remaining: ');
+});
+
 test('an expired feature pause shows no guidance', function (): void {
     Cache::store('array')->forever('ranetrace.feature.errors.pause', [
         'paused_until' => now()->subMinute()->toIso8601String(),

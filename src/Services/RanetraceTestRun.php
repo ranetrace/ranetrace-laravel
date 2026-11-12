@@ -192,17 +192,17 @@ class RanetraceTestRun
                 $this->pauses->clearGlobalPause();
 
                 if (! $this->pauses->isGloballyPaused()) {
-                    $lifted[] = ['scope' => 'everything', 'reason' => self::reason($global)];
+                    $lifted[] = ['scope' => 'everything', 'reason' => $global['reason']];
                 }
             }
 
             $feature = $this->pauses->getFeaturePause($type);
 
-            if (is_array($feature) && TestResult::liftsFeaturePause(self::reason($feature))) {
+            if (is_array($feature) && TestResult::liftsFeaturePause($feature['reason'])) {
                 $this->pauses->clearFeaturePause($type);
 
                 if (! $this->pauses->isFeaturePaused($type)) {
-                    $lifted[] = ['scope' => $type, 'reason' => self::reason($feature)];
+                    $lifted[] = ['scope' => $type, 'reason' => $feature['reason']];
                 }
             }
         } catch (Throwable $e) {
@@ -213,13 +213,5 @@ class RanetraceTestRun
         }
 
         return $lifted;
-    }
-
-    /**
-     * @param  array<array-key, mixed>  $pause
-     */
-    private static function reason(array $pause): string
-    {
-        return is_scalar($pause['reason'] ?? null) ? (string) $pause['reason'] : '';
     }
 }

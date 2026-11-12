@@ -95,7 +95,7 @@ class RanetracePauseManager
      */
     public function getGlobalPause(): ?array
     {
-        return $this->store()->get(self::GLOBAL_PAUSE_KEY);
+        return $this->read(self::GLOBAL_PAUSE_KEY);
     }
 
     /**
@@ -105,7 +105,7 @@ class RanetracePauseManager
      */
     public function getFeaturePause(string $feature): ?array
     {
-        return $this->store()->get($this->getFeaturePauseKey($feature));
+        return $this->read($this->getFeaturePauseKey($feature));
     }
 
     /**
@@ -122,6 +122,27 @@ class RanetracePauseManager
     public function clearFeaturePause(string $feature): void
     {
         $this->store()->forget($this->getFeaturePauseKey($feature));
+    }
+
+    /**
+     * A stored pause with its reason as a string. This class only writes
+     * strings, but the entry sits in a cache other writers can reach, and
+     * every reader prints the reason or matches on it: a reason that is not
+     * a scalar reads as `''`, the reason nothing is known about.
+     *
+     * @return array{paused_until: string, reason: string}|null
+     */
+    protected function read(string $key): ?array
+    {
+        $pause = $this->store()->get($key);
+
+        if (! is_array($pause)) {
+            return null;
+        }
+
+        $pause['reason'] = is_scalar($pause['reason'] ?? null) ? (string) $pause['reason'] : '';
+
+        return $pause;
     }
 
     /**
