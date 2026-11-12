@@ -55,6 +55,15 @@ test('api key check fails when the key is missing', function (): void {
     expect(runChecks()['api_key']->level)->toBe(CheckLevel::Fail);
 });
 
+test('api key check says that nothing is captured or sent without the key', function (): void {
+    Config::set('ranetrace.key', null);
+
+    expect(runChecks()['api_key']->remediation)->toBe(
+        'Set RANETRACE_KEY in .env. Without it, nothing is captured or sent. '
+            .'This is the ingest key; the MCP tools use an OAuth connection, held by your MCP client.'
+    );
+});
+
 test('api key check passes when the key is configured', function (): void {
     expect(runChecks()['api_key']->level)->toBe(CheckLevel::Pass); // TestCase sets a test key
 });

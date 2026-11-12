@@ -35,7 +35,7 @@ class ApiKeyCheck implements Check
         return CheckResult::fail(
             'api_key',
             'Ingest API key is missing',
-            'Set RANETRACE_KEY in .env. Without it, captured data is buffered but never sent. '
+            'Set RANETRACE_KEY in .env. Without it, nothing is captured or sent. '
                 .'This is the ingest key; the MCP tools use an OAuth connection, held by your MCP client.'
         );
     }

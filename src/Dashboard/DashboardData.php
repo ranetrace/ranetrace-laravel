@@ -202,7 +202,7 @@ class DashboardData
         $isApiKeyConfigured = ! blank(config('ranetrace.key'));
 
         // Overall health: an enabled installation has an ingest key (without one
-        // everything is captured and nothing is sent), no single buffer is near
+        // nothing is captured or sent), no single buffer is near
         // its own capacity, no drain is stalled, it is not globally paused, and
         // few jobs failed. A disabled installation needs no key, since nothing
         // is meant to be sent, but a stalled drain counts there too: the worker
