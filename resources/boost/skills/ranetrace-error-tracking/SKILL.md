@@ -81,18 +81,35 @@ Any MCP client that supports OAuth connects with no pre-shared secret. Give it t
 claude mcp add --transport http ranetrace https://api.ranetrace.com/mcp
 ```
 
-On claude.ai the same URL is added as a custom connector. Clients configured from a file, Cursor and VS Code among them, read the same server as an `mcpServers` entry, with no `Authorization` header because their own client runs the approval:
+On claude.ai the same URL is added as a custom connector. Cursor and VS Code are configured from a file, and each reads its own shape, so write the one that belongs to the client in use. Neither carries an `Authorization` header, because the client runs the approval.
+
+Cursor, in `~/.cursor/mcp.json` or in `.cursor/mcp.json` in a project. A remote entry is the `url` alone:
+
+```json
+{
+  "mcpServers": {
+    "ranetrace": {
+      "url": "https://api.ranetrace.com/mcp"
+    }
+  }
+}
+```
+
+VS Code, in `~/.copilot/mcp-config.json` or in `.mcp.json` at the root of a workspace. The entry names its transport, and `tools` says which of the server's tools the agent may use:
 
 ```json
 {
   "mcpServers": {
     "ranetrace": {
       "type": "http",
-      "url": "https://api.ranetrace.com/mcp"
+      "url": "https://api.ranetrace.com/mcp",
+      "tools": ["*"]
     }
   }
 }
 ```
+
+The `servers` entry in `.vscode/mcp.json` that VS Code read before belongs to its Local harness, which VS Code removes in February 2027. Leave an existing one alone unless the user asks, and write new ones in the shape above.
 
 ### What the approval decides
 

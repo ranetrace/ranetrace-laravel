@@ -229,14 +229,29 @@ Give your MCP client the server URL. The client asks Ranetrace for access, your 
 claude mcp add --transport http ranetrace https://api.ranetrace.com/mcp
 ```
 
-On claude.ai, add that same URL as a custom connector. Clients that are configured from a file, Cursor and VS Code among them, read the same server as an `mcpServers` entry, and need no `Authorization` header because their own client runs the approval:
+On claude.ai, add that same URL as a custom connector. Cursor and VS Code are configured from a file, and each reads its own shape. Neither needs an `Authorization` header, because the client runs the approval.
+
+Cursor, in `~/.cursor/mcp.json` or in `.cursor/mcp.json` in a project:
+
+```json
+{
+  "mcpServers": {
+    "ranetrace": {
+      "url": "https://api.ranetrace.com/mcp"
+    }
+  }
+}
+```
+
+VS Code, in `~/.copilot/mcp-config.json` or in `.mcp.json` at the root of a workspace:
 
 ```json
 {
   "mcpServers": {
     "ranetrace": {
       "type": "http",
-      "url": "https://api.ranetrace.com/mcp"
+      "url": "https://api.ranetrace.com/mcp",
+      "tools": ["*"]
     }
   }
 }
