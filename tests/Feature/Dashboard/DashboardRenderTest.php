@@ -66,6 +66,37 @@ test('the dashboard surfaces live state: a pause and a stalled buffer', function
         ->toContain('Drain stalled'); // buffered item overdue, never drained
 });
 
+test('a feature paused and not sending gets the paused note, without the hint about the worker', function (): void {
+    $this->freezeTime();
+    app(RanetraceBatchBuffer::class)->addItem('events', ['event_name' => 'e1']);
+    $this->travel(601)->seconds();
+    app(RanetracePauseManager::class)->setFeaturePause('events', 900, 'network');
+
+    $html = $this->get('/ranetrace')->assertOk()->getContent();
+
+    expect($html)
+        ->toContain("Paused: buffered items aren't being sent.")
+        ->toContain('rt-buffer__note rt-buffer__note--bad')
+        ->toContain('Paused and not sending: events')
+        ->toContain('rt-badge rt-badge--bad')
+        ->not->toContain('Drain stalled: buffered items')
+        ->not->toContain('Stalled drains usually mean the worker');
+});
+
+test('a stalled feature beside a paused one keeps the worker hint and each its own note', function (): void {
+    $this->freezeTime();
+    app(RanetraceBatchBuffer::class)->addItem('events', ['event_name' => 'e1']);
+    app(RanetraceBatchBuffer::class)->addItem('errors', ['message' => 'a']);
+    $this->travel(601)->seconds();
+    app(RanetracePauseManager::class)->setFeaturePause('events', 900, 'network');
+
+    $html = $this->get('/ranetrace')->assertOk()->getContent();
+
+    expect(mb_substr_count($html, "Paused: buffered items aren't being sent."))->toBe(1)
+        ->and(mb_substr_count($html, "Drain stalled: buffered items aren't being sent."))->toBe(1)
+        ->and($html)->toContain('Stalled drains usually mean the worker');
+});
+
 test('the health badge reads Issues detected while a drain is stalled', function (): void {
     app(RanetraceBatchBuffer::class)->addItem('events', ['event_name' => 'e1']);
 

@@ -91,7 +91,7 @@ php artisan ranetrace:pause-clear --feature=errors
 php artisan ranetrace:pause-clear --all
 ```
 
-`healthy` in the `--json` output is false when an enabled installation has no ingest key, when everything is paused, when a buffer is at 80 percent of its capacity, when a drain is stalled (a buffer holds an item older than ten minutes and no batch of that type was sent in that time), or when ten or more Ranetrace jobs failed in the last 24 hours. A stalled drain means captured data is not leaving the application.
+`healthy` in the `--json` output is false when an enabled installation has no ingest key, when everything is paused, when a buffer is at 80 percent of its capacity, when a drain is stalled (a buffer holds an item older than ten minutes and no batch of that type was sent in that time), when a paused feature has waited longer than its pause explains, or when ten or more Ranetrace jobs failed in the last 24 hours. A pause the API asked for, after a 403, 413, 422 or 429, excuses its feature for 30 minutes, measured the same way. A pause set after the batch job's own retries, after a network failure or a server error, excuses nothing beyond the ten minutes. In `--json`, `drain.stalled` lists the stalled features that are not paused, and `drain.paused_stalled` the paused ones that have waited too long. A stalled drain means captured data is not leaving the application.
 
 `ranetrace:status` reads the schedule and lists each `ranetrace:work` entry with its overlap lock. The `--json` output carries it under `schedule`, whose `warnings` name what it found: `not_scheduled` (no entry, and no batch in the last ten minutes), `default_lock_expiry` (a lock with Laravel's 24 hour default) and `lock_stuck` (a lock held while the drain is stalled). Only the command can read the schedule; the web dashboard cannot.
 
@@ -110,6 +110,7 @@ php artisan ranetrace:pause-clear --all
 - 403: check subscription status and feature access
 - 429: wait for auto-resume or reduce schedule frequency
 - Clear manually: `php artisan ranetrace:pause-clear --feature=<type>`
+- A paused feature whose buffer has waited longer than its pause explains (30 minutes after a 403, 413, 422 or 429, ten minutes after a pause that followed the retries) makes `healthy` false: `ranetrace:status` prints "Paused and not sending" and `--json` lists it under `drain.paused_stalled`. Fix the reason on its row, then let the pause end or clear it
 
 **Cache driver not available:**
 - The batch buffer uses the cache store set by `RANETRACE_BATCH_CACHE_DRIVER` (defaults to your app's cache store: `CACHE_STORE`/`CACHE_DRIVER`, i.e. `file` unless you've changed it)

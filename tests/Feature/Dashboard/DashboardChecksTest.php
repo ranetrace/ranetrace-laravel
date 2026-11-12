@@ -11,6 +11,7 @@ use Ranetrace\Laravel\Dashboard\Checks\CacheDriverCheck;
 use Ranetrace\Laravel\Dashboard\Checks\Check;
 use Ranetrace\Laravel\Dashboard\Checks\CheckLevel;
 use Ranetrace\Laravel\Dashboard\Checks\CheckResult;
+use Ranetrace\Laravel\Dashboard\Checks\DrainStalledCheck;
 use Ranetrace\Laravel\Dashboard\DashboardData;
 use Ranetrace\Laravel\Jobs\BaseRanetraceJob;
 use Ranetrace\Laravel\Jobs\HandleErrorJob;
@@ -20,6 +21,7 @@ use Ranetrace\Laravel\Jobs\HandleLogJob;
 use Ranetrace\Laravel\Jobs\HandlePageVisitJob;
 use Ranetrace\Laravel\Jobs\SendBatchToRanetraceJob;
 use Ranetrace\Laravel\Services\RanetraceBatchBuffer;
+use Ranetrace\Laravel\Services\RanetracePauseManager;
 
 beforeEach(function (): void {
     Config::set('ranetrace.batch.cache_driver', 'array');
@@ -123,6 +125,51 @@ test('drain stalled check fails when buffered items wait past the drain window w
     // command that can.
     expect($result->level)->toBe(CheckLevel::Fail)
         ->and($result->remediation)->toContain('`php artisan ranetrace:status`');
+});
+
+test('drain stalled check fails for features paused and not sending, pointing at the Pauses panel', function (): void {
+    $check = new DrainStalledCheck;
+
+    $result = $check->run(['drain' => ['stalled' => [], 'paused_stalled' => ['errors', 'logs']]]);
+
+    expect($result->level)->toBe(CheckLevel::Fail)
+        ->and($result->title)->toBe('Paused and not sending: errors, logs')
+        ->and($result->remediation)->toBe('Buffered items have waited longer than one pause explains. The Pauses panel shows the reason for each feature.');
+});
+
+test('drain stalled check keeps the stalled title and adds the paused features when both lists hold features', function (): void {
+    $check = new DrainStalledCheck;
+
+    $result = $check->run(['drain' => ['stalled' => ['events'], 'paused_stalled' => ['errors']]]);
+
+    expect($result->level)->toBe(CheckLevel::Fail)
+        ->and($result->title)->toBe('Drain stalled for: events')
+        ->and($result->remediation)->toBe('Buffered items are not being sent. Run `php artisan ranetrace:status` to see why: it reads your schedule, which this page cannot. Also paused and not sending: errors.');
+});
+
+test('drain stalled check keeps its stalled detail alone when no paused feature waits too long', function (): void {
+    $result = (new DrainStalledCheck)->run(['drain' => ['stalled' => ['events'], 'paused_stalled' => []]]);
+
+    expect($result->remediation)->toBe('Buffered items are not being sent. Run `php artisan ranetrace:status` to see why: it reads your schedule, which this page cannot.');
+});
+
+test('drain stalled check passes when neither list holds a feature, and on a status from before the paused list', function (array $drain): void {
+    expect((new DrainStalledCheck)->run(['drain' => $drain])->level)->toBe(CheckLevel::Pass);
+})->with([
+    'both lists empty' => [['stalled' => [], 'paused_stalled' => []]],
+    'no paused list' => [['stalled' => []]],
+]);
+
+test('drain stalled check fails through the real status for a paused feature its pause no longer excuses', function (): void {
+    $this->freezeTime();
+    app(RanetraceBatchBuffer::class)->addItem('events', ['event_name' => 'e1']);
+    $this->travel(DashboardData::DRAIN_STALE_SECONDS + 1)->seconds();
+    app(RanetracePauseManager::class)->setFeaturePause('events', 900, 'network');
+
+    $result = runChecks()['drain_stalled'];
+
+    expect($result->level)->toBe(CheckLevel::Fail)
+        ->and($result->title)->toBe('Paused and not sending: events');
 });
 
 test('drain stalled check passes for a freshly buffered item awaiting its first drain', function (): void {

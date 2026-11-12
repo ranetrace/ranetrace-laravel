@@ -6,6 +6,7 @@ use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Config;
+use Ranetrace\Laravel\Dashboard\DashboardData;
 use Ranetrace\Laravel\Services\RanetraceBatchBuffer;
 use Ranetrace\Laravel\Services\RanetracePauseManager;
 
@@ -174,7 +175,7 @@ test('a global pause still lists its recommendations', function (): void {
         ->toContain('• Run: php artisan ranetrace:pause-clear --global');
 });
 
-test('the --json output carries the feature pause without the guidance and stays healthy', function (): void {
+test('the --json output carries the feature pause without the guidance, healthy while nothing waits too long', function (): void {
     app(RanetracePauseManager::class)->setFeaturePause('errors', 900, '429');
 
     $output = statusOutput(['--json' => true]);
@@ -182,7 +183,88 @@ test('the --json output carries the feature pause without the guidance and stays
 
     expect($status['healthy'])->toBeTrue()
         ->and($status['pauses']['features']['errors'])->toMatchArray(['paused' => true, 'reason' => '429'])
+        ->and($status['drain']['paused_stalled'])->toBe([])
         ->and($output)->not->toContain('Rate limited');
+});
+
+/**
+ * Buffer an item for each of $features, let the grace of a pause the API asked
+ * for pass, then pause each of them for $reason.
+ *
+ * @param  list<string>  $features
+ */
+function pauseFeaturesPastTheirGrace(array $features, string $reason = '403'): void
+{
+    test()->freezeTime();
+    $buffer = app(RanetraceBatchBuffer::class);
+
+    foreach ($features as $feature) {
+        $buffer->addItem($feature, ['message' => 'a']);
+    }
+
+    test()->travel(DashboardData::PAUSED_DRAIN_GRACE_SECONDS + 1)->seconds();
+
+    foreach ($features as $feature) {
+        app(RanetracePauseManager::class)->setFeaturePause($feature, 900, $reason);
+    }
+}
+
+test('the --json output lists a paused feature its pause no longer excuses and is unhealthy', function (): void {
+    pauseFeaturesPastTheirGrace(['errors']);
+
+    $status = json_decode(mb_trim(statusOutput(['--json' => true])), true);
+
+    expect($status['healthy'])->toBeFalse()
+        ->and($status['drain']['paused_stalled'])->toBe(['errors'])
+        ->and($status['drain']['stalled'])->toBe([]);
+});
+
+test('a paused feature its pause no longer excuses gets its own warning block after the drain warning', function (): void {
+    $this->freezeTime();
+    $buffer = app(RanetraceBatchBuffer::class);
+    $buffer->addItem('errors', ['message' => 'a']);
+    $buffer->addItem('events', ['event_name' => 'e1']);
+    $buffer->addItem('logs', ['message' => 'a']);
+    $this->travel(DashboardData::PAUSED_DRAIN_GRACE_SECONDS + 1)->seconds();
+    app(RanetracePauseManager::class)->setFeaturePause('errors', 900, '403');
+    app(RanetracePauseManager::class)->setFeaturePause('logs', 900, '403');
+
+    $lines = explode("\n", statusOutput());
+    $drainIndex = array_search('! No recent batch drain for: events', $lines, true);
+    $pausedIndex = array_search('! Paused and not sending: errors, logs', $lines, true);
+
+    expect($drainIndex)->not->toBeFalse()
+        ->and($pausedIndex)->not->toBeFalse()
+        ->and($lines[$pausedIndex - 1])->toBe('')
+        ->and($pausedIndex)->toBeGreaterThan($drainIndex)
+        ->and(array_slice($lines, $drainIndex, $pausedIndex - $drainIndex - 1))->toHaveCount(3)
+        ->and($lines[$pausedIndex + 1])->toBe('  Buffered items are not being sent to Ranetrace, and have waited longer than one pause explains.')
+        ->and($lines[$pausedIndex + 2])->toBe('  The reason is on each feature\'s row under "Feature pause status" above.');
+});
+
+test('a paused feature its pause no longer excuses is unhealthy and gets one recommendation, with each feature\'s guidance printed once', function (): void {
+    pauseFeaturesPastTheirGrace(['errors', 'logs']);
+
+    $output = statusOutput();
+
+    expect($output)->toContain('✗ Overall status: issues detected')
+        ->toContain('! Paused and not sending: errors, logs')
+        ->toContain('Recommendations')
+        ->and(mb_substr_count($output, '• Paused and not sending: errors, logs. Fix the reason shown under "Feature pause status". The pause ends by itself, or clear it with: php artisan ranetrace:pause-clear --feature=<type>'))->toBe(1)
+        ->and(mb_substr_count($output, '→ Subscription or permission issue: check your subscription and permissions'))->toBe(2)
+        ->and($output)->not->toContain('No recent batch drain')
+        ->not->toContain('No recent drain for');
+});
+
+test('a paused feature inside its grace prints neither the paused warning nor its recommendation', function (): void {
+    $this->freezeTime();
+    app(RanetraceBatchBuffer::class)->addItem('errors', ['message' => 'a']);
+    $this->travel(DashboardData::PAUSED_DRAIN_GRACE_SECONDS)->seconds();
+    app(RanetracePauseManager::class)->setFeaturePause('errors', 900, '403');
+
+    expect(statusOutput())->toContain('✓ Overall status: healthy')
+        ->not->toContain('Paused and not sending')
+        ->not->toContain('Recommendations');
 });
 
 test('the status output has no all-caps words besides acronyms', function (): void {
@@ -201,9 +283,14 @@ test('the status output has no all-caps words besides acronyms', function (): vo
     $pauseManager->setFeaturePause('errors', 900, '429');
     $troubled = statusOutput();
 
-    expect($troubled)->toContain('Recommendations');
+    Cache::store('array')->flush();
+    pauseFeaturesPastTheirGrace(['errors']);
+    $paused = statusOutput();
 
-    foreach ([$healthy, $troubled] as $output) {
+    expect($troubled)->toContain('Recommendations')
+        ->and($paused)->toContain('• Paused and not sending: errors.');
+
+    foreach ([$healthy, $troubled, $paused] as $output) {
         preg_match_all('/(?<!\w)[A-Z]{3,}(?!\w)/u', $output, $matches);
 
         expect(array_diff($matches[0], $acronyms))->toBe([]);

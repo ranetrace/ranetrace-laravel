@@ -170,6 +170,13 @@ class RanetraceStatusCommand extends Command
             $this->newLine();
         }
 
+        if (! empty($status['drain']['paused_stalled'])) {
+            $this->warn('! Paused and not sending: '.implode(', ', $status['drain']['paused_stalled']));
+            $this->line('  Buffered items are not being sent to Ranetrace, and have waited longer than one pause explains.');
+            $this->line('  The reason is on each feature\'s row under "Feature pause status" above.');
+            $this->newLine();
+        }
+
         if ($status['schedule'] !== null) {
             $this->displaySchedule($status['schedule']);
         }
@@ -209,7 +216,10 @@ class RanetraceStatusCommand extends Command
             if (! empty($nearCapacity)) {
                 $this->line('• Buffers approaching capacity, data may be dropped: '.implode(', ', $nearCapacity));
 
-                $advice = $this->nearCapacityAdvice($status['schedule'], ! empty($status['drain']['stalled']));
+                $isAnsweredByDrainLine = ! empty($status['drain']['stalled'])
+                    || array_diff($nearCapacity, $status['drain']['paused_stalled']) === [];
+
+                $advice = $this->nearCapacityAdvice($status['schedule'], $isAnsweredByDrainLine);
                 if ($advice !== null) {
                     $this->line('• '.$advice);
                 }
@@ -222,6 +232,10 @@ class RanetraceStatusCommand extends Command
                 if ($advice !== null) {
                     $this->line('• '.$advice);
                 }
+            }
+
+            if (! empty($status['drain']['paused_stalled'])) {
+                $this->line('• Paused and not sending: '.implode(', ', $status['drain']['paused_stalled']).'. Fix the reason shown under "Feature pause status". The pause ends by itself, or clear it with: php artisan ranetrace:pause-clear --feature=<type>');
             }
 
             foreach ($this->scheduleRecommendations($status['schedule']) as $recommendation) {
@@ -370,12 +384,13 @@ class RanetraceStatusCommand extends Command
 
     /**
      * The Recommendations line under a buffer near capacity, or null when
-     * another line already says what to do: the stalled-drain advice, or the
-     * recommendation of a schedule warning.
+     * another line already says what to do: the stalled-drain advice, the
+     * paused-and-not-sending line when it covers every buffer near capacity,
+     * or the recommendation of a schedule warning.
      *
      * @param  array<string, mixed>|null  $schedule
      */
-    protected function nearCapacityAdvice(?array $schedule, bool $isDrainStalled): ?string
+    protected function nearCapacityAdvice(?array $schedule, bool $isAnsweredByDrainLine): ?string
     {
         if ($schedule === null) {
             return 'Check if ranetrace:work command is running on schedule';
@@ -383,7 +398,7 @@ class RanetraceStatusCommand extends Command
 
         $warnings = $schedule['warnings'];
 
-        if ($isDrainStalled || in_array(WorkerSchedule::WARNING_NOT_SCHEDULED, $warnings, true) || in_array(WorkerSchedule::WARNING_LOCK_STUCK, $warnings, true)) {
+        if ($isAnsweredByDrainLine || in_array(WorkerSchedule::WARNING_NOT_SCHEDULED, $warnings, true) || in_array(WorkerSchedule::WARNING_LOCK_STUCK, $warnings, true)) {
             return null;
         }
 

@@ -4,6 +4,7 @@
     $total = (int) ($status['buffers']['total'] ?? 0);
     $lastBatch = $status['drain']['last_batch'] ?? [];
     $stalled = $status['drain']['stalled'] ?? [];
+    $pausedStalled = $status['drain']['paused_stalled'] ?? [];
 @endphp
 <section class="rt-panel rt-panel--wide">
     <div class="rt-panel__head">
@@ -18,6 +19,7 @@
                 $level = $pct >= 80 ? 'bad' : ($pct >= 50 ? 'warn' : 'ok');
                 $bucket = (int) (round($pct / 5) * 5);
                 $isStalled = in_array($feature, $stalled, true);
+                $isPausedStalled = in_array($feature, $pausedStalled, true);
                 $last = $lastBatch[$feature] ?? null;
             @endphp
             <div class="rt-buffer">
@@ -28,9 +30,11 @@
                 <div class="rt-bar">
                     <div class="rt-bar__fill rt-bar__fill--{{ $level }} rt-w-{{ $bucket }}"></div>
                 </div>
-                <div class="rt-buffer__note {{ $isStalled ? 'rt-buffer__note--bad' : '' }}">
+                <div class="rt-buffer__note {{ $isStalled || $isPausedStalled ? 'rt-buffer__note--bad' : '' }}">
                     @if ($isStalled)
                         Drain stalled: buffered items aren't being sent.
+                    @elseif ($isPausedStalled)
+                        Paused: buffered items aren't being sent.
                     @elseif ($last)
                         Last drained {{ \Illuminate\Support\Carbon::createFromTimestamp($last)->diffForHumans() }}.
                     @else

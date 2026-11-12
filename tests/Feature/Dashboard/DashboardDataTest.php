@@ -24,7 +24,7 @@ test('collectStatus returns the canonical status structure', function (): void {
         ->and($status['pauses'])->toHaveKeys(['global', 'features'])
         ->and($status['buffers'])->toHaveKeys(['total', 'max_per_feature', 'features'])
         ->and($status['buffers']['features'])->toHaveKeys(RanetraceBatchBuffer::TYPES)
-        ->and($status['drain'])->toHaveKeys(['last_batch', 'stalled'])
+        ->and($status['drain'])->toHaveKeys(['last_batch', 'stalled', 'paused_stalled'])
         ->and($status['config'])->toHaveKeys(['enabled', 'api_key_configured', 'cache_driver', 'queue_name', 'queue_landing', 'queue_connection'])
         ->and($status['config']['api_key_configured'])->toBeTrue();
 });
@@ -120,7 +120,8 @@ test('ranetrace:status --json output is unchanged after the DashboardData extrac
     expect($commandJson)->toHaveKey('schedule');
     unset($commandJson['schedule']);
 
-    expect($commandJson)->toEqual($serviceData);
+    expect($commandJson)->toEqual($serviceData)
+        ->and($commandJson['drain'])->toHaveKeys(['last_batch', 'stalled', 'paused_stalled']);
 });
 
 test('an enabled installation with no ingest key is unhealthy', function (): void {
@@ -177,7 +178,7 @@ test('a stalled drain makes a disabled installation unhealthy too, since the wor
     expect(app(DashboardData::class)->collectStatus()['healthy'])->toBeFalse();
 });
 
-test('a paused feature holding overdue items is not a stalled drain and leaves the installation healthy', function (): void {
+test('a feature the API paused holding items past the drain window but inside two pauses is not stalled and stays healthy', function (): void {
     app(RanetracePauseManager::class)->setFeaturePause('events', 900, '429');
     app(RanetraceBatchBuffer::class)->addItem('events', ['event_name' => 'e1']);
 
@@ -185,7 +186,181 @@ test('a paused feature holding overdue items is not a stalled drain and leaves t
     $status = app(DashboardData::class)->collectStatus();
 
     expect($status['drain']['stalled'])->toBe([])
+        ->and($status['drain']['paused_stalled'])->toBe([])
         ->and($status['healthy'])->toBeTrue();
+});
+
+/**
+ * Buffer one events item, let $seconds pass, then pause events for $reason, so
+ * the pause is in force when the status is read, as it is when the API sets it
+ * again on every attempt. With $lastBatchSecondsAgo, a successful events batch
+ * is recorded that long before the read.
+ */
+function pauseEventsWithItemWaiting(string $reason, int $seconds, ?int $lastBatchSecondsAgo = null): void
+{
+    test()->freezeTime();
+    app(RanetraceBatchBuffer::class)->addItem('events', ['event_name' => 'e1']);
+
+    test()->travel($seconds)->seconds();
+    app(RanetracePauseManager::class)->setFeaturePause('events', 900, $reason);
+
+    if ($lastBatchSecondsAgo !== null) {
+        Cache::store('array')->forever(SendBatchToRanetraceJob::LAST_BATCH_PREFIX.'events', now()->subSeconds($lastBatchSecondsAgo)->timestamp);
+    }
+}
+
+dataset('pause reasons the API asks for', ['403', '413', '422', '429']);
+
+dataset('pause reasons that follow the retries', [
+    'network' => ['network'],
+    'a server error' => ['500'],
+    'an exception' => ['exception'],
+    'an unknown reason' => ['418'],
+]);
+
+test('a pause the API asked for excuses its buffer until the oldest item is older than two pauses', function (string $reason): void {
+    pauseEventsWithItemWaiting($reason, DashboardData::PAUSED_DRAIN_GRACE_SECONDS);
+
+    $status = app(DashboardData::class)->collectStatus();
+
+    expect($status['pauses']['features']['events']['paused'])->toBeTrue()
+        ->and($status['drain']['paused_stalled'])->toBe([])
+        ->and($status['healthy'])->toBeTrue();
+})->with('pause reasons the API asks for');
+
+test('a pause the API asked for no longer excuses a buffer whose oldest item is older than two pauses with no batch in that time', function (string $reason): void {
+    pauseEventsWithItemWaiting($reason, DashboardData::PAUSED_DRAIN_GRACE_SECONDS + 1, lastBatchSecondsAgo: DashboardData::PAUSED_DRAIN_GRACE_SECONDS + 1);
+
+    $status = app(DashboardData::class)->collectStatus();
+
+    expect($status['drain']['paused_stalled'])->toBe(['events'])
+        ->and($status['drain']['stalled'])->toBe([])
+        ->and($status['healthy'])->toBeFalse();
+})->with('pause reasons the API asks for');
+
+test('a pause the API asked for still excuses old items while a batch was sent inside two pauses', function (string $reason): void {
+    pauseEventsWithItemWaiting($reason, DashboardData::PAUSED_DRAIN_GRACE_SECONDS + 1, lastBatchSecondsAgo: DashboardData::PAUSED_DRAIN_GRACE_SECONDS);
+
+    $status = app(DashboardData::class)->collectStatus();
+
+    expect($status['drain']['paused_stalled'])->toBe([])
+        ->and($status['healthy'])->toBeTrue();
+})->with('pause reasons the API asks for');
+
+test('a pause that follows the retries excuses nothing past the drain window', function (string $reason): void {
+    pauseEventsWithItemWaiting($reason, DashboardData::DRAIN_STALE_SECONDS + 1);
+
+    $status = app(DashboardData::class)->collectStatus();
+
+    expect($status['pauses']['features']['events']['paused'])->toBeTrue()
+        ->and($status['drain']['paused_stalled'])->toBe(['events'])
+        ->and($status['drain']['stalled'])->toBe([])
+        ->and($status['healthy'])->toBeFalse();
+})->with('pause reasons that follow the retries');
+
+test('a pause that follows the retries leaves the installation healthy inside the drain window', function (string $reason): void {
+    pauseEventsWithItemWaiting($reason, DashboardData::DRAIN_STALE_SECONDS);
+
+    $status = app(DashboardData::class)->collectStatus();
+
+    expect($status['drain']['paused_stalled'])->toBe([])
+        ->and($status['healthy'])->toBeTrue();
+})->with('pause reasons that follow the retries');
+
+test('a pause that follows the retries leaves old items healthy while a batch was sent inside the drain window', function (string $reason): void {
+    pauseEventsWithItemWaiting($reason, DashboardData::DRAIN_STALE_SECONDS + 1, lastBatchSecondsAgo: DashboardData::DRAIN_STALE_SECONDS);
+
+    $status = app(DashboardData::class)->collectStatus();
+
+    expect($status['drain']['paused_stalled'])->toBe([])
+        ->and($status['healthy'])->toBeTrue();
+})->with('pause reasons that follow the retries');
+
+test('an empty buffer under a feature pause of any reason is healthy', function (string $reason): void {
+    $this->freezeTime();
+    $this->travel(2)->hours();
+    app(RanetracePauseManager::class)->setFeaturePause('events', 900, $reason);
+
+    $status = app(DashboardData::class)->collectStatus();
+
+    expect($status['drain']['paused_stalled'])->toBe([])
+        ->and($status['drain']['stalled'])->toBe([])
+        ->and($status['healthy'])->toBeTrue();
+})->with(['403', '413', '422', '429', 'network', '500', 'exception', '418']);
+
+test('under a global pause no feature is reported as stalled, paused or not, and the installation is unhealthy', function (string $reason): void {
+    $this->freezeTime();
+    $buffer = app(RanetraceBatchBuffer::class);
+    $buffer->addItem('events', ['event_name' => 'e1']);
+    $buffer->addItem('errors', ['message' => 'a']);
+
+    $this->travel(2)->hours();
+    $pauseManager = app(RanetracePauseManager::class);
+    $pauseManager->setFeaturePause('events', 900, $reason);
+    $pauseManager->setGlobalPause(900, '401');
+
+    $status = app(DashboardData::class)->collectStatus();
+
+    expect($status['drain']['stalled'])->toBe([])
+        ->and($status['drain']['paused_stalled'])->toBe([])
+        ->and($status['healthy'])->toBeFalse();
+})->with(['403', 'network']);
+
+test('a paused feature its pause no longer excuses makes a disabled installation unhealthy too', function (string $reason): void {
+    Config::set('ranetrace.enabled', false);
+    pauseEventsWithItemWaiting($reason, DashboardData::PAUSED_DRAIN_GRACE_SECONDS + 1);
+
+    $status = app(DashboardData::class)->collectStatus();
+
+    expect($status['drain']['paused_stalled'])->toBe(['events'])
+        ->and($status['healthy'])->toBeFalse();
+})->with(['403', 'network']);
+
+test('a feature whose pause expired falls under the normal rule and counts as stalled, not paused', function (): void {
+    $this->freezeTime();
+    app(RanetraceBatchBuffer::class)->addItem('events', ['event_name' => 'e1']);
+
+    $this->travel(DashboardData::DRAIN_STALE_SECONDS + 1)->seconds();
+    Cache::store('array')->forever('ranetrace.feature.events.pause', [
+        'paused_until' => now()->subMinute()->toIso8601String(),
+        'reason' => '429',
+    ]);
+    $status = app(DashboardData::class)->collectStatus();
+
+    expect($status['pauses']['features']['events']['paused'])->toBeFalse()
+        ->and($status['drain']['stalled'])->toBe(['events'])
+        ->and($status['drain']['paused_stalled'])->toBe([])
+        ->and($status['healthy'])->toBeFalse();
+});
+
+test('a paused feature and a stalled one are each reported in their own list', function (): void {
+    $this->freezeTime();
+    $buffer = app(RanetraceBatchBuffer::class);
+    $buffer->addItem('events', ['event_name' => 'e1']);
+    $buffer->addItem('errors', ['message' => 'a']);
+
+    $this->travel(DashboardData::DRAIN_STALE_SECONDS + 1)->seconds();
+    app(RanetracePauseManager::class)->setFeaturePause('events', 900, 'network');
+
+    $status = app(DashboardData::class)->collectStatus();
+
+    expect($status['drain']['stalled'])->toBe(['errors'])
+        ->and($status['drain']['paused_stalled'])->toBe(['events']);
+});
+
+test('a pause the API asked for is judged on the reason it carries, whatever the remaining time', function (): void {
+    // A 429 whose Retry-After outlasts two pauses is still the API asking: the
+    // grace is measured from the oldest item, not from the pause.
+    $this->freezeTime();
+    app(RanetraceBatchBuffer::class)->addItem('events', ['event_name' => 'e1']);
+    app(RanetracePauseManager::class)->setFeaturePause('events', 3 * 3600, '429');
+
+    $this->travel(DashboardData::PAUSED_DRAIN_GRACE_SECONDS + 1)->seconds();
+    $status = app(DashboardData::class)->collectStatus();
+
+    expect($status['pauses']['features']['events']['paused'])->toBeTrue()
+        ->and($status['drain']['paused_stalled'])->toBe(['events'])
+        ->and($status['healthy'])->toBeFalse();
 });
 
 test('overdue items with a batch sent inside the drain window leave the installation healthy', function (): void {

@@ -12,6 +12,7 @@ use Ranetrace\Laravel\Commands\RanetraceWorkCommand;
 use Ranetrace\Laravel\Dashboard\DashboardData;
 use Ranetrace\Laravel\Jobs\SendBatchToRanetraceJob;
 use Ranetrace\Laravel\Services\RanetraceBatchBuffer;
+use Ranetrace\Laravel\Services\RanetracePauseManager;
 use Ranetrace\Laravel\Support\WorkerSchedule;
 
 beforeEach(function (): void {
@@ -171,6 +172,23 @@ test('a held lock with nothing stalled is a run in progress and says nothing', f
     expect(scheduleStatusText())->toContain('✓ ranetrace:work runs every minute, overlap lock expires after 5 minutes')
         ->not->toContain('stuck')
         ->and($json['entries'][0]['lock_held'])->toBeTrue()
+        ->and($json['warnings'])->toBe([]);
+});
+
+test('a held lock while only a paused feature waits too long is not called stuck', function (): void {
+    // A paused feature is not dispatched, so the lock cannot be what holds it up.
+    $this->freezeTime();
+    app(RanetraceBatchBuffer::class)->addItem('events', ['event_name' => 'e1']);
+    $this->travel(DashboardData::PAUSED_DRAIN_GRACE_SECONDS + 1)->seconds();
+    app(RanetracePauseManager::class)->setFeaturePause('events', 900, '403');
+
+    $event = app(Schedule::class)->command('ranetrace:work')->everyMinute()->withoutOverlapping(5);
+    $event->mutex->create($event);
+
+    $json = scheduleStatusJson();
+
+    expect(scheduleStatusText())->toContain('! Paused and not sending: events')
+        ->not->toContain('stuck')
         ->and($json['warnings'])->toBe([]);
 });
 
@@ -388,6 +406,35 @@ test('a buffer near capacity whose drain is also stalled gets the stalled advice
         ->toContain("• Check that the scheduler's own cron entry runs schedule:run every minute, and that a queue worker processes the batch jobs")
         ->not->toContain('ranetrace:work is scheduled every minute. Check for a paused feature')
         ->not->toContain('running on schedule');
+});
+
+test('a buffer near capacity whose feature is paused and not sending leaves the advice to the paused line', function (): void {
+    $this->freezeTime();
+    fillTheEventsBufferNearCapacity();
+    $this->travel(DashboardData::PAUSED_DRAIN_GRACE_SECONDS + 1)->seconds();
+    app(RanetracePauseManager::class)->setFeaturePause('events', 900, '403');
+    app(Schedule::class)->command('ranetrace:work')->everyMinute()->withoutOverlapping(5);
+
+    $output = scheduleStatusText();
+
+    expect($output)
+        ->toContain('• Buffers approaching capacity, data may be dropped: events')
+        ->toContain('• Paused and not sending: events.')
+        ->not->toContain('ranetrace:work is scheduled every minute. Check for a paused feature')
+        ->and(mb_substr_count($output, '• '))->toBe(2);
+});
+
+test('a buffer near capacity keeps its advice while only another feature is paused and not sending', function (): void {
+    $this->freezeTime();
+    app(RanetraceBatchBuffer::class)->addItem('errors', ['message' => 'a']);
+    $this->travel(DashboardData::PAUSED_DRAIN_GRACE_SECONDS + 1)->seconds();
+    app(RanetracePauseManager::class)->setFeaturePause('errors', 900, '403');
+    fillTheEventsBufferNearCapacity();
+    app(Schedule::class)->command('ranetrace:work')->everyMinute()->withoutOverlapping(5);
+
+    expect(scheduleStatusText())
+        ->toContain('• Paused and not sending: errors.')
+        ->toContain('• ranetrace:work is scheduled every minute. Check for a paused feature above, and that a queue worker processes the batch jobs: a run sends at most 1000 items per feature');
 });
 
 test('a buffer near capacity with a schedule that cannot be read keeps the old question', function (): void {

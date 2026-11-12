@@ -22,6 +22,7 @@ use Ranetrace\Laravel\Jobs\SendBatchToRanetraceJob;
 use Ranetrace\Laravel\Services\RanetraceBatchBuffer;
 use Ranetrace\Laravel\Services\RanetracePauseManager;
 use Ranetrace\Laravel\Support\BatchConfig;
+use Ranetrace\Php\Http\ResponsePolicy;
 use Throwable;
 
 /**
@@ -36,9 +37,29 @@ class DashboardData
 {
     /**
      * A buffer is considered "drain-stalled" when it holds items but has not
-     * had a successful batch send within this many seconds (and is not paused).
+     * had a successful batch send within this many seconds.
      */
     public const int DRAIN_STALE_SECONDS = 600;
+
+    /**
+     * The feature pause reasons the API asks for in its answer, which the
+     * batch job takes at once. Only such a pause excuses a buffer from the
+     * stalled check, and only for PAUSED_DRAIN_GRACE_SECONDS. Every other
+     * reason (`network`, a server status such as `500`, `exception`) is set
+     * after the job's own retries have already spent 21 minutes, so it
+     * excuses nothing.
+     *
+     * @var list<string>
+     */
+    public const array API_REQUESTED_PAUSE_REASONS = ['403', '413', '422', '429'];
+
+    /**
+     * How long a pause the API asked for excuses a buffer: two default pauses.
+     * A 403 sets the pause again on every attempt for as long as its cause
+     * lasts, so an item that has waited longer than this, with no batch of its
+     * type sent in that time, is waiting on a cause someone has to fix.
+     */
+    public const int PAUSED_DRAIN_GRACE_SECONDS = 2 * ResponsePolicy::PAUSE_SECONDS;
 
     /**
      * Fraction of a buffer's max size at which it is considered "near capacity".
@@ -84,6 +105,11 @@ class DashboardData
      * `queue_landing` is the queue it is pushed to, null for the default
      * queue of `queue_connection`, and `queue_connection` is always a
      * connection name.
+     *
+     * In `drain`, `stalled` lists the features whose items wait too long while
+     * they are not paused, a sign of the schedule or the queue worker, and
+     * `paused_stalled` the paused features whose pause does not, or no longer,
+     * explains the wait. Either makes the installation unhealthy.
      *
      * @return array<string, mixed>
      */
@@ -137,32 +163,34 @@ class DashboardData
 
         // Detect drain-stalled buffers. A buffer is stalled only when it holds an
         // item that has genuinely waited too long: the oldest item is older than
-        // DRAIN_STALE_SECONDS AND no successful drain has happened within that
-        // window. Items simply waiting for the next scheduled ranetrace:work run
-        // (and brand-new buffers that have never drained yet) are NOT stalled.
-        // (Treating an absent drain history alone as failure produced false
-        // "drain stalled" alarms for items that were draining perfectly well.)
+        // the window AND no successful drain has happened within it. Items
+        // simply waiting for the next scheduled ranetrace:work run (and
+        // brand-new buffers that have never drained yet) are NOT stalled.
+        // A paused feature goes to its own list, because its cause is the
+        // pause rather than the schedule or the queue worker. Under a global
+        // pause nothing is listed: that pause makes the installation unhealthy
+        // on its own.
         $now = Carbon::now()->timestamp;
         $stalledFeatures = [];
+        $pausedStalledFeatures = [];
         foreach ($features as $feature) {
-            if ($buffers[$feature] <= 0) {
+            if ($buffers[$feature] <= 0 || $isGloballyPaused) {
                 continue;
             }
 
-            if ($isGloballyPaused || ($featurePauses[$feature]['paused'] ?? false)) {
+            $pause = $featurePauses[$feature];
+            $isPaused = $pause['paused'] ?? false;
+            $window = $isPaused && in_array((string) $pause['reason'], self::API_REQUESTED_PAUSE_REASONS, true)
+                ? self::PAUSED_DRAIN_GRACE_SECONDS
+                : self::DRAIN_STALE_SECONDS;
+
+            if (! $this->hasWaitedTooLong($oldestItem[$feature], $lastBatch[$feature], $now, $window)) {
                 continue;
             }
 
-            $oldest = $oldestItem[$feature];
-            if ($oldest === null || ($now - $oldest) <= self::DRAIN_STALE_SECONDS) {
-                // No readable items, or the oldest item is still within the
-                // normal drain window, waiting for its turn, not stalled.
-                continue;
-            }
-
-            $last = $lastBatch[$feature];
-            $drainedRecently = $last !== null && ($now - $last) <= self::DRAIN_STALE_SECONDS;
-            if (! $drainedRecently) {
+            if ($isPaused) {
+                $pausedStalledFeatures[] = $feature;
+            } else {
                 $stalledFeatures[] = $feature;
             }
         }
@@ -190,6 +218,7 @@ class DashboardData
             && ! $isGloballyPaused
             && ! $anyBufferNearCapacity
             && $stalledFeatures === []
+            && $pausedStalledFeatures === []
             && $failedJobsCount < 10;
 
         return [
@@ -212,6 +241,7 @@ class DashboardData
             'drain' => [
                 'last_batch' => $lastBatch,
                 'stalled' => $stalledFeatures,
+                'paused_stalled' => $pausedStalledFeatures,
             ],
             'failed_jobs_last_24h' => $failedJobsCount,
             'config' => [
@@ -430,6 +460,20 @@ class DashboardData
     protected function remainingSecondsUntil(string $until): int
     {
         return (int) max(0, round(Carbon::now()->diffInSeconds(Carbon::parse($until), false)));
+    }
+
+    /**
+     * Whether the oldest buffered item is older than $window seconds with no
+     * successful batch of its type inside that window. An unreadable oldest
+     * item has not waited too long.
+     */
+    protected function hasWaitedTooLong(?int $oldest, ?int $lastBatch, int $now, int $window): bool
+    {
+        if ($oldest === null || ($now - $oldest) <= $window) {
+            return false;
+        }
+
+        return $lastBatch === null || ($now - $lastBatch) > $window;
     }
 
     /**
