@@ -118,7 +118,7 @@ return [
         // is visible, and a delay is a minimum time on page. A visitor who
         // leaves before it elapses still posts on the way out, once the page
         // was seen. `throttle` is the rate limit on the beacon route, in
-        // Laravel's `requests,minutes` form.
+        // `requests,minutes` form; any other value gives the default.
         'beacon' => [
             'enabled' => env('RANETRACE_WEBSITE_ANALYTICS_BEACON_ENABLED', false),
             'wait_seconds' => env('RANETRACE_WEBSITE_ANALYTICS_BEACON_WAIT_SECONDS', 15),

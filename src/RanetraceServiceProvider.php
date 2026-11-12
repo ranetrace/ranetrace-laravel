@@ -25,6 +25,7 @@ use Ranetrace\Laravel\Http\Controllers\AssetController;
 use Ranetrace\Laravel\Http\Controllers\JavaScriptErrorController;
 use Ranetrace\Laravel\Http\Middleware\Authorize;
 use Ranetrace\Laravel\Logging\RanetraceLogDriver;
+use Ranetrace\Laravel\Support\RouteRateLimit;
 
 class RanetraceServiceProvider extends ServiceProvider
 {
@@ -229,11 +230,9 @@ class RanetraceServiceProvider extends ServiceProvider
 
     protected function registerJavaScriptErrorRoute(): void
     {
-        $throttle = config('ranetrace.javascript_errors.throttle', '60,1');
-
         $this->app['router']
             ->post('ranetrace/javascript-errors/store', [JavaScriptErrorController::class, 'store'])
-            ->middleware(['web', "throttle:{$throttle}"])
+            ->middleware(['web', RouteRateLimit::middleware(RouteRateLimit::JAVASCRIPT_ERRORS, 'ranetrace.javascript_errors.throttle', 60)])
             ->name('ranetrace.javascript-errors.store');
     }
 
@@ -247,11 +246,9 @@ class RanetraceServiceProvider extends ServiceProvider
      */
     protected function registerAnalyticsBeaconRoute(): void
     {
-        $throttle = config('ranetrace.website_analytics.beacon.throttle', '120,1');
-
         $this->app['router']
             ->post('ranetrace/analytics/verify', [AnalyticsBeaconController::class, 'verify'])
-            ->middleware(['web', "throttle:{$throttle}"])
+            ->middleware(['web', RouteRateLimit::middleware(RouteRateLimit::ANALYTICS_BEACON, 'ranetrace.website_analytics.beacon.throttle', 120)])
             ->name('ranetrace.analytics.verify');
     }
 
