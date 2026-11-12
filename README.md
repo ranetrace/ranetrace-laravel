@@ -300,6 +300,8 @@ php artisan ranetrace:status
 
 Reports overall health, configured features, buffer sizes, pause states (if the API has rate-limited you), and recent failed jobs, both as formatted output and via `--json` for monitoring integrations. When the dashboard is enabled, it also prints a one-line link to it.
 
+Overall health, `healthy` in `--json`, is what the dashboard's badge shows too. It is false when an enabled installation has no ingest key, when everything is paused, when a buffer is at 80 percent of its capacity, when a drain is stalled (a buffer holds an item older than ten minutes and no batch of that type was sent in that time), or when ten or more Ranetrace jobs failed in the last 24 hours.
+
 It also reads your schedule and lists each `ranetrace:work` entry with its overlap lock. It warns when the worker is not in the schedule and no batch was sent in the last ten minutes, when a lock keeps Laravel's 24 hour default expiry, and when a lock is held while buffered items wait unsent, which means it looks stuck. In `--json` these are the `schedule` key's `warnings`: `not_scheduled`, `default_lock_expiry` and `lock_stuck`. The dashboard cannot show this part, because Laravel defines the schedule only in console processes.
 
 ### Diagnostics dashboard

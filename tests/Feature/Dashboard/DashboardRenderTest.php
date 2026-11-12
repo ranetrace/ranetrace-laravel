@@ -66,6 +66,17 @@ test('the dashboard surfaces live state: a pause and a stalled buffer', function
         ->toContain('Drain stalled'); // buffered item overdue, never drained
 });
 
+test('the health badge reads Issues detected while a drain is stalled', function (): void {
+    app(RanetraceBatchBuffer::class)->addItem('events', ['event_name' => 'e1']);
+
+    $this->travel(601)->seconds();
+
+    expect($this->get('/ranetrace')->getContent())
+        ->toContain('rt-badge rt-badge--bad')
+        ->toContain('Issues detected')
+        ->not->toContain('rt-badge rt-badge--ok');
+});
+
 test('the page speaks its warnings and its log panel with no em-dash anywhere', function (): void {
     // The house writing rule keeps the dash out of anything the package says.
     // Same arrangement as the live-state test above, so the drain-stalled

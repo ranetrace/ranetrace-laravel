@@ -189,7 +189,7 @@ class RanetraceStatusCommand extends Command
         $scheduleWarnings = $status['schedule']['warnings'] ?? [];
 
         // Recommendations
-        if (! $status['healthy'] || ! empty($status['drain']['stalled']) || $scheduleWarnings !== []) {
+        if (! $status['healthy'] || $scheduleWarnings !== []) {
             $this->line('<fg=cyan>Recommendations</>');
             $this->line('─────────────────────────────────────────────────────────────');
 

@@ -91,6 +91,8 @@ php artisan ranetrace:pause-clear --feature=errors
 php artisan ranetrace:pause-clear --all
 ```
 
+`healthy` in the `--json` output is false when an enabled installation has no ingest key, when everything is paused, when a buffer is at 80 percent of its capacity, when a drain is stalled (a buffer holds an item older than ten minutes and no batch of that type was sent in that time), or when ten or more Ranetrace jobs failed in the last 24 hours. A stalled drain means captured data is not leaving the application.
+
 `ranetrace:status` reads the schedule and lists each `ranetrace:work` entry with its overlap lock. The `--json` output carries it under `schedule`, whose `warnings` name what it found: `not_scheduled` (no entry, and no batch in the last ten minutes), `default_lock_expiry` (a lock with Laravel's 24 hour default) and `lock_stuck` (a lock held while the drain is stalled). Only the command can read the schedule; the web dashboard cannot.
 
 ## Troubleshooting

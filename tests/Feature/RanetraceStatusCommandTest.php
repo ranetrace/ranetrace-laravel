@@ -73,6 +73,16 @@ test('status still warns about a stalled drain after hours with no drain and no 
         ->assertSuccessful();
 });
 
+test('a stalled drain is reported as unhealthy, in the text and in --json', function (): void {
+    app(RanetraceBatchBuffer::class)->addItem('events', ['event_name' => 'e1']);
+
+    $this->travel(601)->seconds();
+
+    expect(statusOutput())->toContain('✗ Overall status: issues detected')
+        ->not->toContain('✓ Overall status: healthy')
+        ->and(json_decode(mb_trim(statusOutput(['--json' => true])), true)['healthy'])->toBeFalse();
+});
+
 test('status reports the ingest key as configured without naming its value', function (): void {
     Config::set('ranetrace.key', 'ingest-key');
 

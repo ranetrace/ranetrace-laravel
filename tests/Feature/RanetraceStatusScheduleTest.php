@@ -140,6 +140,7 @@ test('a held lock while the drain is stalled is reported as stuck with the comma
         ->and($output)->toContain('  → Release it with php artisan schedule:clear-cache')
         ->and($output)->toContain('  ranetrace:work is scheduled, and its overlap lock looks stuck (see Schedule below).')
         ->and($output)->toContain('• Release the stuck overlap lock of ranetrace:work: php artisan schedule:clear-cache')
+        ->and($output)->toContain('✗ Overall status: issues detected')
         ->and($output)->not->toContain('Is the ranetrace:work command scheduled')
         ->and($output)->not->toContain('Ensure ranetrace:work is scheduled')
         ->and($json['warnings'])->toBe([WorkerSchedule::WARNING_LOCK_STUCK])
@@ -194,6 +195,7 @@ test('a worker missing from the schedule with no recent batch is warned about, w
     $lines = explode("\n", $output);
 
     expect($output)->toContain('✗ ranetrace:work was not found in the schedule')
+        ->and($output)->toContain('✓ Overall status: healthy')
         ->and($output)->toContain('  Nothing is sent to Ranetrace until it runs every minute.')
         ->and($output)->toContain('  → Add this line to routes/console.php:')
         ->and($lines)->toContain('    '.WorkerSchedule::DOCUMENTED_LINE)

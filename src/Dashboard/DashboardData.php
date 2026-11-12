@@ -175,8 +175,10 @@ class DashboardData
 
         // Overall health: an enabled installation has an ingest key (without one
         // everything is captured and nothing is sent), no single buffer is near
-        // its own capacity, it is not globally paused, and few jobs failed. A
-        // disabled installation needs no key, since nothing is meant to be sent.
+        // its own capacity, no drain is stalled, it is not globally paused, and
+        // few jobs failed. A disabled installation needs no key, since nothing
+        // is meant to be sent, but a stalled drain counts there too: the worker
+        // still sends what was captured before it was switched off.
         $anyBufferNearCapacity = array_any(
             $buffers,
             fn (int $count): bool => $count >= $maxPerFeature * self::NEAR_CAPACITY_RATIO
@@ -187,6 +189,7 @@ class DashboardData
         $healthy = (! $isEnabled || $isApiKeyConfigured)
             && ! $isGloballyPaused
             && ! $anyBufferNearCapacity
+            && $stalledFeatures === []
             && $failedJobsCount < 10;
 
         return [

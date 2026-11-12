@@ -153,3 +153,46 @@ test('a missing ingest key does not hide the other reasons a disabled installati
 
     expect(app(DashboardData::class)->collectStatus()['healthy'])->toBeFalse();
 });
+
+test('a stalled drain makes the installation unhealthy, from the second the drain window has passed', function (): void {
+    app(RanetraceBatchBuffer::class)->addItem('events', ['event_name' => 'e1']);
+
+    $this->travel(DashboardData::DRAIN_STALE_SECONDS)->seconds();
+
+    expect(app(DashboardData::class)->collectStatus()['healthy'])->toBeTrue();
+
+    $this->travel(1)->seconds();
+    $status = app(DashboardData::class)->collectStatus();
+
+    expect($status['drain']['stalled'])->toBe(['events'])
+        ->and($status['healthy'])->toBeFalse();
+});
+
+test('a stalled drain makes a disabled installation unhealthy too, since the worker still sends what was captured', function (): void {
+    app(RanetraceBatchBuffer::class)->addItem('events', ['event_name' => 'e1']);
+    Config::set('ranetrace.enabled', false);
+
+    $this->travel(DashboardData::DRAIN_STALE_SECONDS + 1)->seconds();
+
+    expect(app(DashboardData::class)->collectStatus()['healthy'])->toBeFalse();
+});
+
+test('a paused feature holding overdue items is not a stalled drain and leaves the installation healthy', function (): void {
+    app(RanetracePauseManager::class)->setFeaturePause('events', 900, '429');
+    app(RanetraceBatchBuffer::class)->addItem('events', ['event_name' => 'e1']);
+
+    $this->travel(DashboardData::DRAIN_STALE_SECONDS + 1)->seconds();
+    $status = app(DashboardData::class)->collectStatus();
+
+    expect($status['drain']['stalled'])->toBe([])
+        ->and($status['healthy'])->toBeTrue();
+});
+
+test('overdue items with a batch sent inside the drain window leave the installation healthy', function (): void {
+    app(RanetraceBatchBuffer::class)->addItem('events', ['event_name' => 'e1']);
+
+    $this->travel(DashboardData::DRAIN_STALE_SECONDS + 1)->seconds();
+    Cache::store('array')->forever(SendBatchToRanetraceJob::LAST_BATCH_PREFIX.'events', now()->subSeconds(DashboardData::DRAIN_STALE_SECONDS)->timestamp);
+
+    expect(app(DashboardData::class)->collectStatus()['healthy'])->toBeTrue();
+});
