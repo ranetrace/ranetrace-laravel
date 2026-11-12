@@ -85,6 +85,7 @@ test('a batch job with no queue name configured goes to the connection default q
 
 test('ranetrace:test names the connection default queue for an unset feature queue name', function (?string $unsetValue): void {
     Config::set('ranetrace.errors.queue_name', $unsetValue);
+    fakeAcceptingApi();
 
     $this->artisan('ranetrace:test')
         ->expectsTable(
@@ -179,6 +180,7 @@ test('ranetrace:test names the routed queue only in the row of the feature whose
     useTwoQueueConnections();
     enableEveryQueuedFeature();
     Queue::route(HandleEventJob::class, 'ranetrace', 'redis');
+    fakeAcceptingApi();
 
     $default = "the connection's default queue";
 
@@ -200,6 +202,7 @@ test('ranetrace:test follows a route registered on the parent of every capture j
     useTwoQueueConnections();
     enableEveryQueuedFeature();
     Queue::route(BaseRanetraceJob::class, 'ranetrace', 'redis');
+    fakeAcceptingApi();
 
     $this->artisan('ranetrace:test')
         ->expectsTable(

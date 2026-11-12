@@ -75,13 +75,13 @@ Ranetrace hosts an MCP server for errors, investigation notes, error state, the 
 ### Testing
 
 @verbatim
-<code-snippet name="Test all Ranetrace features" lang="bash">
+<code-snippet name="Check the Ranetrace setup" lang="bash">
 php artisan ranetrace:test
 php artisan ranetrace:status
 </code-snippet>
 @endverbatim
 
-Individual test commands: `ranetrace:test-errors`, `ranetrace:test-events`, `ranetrace:test-logging`, `ranetrace:test-analytics`, `ranetrace:test-javascript-errors`.
+`ranetrace:test` sends a test error and a test event straight to the API and fails when it accepts neither. `--all` runs each feature's own test command instead.
 
 ### Common pitfalls
 

@@ -5,15 +5,26 @@ declare(strict_types=1);
 namespace Ranetrace\Laravel\Commands;
 
 use Illuminate\Console\Command;
+use Ranetrace\Laravel\Services\RanetraceTestRun;
 use Ranetrace\Laravel\Support\BatchConfig;
+use Ranetrace\Laravel\Support\InternalLogger;
+use Ranetrace\Php\Worker\TestResult;
+use Symfony\Component\Console\Formatter\OutputFormatter;
+use Throwable;
 
 class RanetraceTestCommand extends Command
 {
+    /**
+     * Width of a round trip line's label, as `ranetrace/ranetrace-php`'s
+     * test report sets it.
+     */
+    private const int LABEL_WIDTH = 9;
+
     public $signature = 'ranetrace:test
                         {--feature= : Test specific feature(s) - comma-separated or use "all"}
                         {--all : Test all features}';
 
-    public $description = 'Validate Ranetrace configuration and optionally test specific features';
+    public $description = 'Check the Ranetrace configuration, send a test error and a test event to the API, and optionally test specific features';
 
     public function handle(): int
     {
@@ -233,8 +244,14 @@ class RanetraceTestCommand extends Command
             $this->newLine();
         }
 
-        $this->info('✅ Ranetrace configuration is valid!');
-        $this->newLine();
+        if (! config('ranetrace.enabled', true)) {
+            $this->warn('RANETRACE_ENABLED is false, so nothing is captured or sent.');
+            $this->error(TestResult::closingLine(false));
+
+            return self::FAILURE;
+        }
+
+        $accepted = $this->sendTestItems();
 
         $this->info('📚 Test specific features:');
         $this->line('   • <fg=yellow>php artisan ranetrace:test --feature=errors</> - Test error reporting');
@@ -257,6 +274,65 @@ class RanetraceTestCommand extends Command
         $this->line('   • <fg=yellow>php artisan ranetrace:test-javascript-errors</>');
         $this->line('   • <fg=yellow>php artisan ranetrace:test-analytics</>');
 
-        return self::SUCCESS;
+        return $accepted ? self::SUCCESS : self::FAILURE;
+    }
+
+    /**
+     * Send the test error and the test event, print the answer per type and
+     * the pauses it lifted, and say whether the API accepted either.
+     *
+     * Nothing here may throw into the command: a failure the run did not turn
+     * into a type's line becomes a line of its own, and counts as nothing
+     * accepted.
+     */
+    protected function sendTestItems(): bool
+    {
+        $this->line('📡 <fg=cyan>Test error and test event, sent to the API:</>');
+
+        $accepted = false;
+
+        try {
+            $run = app(RanetraceTestRun::class);
+            ['types' => $types, 'lifted' => $lifted] = $run->run();
+
+            foreach ($types as $type => $result) {
+                $this->line(self::row($type, $result->line($type, $run->baseUrl(), fromEnvironment: true)));
+
+                $accepted = $accepted || $result->accepted();
+            }
+
+            foreach ($lifted as $index => $pause) {
+                $this->line(self::row($index === 0 ? 'Lifted' : '', TestResult::liftedPauseLine($pause['scope'], $pause['reason'])));
+            }
+        } catch (Throwable $e) {
+            InternalLogger::error('The test round trip failed', ['exception' => $e->getMessage()]);
+
+            $this->error(OutputFormatter::escape("The test could not run: {$e->getMessage()}"));
+
+            $accepted = false;
+        }
+
+        $this->newLine();
+
+        if ($accepted) {
+            $this->info(TestResult::closingLine(true));
+        } else {
+            $this->error(TestResult::closingLine(false));
+        }
+
+        $this->line('Run php artisan ranetrace:status to see the buffers, the pauses and the schedule.');
+        $this->newLine();
+
+        return $accepted;
+    }
+
+    /**
+     * A line in the layout `vendor/bin/ranetrace-test` prints: the label
+     * padded to nine characters, then the text. The text is escaped, because
+     * part of it is what the API answered.
+     */
+    private static function row(string $label, string $text): string
+    {
+        return '  '.mb_str_pad($label, self::LABEL_WIDTH).OutputFormatter::escape($text);
     }
 }

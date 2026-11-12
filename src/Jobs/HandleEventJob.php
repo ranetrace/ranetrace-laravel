@@ -24,10 +24,21 @@ class HandleEventJob extends BaseRanetraceJob
 
     public function handle(RanetraceBatchBuffer $buffer): void
     {
-        $payload = $this->filterPayload($this->eventData);
-
         // Add to buffer - batch jobs are dispatched by scheduler/command only
-        $this->bufferOrRelease($buffer, 'events', $payload);
+        $this->bufferOrRelease($buffer, 'events', $this->bufferedItem());
+    }
+
+    /**
+     * The item this job buffers: the captured data held to the allowed keys
+     * and the per-item byte budget, or null when it is over that budget.
+     *
+     * @internal Shared with `ranetrace:test`, which sends this item straight to the API instead.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function bufferedItem(): ?array
+    {
+        return $this->filterPayload($this->eventData);
     }
 
     protected function getConfigPath(): string

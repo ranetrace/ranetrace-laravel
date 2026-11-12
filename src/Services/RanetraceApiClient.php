@@ -61,6 +61,14 @@ class RanetraceApiClient
     }
 
     /**
+     * The API base this client sends to, without a trailing slash.
+     */
+    public function baseUrl(): string
+    {
+        return $this->apiUrl;
+    }
+
+    /**
      * Send one batch of captured items of the given type.
      *
      * The path, the wrapper key, the User-Agent feature and the timeout config

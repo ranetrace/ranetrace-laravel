@@ -59,6 +59,8 @@ test('ranetrace:test fails on a key of only whitespace', function (): void {
     $this->artisan('ranetrace:test')
         ->expectsOutputToContain('Ranetrace ingest API key is not set.')
         ->assertFailed();
+
+    Http::assertNothingSent();
 });
 
 test('the feature test commands report a key of only whitespace as not set', function (string $command): void {

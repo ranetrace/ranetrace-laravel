@@ -51,9 +51,19 @@ class Ranetrace
      */
     public static function isCaptureEnabled(string $feature): bool
     {
+        return self::isSwitchedOn($feature) && ! blank(config('ranetrace.key'));
+    }
+
+    /**
+     * Whether the package and the feature are both switched on, whatever the
+     * key: the half of {@see isCaptureEnabled()} a setting decides.
+     *
+     * @internal Shared with the test commands, so a test skips a feature for the reason capture would.
+     */
+    public static function isSwitchedOn(string $feature): bool
+    {
         return config('ranetrace.enabled', true)
-            && config("ranetrace.{$feature}.enabled", in_array($feature, self::FEATURES_ON_BY_DEFAULT, true))
-            && ! blank(config('ranetrace.key'));
+            && config("ranetrace.{$feature}.enabled", in_array($feature, self::FEATURES_ON_BY_DEFAULT, true));
     }
 
     public function report(Throwable $exception): void
@@ -106,33 +116,7 @@ class Ranetrace
         // Everything past validation must never throw into the caller's
         // business logic: fail silently per the package's Core Rule.
         try {
-            $userId ??= CoreConfig::authenticatedUserId();
-            $user = $userId === null ? null : ['id' => $userId];
-
-            $isConsole = app()->runningInConsole();
-            $request = request();
-
-            $fingerprints = Core::fingerprints();
-
-            $eventData = (new EventItemBuilder(Core::scrubber()))->build(
-                $eventName,
-                $properties,
-                $user,
-                Carbon::now()->toIso8601String(),
-                $isConsole ? null : $request->fullUrl(),
-                $fingerprints->generateUserAgentHash($request->userAgent()),
-                $fingerprints->generateSessionIdHash(
-                    $request->ip(),
-                    $request->userAgent(),
-                    // Carbon rather than the generator's own clock, so a host
-                    // (or a test) that freezes time sees the frozen day.
-                    Carbon::now()->format('Y-m-d'),
-                ),
-                // The event's own URL is this request's, whose route the router
-                // already bound; every OTHER url hiding in $properties describes
-                // some other request and gets its own lookup.
-                $isConsole ? null : RouteSecretResolver::resolver(RouteSecretResolver::forRequest($request)),
-            );
+            $eventData = $this->buildEventPayload($eventName, $properties, $userId);
 
             if (config('ranetrace.events.queue', true)) {
                 HandleEventJob::dispatch($eventData);
@@ -148,6 +132,65 @@ class Ranetrace
     }
 
     /**
+     * Build the error payload sent to Ranetrace.
+     *
+     * Every cap, the header allowlist and the key order are the shared
+     * builder's. This method's whole job is to say what Laravel observed: the
+     * request, the console command line, the clock, and the route parameters
+     * that hold a secret.
+     *
+     * @internal Shared with `ranetrace:test`, which sends the item {@see HandleErrorJob::bufferedItem()} makes of it straight to the API.
+     *
+     * @return array<string, mixed>
+     */
+    public function buildErrorPayload(Throwable $exception): array
+    {
+        return $this->payloadBuilder()->build(
+            $exception,
+            $this->errorContext(Request::instance(), app()->runningInConsole()),
+        );
+    }
+
+    /**
+     * Build the event payload sent to Ranetrace, without validating its name.
+     *
+     * @internal Shared with `ranetrace:test`, which sends the item {@see HandleEventJob::bufferedItem()} makes of it straight to the API.
+     *
+     * @param  array<string, mixed>  $properties
+     * @return array<string, mixed>
+     */
+    public function buildEventPayload(string $eventName, array $properties = [], int|string|null $userId = null): array
+    {
+        $userId ??= CoreConfig::authenticatedUserId();
+        $user = $userId === null ? null : ['id' => $userId];
+
+        $isConsole = app()->runningInConsole();
+        $request = request();
+
+        $fingerprints = Core::fingerprints();
+
+        return (new EventItemBuilder(Core::scrubber()))->build(
+            $eventName,
+            $properties,
+            $user,
+            Carbon::now()->toIso8601String(),
+            $isConsole ? null : $request->fullUrl(),
+            $fingerprints->generateUserAgentHash($request->userAgent()),
+            $fingerprints->generateSessionIdHash(
+                $request->ip(),
+                $request->userAgent(),
+                // Carbon rather than the generator's own clock, so a host
+                // (or a test) that freezes time sees the frozen day.
+                Carbon::now()->format('Y-m-d'),
+            ),
+            // The event's own URL is this request's, whose route the router
+            // already bound; every OTHER url hiding in $properties describes
+            // some other request and gets its own lookup.
+            $isConsole ? null : RouteSecretResolver::resolver(RouteSecretResolver::forRequest($request)),
+        );
+    }
+
+    /**
      * Whether the exception was thrown from inside this package, i.e. it is one
      * of Ranetrace's own operational failures rather than a host application
      * error. Detection is by throw-site file only (getFile()), deliberately NOT
@@ -158,24 +201,6 @@ class Ranetrace
     private function isInternalException(Throwable $exception): bool
     {
         return str_starts_with($exception->getFile(), __DIR__.DIRECTORY_SEPARATOR);
-    }
-
-    /**
-     * Build the error payload sent to Ranetrace.
-     *
-     * Every cap, the header allowlist and the key order are the shared
-     * builder's. This method's whole job is to say what Laravel observed: the
-     * request, the console command line, the clock, and the route parameters
-     * that hold a secret.
-     *
-     * @return array<string, mixed>
-     */
-    private function buildErrorPayload(Throwable $exception): array
-    {
-        return $this->payloadBuilder()->build(
-            $exception,
-            $this->errorContext(Request::instance(), app()->runningInConsole()),
-        );
     }
 
     /**

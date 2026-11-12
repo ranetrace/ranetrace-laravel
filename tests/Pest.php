@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Http;
 use Pest\Plugins\Tia\Recorder;
 use Pest\Support\Container;
 use Ranetrace\Laravel\RanetraceServiceProvider;
@@ -91,6 +92,16 @@ function useThrowingAuthGuard(string $message): void
     Auth::viaRequest('ranetrace-throwing', static fn (): never => throw new RuntimeException($message));
     Config::set('auth.guards.throwing', ['driver' => 'ranetrace-throwing']);
     Auth::shouldUse('throwing');
+}
+
+/**
+ * Fake the API so that every request gets the 200 the real API gives a batch
+ * of one item it processed, which is how `ranetrace:test` counts a test item
+ * as accepted.
+ */
+function fakeAcceptingApi(): void
+{
+    Http::fake(['*' => Http::response(['success' => true, 'items' => ['received' => 1, 'processed' => 1]])]);
 }
 
 /**

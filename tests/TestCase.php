@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Ranetrace\Laravel\Tests;
 
 use Illuminate\Filesystem\Filesystem;
+use Illuminate\Support\Facades\Http;
 use Orchestra\Testbench\TestCase as Orchestra;
 use Ranetrace\Laravel\Analytics\Middleware\TrackPageVisit;
 use Ranetrace\Laravel\RanetraceServiceProvider;
@@ -26,6 +27,19 @@ class TestCase extends Orchestra
      * removed in tearDown(). Null until the application is built.
      */
     protected ?string $temporaryStoragePath = null;
+
+    /**
+     * No test reaches the network. A request no `Http::fake()` answers throws
+     * instead, which the API client turns into the status 0 of a network
+     * failure, so a test that forgot to fake reads as one that could not
+     * reach the API rather than passing on a real answer.
+     */
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        Http::preventStrayRequests();
+    }
 
     protected function tearDown(): void
     {

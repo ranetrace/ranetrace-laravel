@@ -27,6 +27,14 @@ Add your Ranetrace key to `.env`:
 RANETRACE_KEY=your-key-here
 ```
 
+Check that the API accepts it:
+
+```bash
+php artisan ranetrace:test
+```
+
+It prints your configuration, then sends one test error and one test event straight to the API and says what the API answered to each. It fails when the API accepted neither. The two test items stay on your website.
+
 Optionally publish the config file:
 
 ```bash
