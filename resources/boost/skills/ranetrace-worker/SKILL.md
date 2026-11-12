@@ -101,6 +101,7 @@ php artisan ranetrace:pause-clear --all
 - Verify `ranetrace:work` is scheduled in `routes/console.php`: `ranetrace:status` says whether it found it in the schedule
 - Verify a queue worker is running: `php artisan queue:work`
 - Check for pauses: `php artisan ranetrace:status`
+- Check the key when `ranetrace:work` fails with "RANETRACE_KEY is not set, so nothing is sent": without a key it dispatches nothing and lists what waits in the buffer. This happens when the key is removed, or missing from a cached config, after items were captured. Set `RANETRACE_KEY` and the next run sends them
 - Check for a stuck scheduler lock when data stopped after a deploy, a restart or a crash: a schedule line whose `withoutOverlapping()` has no expiry keeps its lock for 24 hours after a hard-killed run. Release it with `php artisan schedule:clear-cache`, then change the line to `withoutOverlapping(5)`. `ranetrace:status` warns about both: a lock with the 24 hour default, and a lock that is held while buffered items wait unsent
 - Nothing is lost by time alone: items wait in the buffer until they are sent, up to `RANETRACE_BATCH_MAX_BUFFER_SIZE` per feature, after which the oldest are dropped first. A cache store that evicts keys under memory pressure (Redis with an eviction `maxmemory-policy`, Memcached) can still drop a buffer, so use a lock-capable store with room to spare
 
