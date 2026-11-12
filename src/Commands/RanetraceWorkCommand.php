@@ -50,7 +50,11 @@ class RanetraceWorkCommand extends Command
      */
     protected function dispatchBatches(RanetraceBatchBuffer $buffer, RanetracePauseManager $pauseManager, ?string $specificType): int
     {
-        // Check global pause first
+        // A pause says nothing to a process that cannot send at all.
+        if (blank(config('ranetrace.key'))) {
+            return $this->reportMissingKey($buffer, $specificType);
+        }
+
         if ($pauseManager->isGloballyPaused()) {
             $pauseData = $pauseManager->getGlobalPause();
             $this->warn('Ranetrace is globally paused until '.$pauseData['paused_until'].' (reason: '.$pauseData['reason'].')');
@@ -93,5 +97,36 @@ class RanetraceWorkCommand extends Command
         }
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Without an ingest key nothing is dispatched (the batch job would take
+     * nothing either, see `SendBatchToRanetraceJob::handle()`). The run fails
+     * only while items wait. Nothing is captured without a key, so an app that
+     * runs the schedule without one, such as a local or staging install, has
+     * nothing waiting and stays quiet.
+     */
+    protected function reportMissingKey(RanetraceBatchBuffer $buffer, ?string $specificType): int
+    {
+        $types = $specificType !== null ? [$specificType] : RanetraceBatchBuffer::TYPES;
+        $waiting = [];
+
+        foreach ($types as $type) {
+            $count = $buffer->count($type);
+
+            if ($count > 0) {
+                $waiting[] = "{$type} ({$count})";
+            }
+        }
+
+        if ($waiting === []) {
+            $this->info('No batches to send.');
+
+            return self::SUCCESS;
+        }
+
+        $this->error('RANETRACE_KEY is not set, so nothing is sent. Waiting in the buffer: '.implode(', ', $waiting).'.');
+
+        return self::FAILURE;
     }
 }

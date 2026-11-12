@@ -7,7 +7,9 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Sleep;
+use Psr\Log\LoggerInterface;
 use Ranetrace\Laravel\Jobs\SendBatchToRanetraceJob;
 use Ranetrace\Laravel\Services\RanetraceApiClient;
 use Ranetrace\Laravel\Services\RanetraceBatchBuffer;
@@ -138,6 +140,65 @@ test('an empty batch does not record a last-batch timestamp', function (): void 
 
     expect(Cache::store('array')->get(SendBatchToRanetraceJob::LAST_BATCH_PREFIX.'events'))
         ->toBeNull();
+});
+
+// --- without an ingest key ---
+
+test('without an ingest key the job takes nothing from the buffer, sends nothing and pauses nothing', function (?string $key): void {
+    Http::fake();
+    $this->freezeTime();
+    Config::set('ranetrace.key', $key);
+    $buffer = app(RanetraceBatchBuffer::class);
+    $buffer->addItems('events', [['event_name' => 'first'], ['event_name' => 'second']]);
+    $captured = bufferedEvents();
+    $pauseManager = app(RanetracePauseManager::class);
+
+    $job = (new SendBatchToRanetraceJob('events', 10))->withFakeQueueInteractions();
+    $job->handle(app(RanetraceApiClient::class), $buffer, $pauseManager);
+
+    Http::assertNothingSent();
+    $job->assertNotReleased();
+    $job->assertNotFailed();
+
+    expect(bufferedEvents())->toBe($captured)
+        ->and($pauseManager->getFeaturePause('events'))->toBeNull()
+        ->and($pauseManager->getGlobalPause())->toBeNull()
+        ->and(Cache::store('array')->get(SendBatchToRanetraceJob::LAST_BATCH_PREFIX.'events'))->toBeNull();
+})->with([
+    'null' => [null],
+    'empty' => [''],
+    'whitespace' => ["\t\n "],
+]);
+
+test('without an ingest key the job leaves an existing pause as it was', function (): void {
+    Http::fake();
+    $this->freezeTime();
+    $pauseManager = app(RanetracePauseManager::class);
+    $pauseManager->setGlobalPause(300, '401');
+    $pauseManager->setFeaturePause('events', 120, '429');
+    $globalPause = $pauseManager->getGlobalPause();
+    $featurePause = $pauseManager->getFeaturePause('events');
+    app(RanetraceBatchBuffer::class)->addItem('events', ['event_name' => 'first']);
+    Config::set('ranetrace.key', '');
+
+    $this->travel(30)->seconds();
+    runEventsBatchJob();
+
+    expect($pauseManager->getGlobalPause())->toBe($globalPause)
+        ->and($pauseManager->getFeaturePause('events'))->toBe($featurePause);
+});
+
+test('without an ingest key the job leaves one warning in the internal log, naming the type', function (): void {
+    Http::fake();
+    Config::set('ranetrace.key', '');
+    app(RanetraceBatchBuffer::class)->addItem('events', ['event_name' => 'first']);
+
+    $logger = Mockery::mock(LoggerInterface::class);
+    $logger->shouldReceive('warning')->once()->with('Skipping batch send, no ingest key is configured', ['type' => 'events']);
+    $logger->shouldNotReceive('error', 'critical', 'info');
+    Log::shouldReceive('channel')->with('ranetrace_internal')->andReturn($logger);
+
+    runEventsBatchJob();
 });
 
 // --- response/pause matrix ---

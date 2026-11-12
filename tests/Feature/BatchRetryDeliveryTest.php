@@ -206,3 +206,43 @@ test('an item a retry leaves unprocessed is sent again once, and the processed o
         ->and($deliveries['attempted'])->toBe(['first' => 2, 'second' => 3, 'third' => 2])
         ->and($buffer->count('events'))->toBe(0);
 });
+
+test('a batch job queued before the key went missing takes nothing, and the next run with the key drains everything once', function (): void {
+    $deliveries = fakeRanetraceEventsApi();
+    $buffer = app(RanetraceBatchBuffer::class);
+    $pauseManager = app(RanetracePauseManager::class);
+
+    foreach (['first', 'second'] as $name) {
+        $buffer->addItem('events', ['event_name' => $name]);
+    }
+
+    Artisan::call('ranetrace:work');
+    expect(queuedJobCount())->toBe(1);
+
+    Config::set('ranetrace.key', '');
+
+    // The job runs without a key: it takes nothing, is not released, and
+    // leaves the queue, which frees its unique lock.
+    runOneQueuedJob();
+    expect($deliveries['attempted'])->toBe([])
+        ->and($buffer->count('events'))->toBe(2)
+        ->and($pauseManager->getFeaturePause('events'))->toBeNull()
+        ->and($pauseManager->getGlobalPause())->toBeNull()
+        ->and(queuedJobCount())->toBe(0);
+
+    // A work run while the key is still missing queues nothing.
+    expect(Artisan::call('ranetrace:work'))->toBe(1)
+        ->and(queuedJobCount())->toBe(0);
+
+    // A retry window would have kept the job around for 21 minutes; the key
+    // is back well inside it, and the next run sends at once.
+    Config::set('ranetrace.key', 'test-api-key');
+    Artisan::call('ranetrace:work');
+    expect(queuedJobCount())->toBe(1);
+    runOneQueuedJob();
+
+    expect($deliveries['accepted'])->toBe(['first' => 1, 'second' => 1])
+        ->and($deliveries['attempted'])->toBe(['first' => 1, 'second' => 1])
+        ->and($buffer->count('events'))->toBe(0)
+        ->and(queuedJobCount())->toBe(0);
+});

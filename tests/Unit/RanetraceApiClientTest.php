@@ -141,6 +141,18 @@ test('it refuses to send with a configured key of nothing but whitespace', funct
     Http::assertNothingSent();
 });
 
+test('it says whether it holds a key by the key it would send', function (?string $key, bool $hasKey): void {
+    config(['ranetrace.key' => $key]);
+
+    expect((new RanetraceApiClient)->hasKey())->toBe($hasKey);
+})->with([
+    'null' => [null, false],
+    'empty' => ['', false],
+    'whitespace' => ["\t\n ", false],
+    'a key' => ['ingest-key', true],
+    'a key padded with whitespace' => [' ingest-key ', true],
+]);
+
 test('it returns error on failed response', function (): void {
     Http::fake([
         '*' => Http::response(['error' => 'Failed'], 500),

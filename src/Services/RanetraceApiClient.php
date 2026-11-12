@@ -52,6 +52,15 @@ class RanetraceApiClient
     }
 
     /**
+     * Whether there is a key to send, judged on the trimmed key this client
+     * would put in the Bearer header.
+     */
+    public function hasKey(): bool
+    {
+        return $this->apiKey !== '';
+    }
+
+    /**
      * Send one batch of captured items of the given type.
      *
      * The path, the wrapper key, the User-Agent feature and the timeout config
@@ -132,7 +141,7 @@ class RanetraceApiClient
      */
     protected function sendBatch(Endpoint $endpoint, array $items): array
     {
-        if ($this->apiKey === '') {
+        if (! $this->hasKey()) {
             return $this->formatErrorResponse('API key not configured');
         }
 

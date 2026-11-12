@@ -71,8 +71,24 @@ class SendBatchToRanetraceJob implements ShouldBeUnique, ShouldQueue
         return "ranetrace:batch:{$this->type}";
     }
 
+    /**
+     * Without an ingest key the job returns before it takes anything from the
+     * buffer. A send without a key never reaches the API, and its status 0 would
+     * read as a network failure: the job would retry for 21 minutes and then
+     * pause the feature for an answer the API never gave. So nothing is taken,
+     * sent, released or paused, and the items wait for a run that has the key.
+     * This must stay in step with `ranetrace/ranetrace-php`'s worker.
+     */
     public function handle(RanetraceApiClient $client, RanetraceBatchBuffer $buffer, RanetracePauseManager $pauseManager): void
     {
+        if (! $client->hasKey()) {
+            $this->logWarning('Skipping batch send, no ingest key is configured', [
+                'type' => $this->type,
+            ]);
+
+            return;
+        }
+
         $maxItems = $this->maxItems ?? $this->getMaxBatchSize();
 
         // Get items from buffer (atomically removes them)
