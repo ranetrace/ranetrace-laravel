@@ -94,7 +94,7 @@ test('it maintains separate buffers for different types', function (): void {
 
     $buffer->addItem('events', ['event_name' => 'event1']);
     $buffer->addItem('logs', ['message' => 'log1']);
-    $buffer->addItem('page_visits', ['url' => 'https://example.com']);
+    $buffer->addItem('page_visits', ['path' => '/']);
 
     expect($buffer->count('events'))->toBe(1);
     expect($buffer->count('logs'))->toBe(1);

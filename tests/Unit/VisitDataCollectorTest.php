@@ -32,7 +32,6 @@ test('it collects basic visit data', function (): void {
     $data = VisitDataCollector::collect($request);
 
     expect($data)->toHaveKeys([
-        'url',
         'path',
         'user_agent',
         'user_agent_hash',
@@ -43,10 +42,22 @@ test('it collects basic visit data', function (): void {
         'timestamp',
     ]);
 
-    expect($data['url'])->toBe('https://example.com/test-page?utm_source=google');
     expect($data['path'])->toBe('/test-page');
     expect($data['referrer'])->toBe('https://google.com');
     expect($data['utm_source'])->toBe('google');
+});
+
+test('it reports the page by its path and sends no url', function (): void {
+    $request = Request::create('https://example.com/pricing?plan=team', 'GET');
+    $request->headers->set('User-Agent', 'Mozilla/5.0');
+    $request->server->set('REMOTE_ADDR', '127.0.0.1');
+
+    $data = VisitDataCollector::collect($request);
+
+    expect($data)->not->toHaveKey('url')
+        ->and($data['path'])->toBe('/pricing')
+        ->and(json_encode($data))->not->toContain('example.com')
+        ->and(json_encode($data))->not->toContain('plan=team');
 });
 
 /**
@@ -223,22 +234,20 @@ test('it includes timestamp in ISO format', function (): void {
     expect($data['timestamp'])->toMatch('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2}$/');
 });
 
-test('it scrubs sensitive query params from url and referrer', function (): void {
-    $request = Request::create('https://example.com/reset?token=abc&utm_source=google', 'GET');
+test('it scrubs sensitive query params from the referrer, and no query secret reaches the visit', function (): void {
+    $request = Request::create('https://example.com/reset?token=live-query-secret&utm_source=google', 'GET');
     $request->headers->set('User-Agent', 'Mozilla/5.0');
     $request->headers->set('Referer', 'https://example.com/login?api_key=zzz');
     $request->server->set('REMOTE_ADDR', '127.0.0.1');
 
     $data = VisitDataCollector::collect($request);
 
-    expect($data['url'])->toContain('token=[REDACTED]')
-        ->and($data['url'])->toContain('utm_source=google')
-        ->and($data['url'])->not->toContain('token=abc')
+    expect(json_encode($data))->not->toContain('live-query-secret')
         ->and($data['referrer'])->toBe('https://example.com/login?api_key=[REDACTED]')
         ->and($data['utm_source'])->toBe('google');
 });
 
-test('it scrubs sensitive route parameter values from the path and url', function (): void {
+test('it scrubs sensitive route parameter values from the path', function (): void {
     $request = requestWithRoute(
         'https://example.com/invitations/secret-token-123?page=2',
         'invitations/{token}'
@@ -247,7 +256,7 @@ test('it scrubs sensitive route parameter values from the path and url', functio
     $data = VisitDataCollector::collect($request);
 
     expect($data['path'])->toBe('/invitations/[REDACTED]')
-        ->and($data['url'])->toBe('https://example.com/invitations/[REDACTED]?page=2');
+        ->and(json_encode($data))->not->toContain('secret-token-123');
 });
 
 test('it scrubs a verification hash segment but keeps non-sensitive segments', function (): void {
@@ -258,8 +267,7 @@ test('it scrubs a verification hash segment but keeps non-sensitive segments', f
 
     $data = VisitDataCollector::collect($request);
 
-    expect($data['path'])->toBe('/verify/42/[REDACTED]')
-        ->and($data['url'])->toBe('https://example.com/verify/42/[REDACTED]');
+    expect($data['path'])->toBe('/verify/42/[REDACTED]');
 });
 
 test('it leaves non-sensitive route parameters untouched', function (): void {
@@ -267,11 +275,10 @@ test('it leaves non-sensitive route parameters untouched', function (): void {
 
     $data = VisitDataCollector::collect($request);
 
-    expect($data['path'])->toBe('/articles/my-post')
-        ->and($data['url'])->toBe('https://example.com/articles/my-post');
+    expect($data['path'])->toBe('/articles/my-post');
 });
 
-test('it scrubs both the path and the query when a token appears in each', function (): void {
+test('a token in both the path and the query reaches no field of the visit', function (): void {
     $request = requestWithRoute(
         'https://example.com/invitations/tok-abc?token=tok-abc&utm_source=mail',
         'invitations/{token}'
@@ -280,16 +287,17 @@ test('it scrubs both the path and the query when a token appears in each', funct
     $data = VisitDataCollector::collect($request);
 
     expect($data['path'])->toBe('/invitations/[REDACTED]')
-        ->and($data['url'])->toBe('https://example.com/invitations/[REDACTED]?token=[REDACTED]&utm_source=mail');
+        ->and(json_encode($data))->not->toContain('tok-abc');
 });
 
-test('it redacts a JWT under an innocently named query parameter of the url', function (): void {
+test('a JWT under an innocently named query parameter reaches no field of the visit', function (): void {
     $jwt = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dozjgNryP4J3jVmNHl0w5N_XgL0n3I9PlFUP0THsR8U';
     $request = requestWithRoute("https://example.com/magic?t={$jwt}&page=2", 'magic');
 
     $data = VisitDataCollector::collect($request);
 
-    expect($data['url'])->toBe('https://example.com/magic?page=2&t=[REDACTED]');
+    expect($data['path'])->toBe('/magic')
+        ->and(json_encode($data))->not->toContain($jwt);
 });
 
 test('it redacts a credential-prefixed token in a path segment the route does not name sensitive', function (): void {
@@ -297,8 +305,7 @@ test('it redacts a credential-prefixed token in a path segment the route does no
 
     $data = VisitDataCollector::collect($request);
 
-    expect($data['path'])->toBe('/keys/[REDACTED]/edit')
-        ->and($data['url'])->toBe('https://example.com/keys/[REDACTED]/edit');
+    expect($data['path'])->toBe('/keys/[REDACTED]/edit');
 });
 
 test('it redacts a percent-encoded credential-prefixed token in the decoded path', function (): void {
@@ -320,18 +327,17 @@ test('it redacts the password of a url in the referrer, keeping scheme, user and
     expect($data['referrer'])->toBe('https://deploy:[REDACTED]@ci.example.org/builds/42?page=2');
 });
 
-test('it keeps a url, path and referrer that only resemble a token byte for byte', function (): void {
+test('it keeps a path and referrer that only resemble a token byte for byte', function (): void {
     $request = requestWithRoute('https://example.com/docs/sk_live_/eyJ-intro?ref=AKIA-guide', 'docs/{a}/{b}');
     $request->headers->set('Referer', 'https://example.com/docs/ghp_short?user=app@example.com');
 
     $data = VisitDataCollector::collect($request);
 
-    expect($data['url'])->toBe('https://example.com/docs/sk_live_/eyJ-intro?ref=AKIA-guide')
-        ->and($data['path'])->toBe('/docs/sk_live_/eyJ-intro')
+    expect($data['path'])->toBe('/docs/sk_live_/eyJ-intro')
         ->and($data['referrer'])->toBe('https://example.com/docs/ghp_short?user=app@example.com');
 });
 
-test('it keeps the route-token redaction alongside the value pass', function (): void {
+test('a route token in the path and a credential in the query reach no field of the visit', function (): void {
     $request = requestWithRoute(
         'https://example.com/invitations/live-invite-token?ref=sk_live_51HxYzAbCdEfGhIjKlMn',
         'invitations/{token}'
@@ -340,18 +346,18 @@ test('it keeps the route-token redaction alongside the value pass', function ():
     $data = VisitDataCollector::collect($request);
 
     expect($data['path'])->toBe('/invitations/[REDACTED]')
-        ->and($data['url'])->toBe('https://example.com/invitations/[REDACTED]?ref=[REDACTED]');
+        ->and(json_encode($data))->not->toContain('live-invite-token')
+        ->and(json_encode($data))->not->toContain('sk_live_51HxYzAbCdEfGhIjKlMn');
 });
 
-test('it behaves exactly as before when no route is resolved', function (): void {
+test('it redacts no path segment for its route when no route is resolved', function (): void {
     $request = Request::create('https://example.com/invitations/secret-token-123', 'GET');
     $request->headers->set('User-Agent', 'Mozilla/5.0');
     $request->server->set('REMOTE_ADDR', '127.0.0.1');
 
     $data = VisitDataCollector::collect($request);
 
-    expect($data['path'])->toBe('/invitations/secret-token-123')
-        ->and($data['url'])->toBe('https://example.com/invitations/secret-token-123');
+    expect($data['path'])->toBe('/invitations/secret-token-123');
 });
 
 test('it handles a parameterless route on the root path', function (): void {
@@ -359,8 +365,7 @@ test('it handles a parameterless route on the root path', function (): void {
 
     $data = VisitDataCollector::collect($request);
 
-    expect($data['path'])->toBe('/')
-        ->and($data['url'])->toBe('https://example.com');
+    expect($data['path'])->toBe('/');
 });
 
 test('it hashes user agent', function (): void {

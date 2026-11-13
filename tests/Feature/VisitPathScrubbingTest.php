@@ -54,8 +54,7 @@ test('a token in the path never reaches the dispatched visit job', function () u
     $data = $visitData();
 
     expect($data['path'])->toBe('/invitations/[REDACTED]')
-        ->and($data['url'])->toBe('http://localhost/invitations/[REDACTED]')
-        ->and($data['url'])->not->toContain('live-invite-token-abc123');
+        ->and(json_encode($data))->not->toContain('live-invite-token-abc123');
 });
 
 test('a verification hash in the path is redacted while other segments survive', function () use ($browserHeaders, $visitData): void {
@@ -65,8 +64,7 @@ test('a verification hash in the path is redacted while other segments survive',
 
     $data = $visitData();
 
-    expect($data['path'])->toBe('/verify/42/[REDACTED]')
-        ->and($data['url'])->toBe('http://localhost/verify/42/[REDACTED]');
+    expect($data['path'])->toBe('/verify/42/[REDACTED]');
 });
 
 test('the stock password-reset page is tracked with its token redacted', function () use ($browserHeaders, $visitData): void {
@@ -80,8 +78,7 @@ test('the stock password-reset page is tracked with its token redacted', functio
     $data = $visitData();
 
     expect($data['path'])->toBe('/reset-password/[REDACTED]')
-        ->and($data['url'])->toBe('http://localhost/reset-password/[REDACTED]')
-        ->and($data['url'])->not->toContain('live-reset-token-xyz789');
+        ->and(json_encode($data))->not->toContain('live-reset-token-xyz789');
 });
 
 test('non-sensitive route parameters are left untouched', function () use ($browserHeaders, $visitData): void {
@@ -92,7 +89,6 @@ test('non-sensitive route parameters are left untouched', function () use ($brow
     $data = $visitData();
 
     expect($data['path'])->toBe('/articles/my-first-post')
-        ->and($data['url'])->toBe('http://localhost/articles/my-first-post?utm_source=newsletter')
         ->and($data['utm_source'])->toBe('newsletter');
 });
 
@@ -106,7 +102,7 @@ test('a custom-key binding is redacted via its binding field', function () use (
     $data = $visitData();
 
     expect($data['path'])->toBe('/teams/[REDACTED]')
-        ->and($data['url'])->not->toContain('live-team-invite-abc');
+        ->and(json_encode($data))->not->toContain('live-team-invite-abc');
 });
 
 test('a token in the REFERRER path never reaches the dispatched visit job', function () use ($browserHeaders, $visitData): void {
@@ -154,7 +150,7 @@ test('an external referrer keeps its path and still has its query scrubbed', fun
         ->toBe('https://search.example.com/results/laravel?token=[REDACTED]&q=ranetrace');
 });
 
-test('path and query secrets are both redacted in the same url', function () use ($browserHeaders, $visitData): void {
+test('a secret in both the path and the query never reaches the dispatched visit job', function () use ($browserHeaders, $visitData): void {
     $this->withHeaders($browserHeaders)
         ->get('/invitations/dual-secret?token=dual-secret&page=2')
         ->assertSuccessful();
@@ -162,12 +158,10 @@ test('path and query secrets are both redacted in the same url', function () use
     $data = $visitData();
 
     expect($data['path'])->toBe('/invitations/[REDACTED]')
-        // The test client normalises the query string's parameter order.
-        ->and($data['url'])->toBe('http://localhost/invitations/[REDACTED]?page=2&token=[REDACTED]')
-        ->and($data['url'])->not->toContain('dual-secret');
+        ->and(json_encode($data))->not->toContain('dual-secret');
 });
 
-test('a prefixed token written percent-encoded is redacted in the url, the path and the referrer of a visit', function () use ($browserHeaders, $visitData): void {
+test('a prefixed token written percent-encoded is redacted in the path and the referrer of a visit', function () use ($browserHeaders, $visitData): void {
     $encodedKey = implode('', ['sk%5Flive', '%5F51HabcDEF0123456789']);
 
     $this->withHeaders($browserHeaders + ['Referer' => 'http://localhost/articles/first?ref='.$encodedKey])
@@ -176,7 +170,7 @@ test('a prefixed token written percent-encoded is redacted in the url, the path 
 
     $data = $visitData();
 
-    expect($data['url'])->toBe('http://localhost/articles/[REDACTED]?next=https%3A%2F%2Fapp.test%2Fkeys%2F[REDACTED]')
-        ->and($data['path'])->toBe('/articles/[REDACTED]')
+    expect($data['path'])->toBe('/articles/[REDACTED]')
+        ->and(json_encode($data))->not->toContain('51HabcDEF0123456789')
         ->and($data['referrer'])->toBe('http://localhost/articles/first?ref=[REDACTED]');
 });

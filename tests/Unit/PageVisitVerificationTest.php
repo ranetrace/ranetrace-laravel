@@ -72,6 +72,16 @@ test('a visit carrying no token is buffered untouched', function (): void {
         ->and($payload['path'])->toBe('/pricing');
 });
 
+test('a url in the visit data is not buffered, and the path is', function (): void {
+    // A job queued by an earlier version of the package still carries one.
+    $payload = bufferedPageVisit([
+        'url' => 'https://example.com/pricing?token=live-query-secret',
+        'path' => '/pricing',
+    ]);
+
+    expect($payload)->toBe(['path' => '/pricing']);
+});
+
 test('one view mark verifies only its own visit', function (): void {
     $marked = (string) Str::uuid();
     VisitVerificationMark::put($marked);

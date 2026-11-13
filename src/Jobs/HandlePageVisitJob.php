@@ -94,7 +94,6 @@ class HandlePageVisitJob extends BaseRanetraceJob
     protected function getAllowedKeys(): array
     {
         $keys = [
-            'url',
             'path',
             'timestamp',
             'referrer',

@@ -121,7 +121,7 @@ class RanetraceAnalyticsTestCommand extends Command
         $this->table(
             ['Data point', 'Description'],
             [
-                ['URL & path', 'Full URL (sensitive query params redacted) and path'],
+                ['Path', 'The path of the page, with the route segments that hold a secret redacted'],
                 ['Timestamp', 'When the visit occurred (ISO 8601)'],
                 ['Referrer', 'Where the visitor came from'],
                 ['Device type', 'mobile, tablet, desktop, or console'],

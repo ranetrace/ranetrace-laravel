@@ -91,7 +91,7 @@ test('it sends page visit batch to analytics endpoint', function (): void {
     Http::fake();
     $client = new RanetraceApiClient('test-key');
 
-    $client->sendPageVisitBatch([['url' => 'https://example.com']]);
+    $client->sendPageVisitBatch([['path' => '/']]);
 
     Http::assertSent(function ($request): bool {
         return $request->url() === 'https://api.ranetrace.com/v1/page-visits/store'

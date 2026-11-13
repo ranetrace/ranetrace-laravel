@@ -27,15 +27,14 @@ class VisitDataCollector
     public static function collect(Request $request): array
     {
         $userAgent = $request->userAgent();
-        $url = Utf8::repair($request->fullUrl());
-        $parsedPath = parse_url($url, PHP_URL_PATH);
+        $parsedPath = parse_url(Utf8::repair($request->fullUrl()), PHP_URL_PATH);
         $path = is_string($parsedPath) && $parsedPath !== '' ? $parsedPath : '/';
 
         // Secrets also live in the PATH (`password/reset/{token}`), where only
         // the resolved route can tell which segment is a secret. This middleware
         // runs in the `web` GROUP, so the route is already available here; when
-        // there is none, the list is empty and no path segment of either field
-        // is redacted for its route.
+        // there is none, the list is empty and no path segment is redacted for
+        // its route.
         $sensitiveValues = RouteSecretResolver::forRequest($request);
 
         $scrubber = Core::scrubber();
@@ -49,8 +48,9 @@ class VisitDataCollector
         $referrer = Utf8::repairNullable($request->headers->get('referer'));
 
         return [
-            'url' => $scrubber->scrubDeep($url, $sensitiveValues),
-
+            // The page is sent as its path, with no full URL: the API keeps a
+            // visit's path and reads no URL for it.
+            //
             // Reported decoded, so every spelling of one page (`/login`,
             // `/%6Cogin`) is a single entry rather than an attacker-chosen
             // supply of distinct ones, since the router resolved them all to the
