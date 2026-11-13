@@ -370,7 +370,7 @@ test('a 200 that counts nothing lifts nothing', function (): void {
         ->and($output)->not->toContain('Lifted');
 });
 
-test('the configuration is still printed before the round trip, without the old verdict on it', function (): void {
+test('the configuration is printed before the round trip, with no verdict of its own', function (): void {
     fakeAcceptingApi();
 
     [, $output] = roundTripRun();

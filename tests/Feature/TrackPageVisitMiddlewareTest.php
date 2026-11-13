@@ -650,7 +650,7 @@ test('it does not track health check or framework machine paths', function (stri
     'ignition' => '/_ignition/health-check',
 ]);
 
-test('a normal human GET is still tracked (regression)', function (): void {
+test('a normal human GET is still tracked', function (): void {
     Bus::fake();
     Cache::flush();
 

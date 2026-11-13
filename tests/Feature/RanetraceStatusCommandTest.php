@@ -99,9 +99,9 @@ test('status outputs successfully with the --json flag', function (): void {
 });
 
 test('status renders an active pause without crashing and shows the remaining time', function (): void {
-    // Regression guard: time_remaining_seconds is a Carbon-3 float; before the
-    // (int) cast it TypeError'd when passed to formatDuration(int) for an
-    // active pause, the exact case the status command exists to report.
+    // time_remaining_seconds is a Carbon 3 float, and formatDuration() takes an
+    // int: without the cast an active pause, the exact case the status command
+    // exists to report, is a TypeError.
     app(RanetracePauseManager::class)->setFeaturePause('errors', 900, '429');
 
     $this->artisan('ranetrace:status')

@@ -408,14 +408,8 @@ test('the error tracker view adds no comments of its own around the shared scrip
  * directive ships no comment at all, from either view. Shipped, the notes
  * explaining the capture script would be some 9 KB downloaded by every visitor of
  * every site that installs the package.
- *
- * It skips while the resolved `ranetrace/ranetrace-php` predates the minified
- * twin, because until then the script really does carry its comments and this
- * would be asserting against the wrong dependency rather than against this
- * package. Bumping the requirement starts it running; nothing here has to change
- * when that happens.
  */
-test('the directive ships no comments at all once the shared script is minified', function (): void {
+test('the directive ships no comments at all', function (): void {
     config([
         'ranetrace.javascript_errors.enabled' => true,
         'ranetrace.website_analytics.beacon.enabled' => true,
@@ -425,10 +419,7 @@ test('the directive ships no comments at all once the shared script is minified'
 
     expect($html)->toContain(captureScriptMarker())
         ->and(commentsIn($html))->toBe([]);
-})->skip(
-    ! is_file(dirname((string) (new ReflectionClass(CaptureScript::class))->getFileName(), 3).'/resources/js/error-tracker.min.js'),
-    'The resolved ranetrace/ranetrace-php still ships the unminified capture script, comments and all. Bump the requirement to the release that adds resources/js/error-tracker.min.js and this guard starts running.',
-);
+});
 
 test('neither view renders a comment while its feature is off', function (): void {
     config([
