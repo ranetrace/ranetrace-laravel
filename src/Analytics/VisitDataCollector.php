@@ -24,6 +24,16 @@ class VisitDataCollector
      */
     private const int MAX_UTM_LENGTH = 255;
 
+    /**
+     * The longest `path` and `referrer` the page visits endpoint takes, in
+     * characters. It refuses a visit past either, and a refused visit is lost,
+     * so both are cut to their first characters after the scrub: a redaction
+     * can lengthen a value, and the visit is worth more than the tail of a URL.
+     */
+    private const int MAX_PATH_LENGTH = 1_024;
+
+    private const int MAX_REFERRER_LENGTH = 2_048;
+
     public static function collect(Request $request): array
     {
         $userAgent = $request->userAgent();
@@ -60,7 +70,10 @@ class VisitDataCollector
             // contains a `%` from matching. The value pass runs LAST, on the
             // decoded path, so a percent-encoded token is caught in the form
             // it is reported in.
-            'path' => $scrubber->scrubDeep(Utf8::repair(rawurldecode($scrubber->scrubPathSegments($path, $sensitiveValues)))),
+            'path' => self::cut(
+                $scrubber->scrubDeep(Utf8::repair(rawurldecode($scrubber->scrubPathSegments($path, $sensitiveValues)))),
+                self::MAX_PATH_LENGTH,
+            ),
             'ip' => $request->ip(), // Only used internally to resolve geo
             'user_agent' => Utf8::repairNullable($userAgent),
             'user_agent_hash' => $fingerprints->generateUserAgentHash($userAgent),
@@ -68,10 +81,10 @@ class VisitDataCollector
             // The URL scrub is applied outside scrubDeep(), which URL-scrubs
             // only a string shaped like a URL, because the header is any
             // string the client sends and has its query scrubbed regardless.
-            'referrer' => $scrubber->scrubDeep($scrubber->scrubUrlPath(
+            'referrer' => self::cut($scrubber->scrubDeep($scrubber->scrubUrlPath(
                 $scrubber->scrubUrl($referrer),
                 RouteSecretResolver::forUrl($referrer)
-            )),
+            )), self::MAX_REFERRER_LENGTH),
 
             'device_type' => DeviceType::fromUserAgent($userAgent)?->value,
             'browser_name' => self::detectBrowser($userAgent),
@@ -94,6 +107,15 @@ class VisitDataCollector
 
             'timestamp' => now()->toIso8601String(),
         ];
+    }
+
+    /**
+     * A scrubbed string cut to its first $maxLength characters. Anything else,
+     * the null of a visit without a referrer included, is returned as it is.
+     */
+    protected static function cut(mixed $value, int $maxLength): mixed
+    {
+        return is_string($value) ? mb_substr($value, 0, $maxLength) : $value;
     }
 
     /**

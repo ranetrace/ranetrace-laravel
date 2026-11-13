@@ -224,6 +224,46 @@ test('it caps an oversized campaign parameter', function (): void {
     expect($data['utm_campaign'])->toHaveLength(255);
 });
 
+test('it cuts a path over the 1,024 characters the endpoint takes, and sends one at the limit whole', function (): void {
+    // The API refuses a visit whose path is longer, and a refused visit is
+    // lost. Characters, not bytes, as the endpoint counts them.
+    $atLimit = '/'.str_repeat('é', 1_023);
+
+    $whole = VisitDataCollector::collect(Request::create('https://example.com'.$atLimit, 'GET'));
+    $cut = VisitDataCollector::collect(Request::create('https://example.com'.$atLimit.'x/more', 'GET'));
+
+    expect($whole['path'])->toBe($atLimit)
+        ->and($cut['path'])->toBe($atLimit);
+});
+
+test('it cuts a referrer over the 2,048 characters the endpoint takes, and sends one at the limit whole', function (): void {
+    $atLimit = 'https://search.test/?q='.str_repeat('é', 2_048 - 23);
+
+    $request = Request::create('https://example.com/page', 'GET');
+    $request->headers->set('Referer', $atLimit);
+    $whole = VisitDataCollector::collect($request);
+
+    $request->headers->set('Referer', $atLimit.'x&more=1');
+    $cut = VisitDataCollector::collect($request);
+
+    expect($whole['referrer'])->toBe($atLimit)
+        ->and($cut['referrer'])->toBe($atLimit);
+});
+
+test('it cuts a referrer that only passes its limit once its secrets are redacted', function (): void {
+    // `token=x` becomes `token=[REDACTED]`, so the scrub lengthens the value.
+    $referrer = 'https://app.test/callback?'.implode('&', array_fill(0, 250, 'token=x'));
+
+    $request = Request::create('https://example.com/page', 'GET');
+    $request->headers->set('Referer', $referrer);
+    $data = VisitDataCollector::collect($request);
+
+    expect(mb_strlen($referrer))->toBeLessThan(2_048)
+        ->and(mb_strlen($data['referrer']))->toBe(2_048)
+        ->and($data['referrer'])->toStartWith('https://app.test/callback?token=[REDACTED]&token=[REDACTED]')
+        ->and($data['referrer'])->not->toContain('token=x');
+});
+
 test('it includes timestamp in ISO format', function (): void {
     $request = Request::create('/', 'GET');
     $request->headers->set('User-Agent', 'Test Browser');

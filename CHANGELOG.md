@@ -6,6 +6,9 @@ This file starts at 1.0.0. The package was re-versioned to share a major with `r
 
 ## [Unreleased]
 
+### Changed
+- **A page visit whose path or referrer is over the endpoint's limit is cut to fit, where it was refused and lost.** The page visits endpoint takes a `path` of at most 1,024 characters and a `referrer` of at most 2,048, and refuses a visit past either. A refused visit is counted `failed`, which is final. A referrer that long is ordinary: a search result, an OAuth redirect, a link with a tracking query. `Analytics\VisitDataCollector` now cuts both to their first characters, counted as the endpoint counts them, after the secret scrub, so a redaction that lengthens the value cannot push it over. A visit within both limits is sent exactly as before. Nothing to do on upgrade
+
 ## [1.6.0] - 2026-11-13
 
 Requires `ranetrace/ranetrace-php` 1.5.0 or later: the error id below is made by that release's error builder, the cut of an oversize event by its `Events\EventLimits`, and the cut of a long event URL by its `Events\EventItemBuilder`.
