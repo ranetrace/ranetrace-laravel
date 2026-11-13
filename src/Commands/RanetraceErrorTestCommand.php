@@ -27,7 +27,7 @@ class RanetraceErrorTestCommand extends Command
         $this->info('Testing Ranetrace error reporting...');
 
         $stop = $this->stopBeforeCapture('errors', function (): void {
-            $this->warn('⚠ Ranetrace error reporting is disabled. Set RANETRACE_ERRORS_ENABLED=true in your .env file');
+            $this->warn('⚠ Ranetrace error reporting is disabled. Set RANETRACE_ERRORS_ENABLED=true in the environment that reports to Ranetrace (on a server, in its .env)');
             $this->info('Configuration check completed.');
         });
 
@@ -41,21 +41,17 @@ class RanetraceErrorTestCommand extends Command
         $exceptions = $this->testExceptions();
 
         $buffered = $this->countBuffered('errors', 'errors', function () use ($exceptions): void {
-            $this->info('1. Testing simple exception...');
+            $this->info('1. Reporting a simple exception');
             Ranetrace::report($exceptions['simple']());
-            $this->info('   ✓ Simple exception reported');
 
-            $this->info('2. Testing RuntimeException...');
+            $this->info('2. Reporting a RuntimeException');
             Ranetrace::report($exceptions['runtime']());
-            $this->info('   ✓ RuntimeException reported');
 
-            $this->info('3. Testing exception with deeper stack trace...');
+            $this->info('3. Reporting an exception with a deeper stack trace');
             Ranetrace::report($exceptions['deep']());
-            $this->info('   ✓ Exception with stack trace reported');
 
-            $this->info('4. Testing exception with custom message...');
+            $this->info('4. Reporting an exception with a custom message');
             Ranetrace::report($exceptions['custom']());
-            $this->info('   ✓ Custom exception reported');
         });
 
         $this->newLine();

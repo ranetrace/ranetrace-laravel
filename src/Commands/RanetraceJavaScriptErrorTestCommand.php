@@ -50,7 +50,7 @@ class RanetraceJavaScriptErrorTestCommand extends Command
 
         $stop = $this->stopBeforeCapture('javascript_errors', function (): void {
             $this->warn('⚠️  JavaScript error tracking is currently disabled.');
-            $this->info('💡 To enable it, add to your .env file:');
+            $this->info('💡 To enable it, set in the environment that reports to Ranetrace (on a server, in its .env):');
             $this->line('   RANETRACE_JAVASCRIPT_ERRORS_ENABLED=true');
             $this->newLine();
         });

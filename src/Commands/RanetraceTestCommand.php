@@ -227,7 +227,7 @@ class RanetraceTestCommand extends Command
 
         if ($enabledFeatures->isEmpty()) {
             $this->warn('⚠️  All features are currently disabled.');
-            $this->info('💡 Enable features in your .env file:');
+            $this->info('💡 Enable features in the environment that reports to Ranetrace (on a server, in its .env):');
             $this->line('   RANETRACE_ERRORS_ENABLED=true');
             $this->line('   RANETRACE_EVENTS_ENABLED=true');
             $this->line('   RANETRACE_WEBSITE_ANALYTICS_ENABLED=true');

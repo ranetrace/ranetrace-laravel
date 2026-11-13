@@ -24,7 +24,7 @@ class RanetraceLogTestCommand extends Command
         $this->info('Testing Ranetrace logging...');
 
         $stop = $this->stopBeforeCapture('logging', function (): void {
-            $this->warn('⚠ Ranetrace logging is disabled. Set RANETRACE_LOGGING_ENABLED=true in your .env file');
+            $this->warn('⚠ Ranetrace logging is disabled. Set RANETRACE_LOGGING_ENABLED=true in the environment that reports to Ranetrace (on a server, in its .env)');
             $this->info('Configuration check completed.');
         });
 
@@ -36,51 +36,42 @@ class RanetraceLogTestCommand extends Command
         $this->info('✅ Ranetrace logging channel is auto-registered by the service provider');
 
         $buffered = $this->countBuffered('logging', 'logs', function (): void {
-            // Test Laravel logging integration
-            $this->info('1. Testing Laravel Log integration...');
+            $this->info("1. Writing an emergency and an error through Log::channel('ranetrace')");
 
             Log::channel('ranetrace')->emergency('Test emergency via Laravel Log', [
                 'test_context' => 'laravel_log_test',
                 'timestamp' => now()->toISOString(),
             ]);
-            $this->info('   ✓ Emergency log written via Laravel Log');
 
             Log::channel('ranetrace')->error('Test error via Laravel Log', [
                 'test_context' => 'laravel_log_test',
                 'error_code' => 'TEST_001',
             ]);
-            $this->info('   ✓ Error log written via Laravel Log');
 
-            // Test stack logging if available
             if (config('logging.channels.production') || config('logging.channels.development')) {
                 try {
                     Log::stack(['ranetrace'])->critical('Test stack logging', [
                         'test_context' => 'stack_test',
                         'component' => 'testing',
                     ]);
-                    $this->info('   ✓ Stack log written');
                 } catch (Throwable $e) {
                     $this->warn('   ⚠ Stack logging failed: '.$e->getMessage());
                 }
             }
 
-            // Test different log levels
-            $this->info('2. Testing different log levels...');
+            $this->info('2. Writing a warning and a notice');
 
             Log::channel('ranetrace')->warning('Test warning via Laravel Log', [
                 'test_context' => 'level_test',
                 'level' => 'warning',
             ]);
-            $this->info('   ✓ Warning log written');
 
             Log::channel('ranetrace')->notice('Test notice via Laravel Log', [
                 'test_context' => 'level_test',
                 'level' => 'notice',
             ]);
-            $this->info('   ✓ Notice log written');
 
-            // Test with context
-            $this->info('3. Testing with context data...');
+            $this->info('3. Writing an error with context data');
             Log::channel('ranetrace')->error('Error with rich context', [
                 'user_id' => 123,
                 'order_id' => 'ORD-456',
@@ -91,10 +82,8 @@ class RanetraceLogTestCommand extends Command
                     'max_attempts' => 5,
                 ],
             ]);
-            $this->info('   ✓ Context-rich log written');
 
-            // Test closure serialization fix
-            $this->info('4. Testing closure serialization handling...');
+            $this->info('4. Writing an error with closures in its context (each arrives as [Closure])');
             $closure = function () {
                 return 'test';
             };
@@ -105,14 +94,11 @@ class RanetraceLogTestCommand extends Command
                     'normal_data' => 'This should work fine',
                 ],
             ]);
-            $this->info('   ✓ Log with closures written (closures should be replaced with [Closure])');
 
-            // Test multiple logs (simulating batch)
-            $this->info('5. Testing multiple log entries...');
+            $this->info('5. Writing three records in a row');
             Log::channel('ranetrace')->error('First error', ['sequence' => 1]);
             Log::channel('ranetrace')->warning('Second warning', ['sequence' => 2]);
             Log::channel('ranetrace')->critical('Third critical', ['sequence' => 3]);
-            $this->info('   ✓ Multiple logs written');
         });
 
         $this->newLine();

@@ -105,7 +105,7 @@ test('a feature test command whose feature is off says so and captures nothing',
     [$exitCode, $output] = featureTestRun($command);
 
     expect($exitCode)->toBe(0)
-        ->and($output)->toContain("is disabled. Set {$variable}=true in your .env file\nConfiguration check completed.\n")
+        ->and($output)->toContain("is disabled. Set {$variable}=true in the environment that reports to Ranetrace (on a server, in its .env)\nConfiguration check completed.\n")
         ->and(featureTestBufferedCount())->toBe(0);
 
     Queue::assertNothingPushed();
@@ -154,13 +154,25 @@ test('with the queue off a feature test command says its items are buffered, as 
         ->and($output)->not->toContain('have been sent to Ranetrace');
 })->with('capturing feature test commands');
 
-test('the logging test says its logs are written, not sent', function (): void {
+test('the logging test says what it writes, not that it sends it', function (): void {
     Queue::fake();
     [, $output] = featureTestRun('ranetrace:test-logging');
 
-    expect($output)->toContain('✓ Emergency log written via Laravel Log')
-        ->toContain('✓ Multiple logs written')
+    expect($output)->toContain("1. Writing an emergency and an error through Log::channel('ranetrace')\n")
+        ->toContain("5. Writing three records in a row\n")
         ->not->toContain('log sent');
+});
+
+test('the error test says what each step reports', function (): void {
+    Queue::fake();
+    [, $output] = featureTestRun('ranetrace:test-errors');
+
+    expect($output)->toContain(
+        "1. Reporting a simple exception\n"
+        ."2. Reporting a RuntimeException\n"
+        ."3. Reporting an exception with a deeper stack trace\n"
+        ."4. Reporting an exception with a custom message\n",
+    );
 });
 
 test('the events test says it tracks its events, not that it sends them', function (): void {
@@ -266,6 +278,21 @@ test('a feature test command whose items never reach the buffer says so, names t
         ->and(file_get_contents(InternalLogger::todaysFile()))->toContain('Could not acquire cache lock to add items to buffer')
         ->and(featureTestBufferedCount())->toBe(0);
 })->with('every feature test command');
+
+test('a feature test command that buffers nothing claims no step a success, and only its closing line gives the verdict', function (string $command, string $feature, string $type, string $line, string $claim): void {
+    Config::set("ranetrace.{$feature}.queue", false);
+    featureTestHoldBufferLock($type);
+
+    [$exitCode, $output] = featureTestRun($command);
+
+    expect($exitCode)->toBe(1)
+        ->and($output)->toContain($line)
+        ->and($output)->not->toContain('✓')
+        ->and($output)->not->toContain($claim);
+})->with([
+    'errors' => ['ranetrace:test-errors', 'errors', 'errors', '❌ No test errors were buffered: the capture failed.', 'reported'],
+    'logging' => ['ranetrace:test-logging', 'logging', 'logs', '❌ No test logs were buffered: the capture failed.', 'written'],
+]);
 
 test('a failed capture with internal logging off says to turn it on', function (): void {
     Config::set('ranetrace.errors.queue', false);

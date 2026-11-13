@@ -32,7 +32,7 @@ class RanetraceEventTestCommand extends Command
         $this->info('Testing Ranetrace event tracking...');
 
         $stop = $this->stopBeforeCapture('events', function (): void {
-            $this->warn('⚠ Ranetrace event tracking is disabled. Set RANETRACE_EVENTS_ENABLED=true in your .env file');
+            $this->warn('⚠ Ranetrace event tracking is disabled. Set RANETRACE_EVENTS_ENABLED=true in the environment that reports to Ranetrace (on a server, in its .env)');
             $this->info('Configuration check completed.');
         });
 

@@ -71,7 +71,7 @@ class RanetraceAnalyticsTestCommand extends Command
 
         $stop = $this->stopBeforeCapture('website_analytics', function (): void {
             $this->warn('⚠️  Website analytics is currently disabled.');
-            $this->info('💡 To enable it, add to your .env file:');
+            $this->info('💡 To enable it, set in the environment that reports to Ranetrace (on a server, in its .env):');
             $this->line('   RANETRACE_WEBSITE_ANALYTICS_ENABLED=true');
             $this->newLine();
         });
@@ -189,7 +189,7 @@ class RanetraceAnalyticsTestCommand extends Command
         // Configuration options
         $this->line('⚙️  <fg=cyan>Configuration options:</>');
         $this->newLine();
-        $this->line('Add to <fg=yellow>.env</> file:');
+        $this->line('Set in the environment that reports to Ranetrace (on a server, in its <fg=yellow>.env</>):');
         $this->line('');
         $this->line('<fg=yellow># Enable/disable analytics');
         $this->line('RANETRACE_WEBSITE_ANALYTICS_ENABLED=true');
