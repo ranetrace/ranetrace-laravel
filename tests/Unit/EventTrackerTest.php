@@ -3,12 +3,15 @@
 declare(strict_types=1);
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Queue;
 use Psr\Log\LoggerInterface;
 use Ranetrace\Laravel\Events\EventTracker;
 use Ranetrace\Laravel\Facades\Ranetrace;
 use Ranetrace\Laravel\Jobs\HandleEventJob;
+use Ranetrace\Laravel\Services\RanetraceBatchBuffer;
 use Ranetrace\Laravel\Support\Core;
 
 test('it validates event names correctly', function (): void {
@@ -122,6 +125,49 @@ test('an event tracked from a console process carries no url, no user agent hash
             && array_key_exists('user_agent_hash', $buffered) && $buffered['user_agent_hash'] === null
             && array_key_exists('session_id_hash', $buffered) && $buffered['session_id_hash'] === null;
     });
+});
+
+/**
+ * The API reads two events with one id as one event sent twice. The id is made
+ * when the event is tracked, before the queue, so a job the queue runs twice
+ * buffers one id twice and the API keeps one event, while two calls alike in
+ * every field are two events.
+ */
+test('two events tracked alike in every field each carry their own uuid', function (): void {
+    Queue::fake();
+
+    Ranetrace::trackEvent('order_shipped');
+    Ranetrace::trackEvent('order_shipped');
+
+    $ids = Queue::pushed(HandleEventJob::class)
+        ->map(fn (HandleEventJob $job): mixed => ((array) $job->bufferedItem())['id'] ?? null)
+        ->all();
+
+    expect($ids)->toHaveCount(2)
+        ->and($ids[0])->toMatch('/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/D')
+        ->and($ids[1])->toMatch('/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/D')
+        ->and($ids[1])->not->toBe($ids[0]);
+});
+
+test('an event job that runs twice buffers the event with one id both times', function (): void {
+    Config::set('ranetrace.batch.cache_driver', 'array');
+    Cache::store('array')->flush();
+    Queue::fake();
+
+    Ranetrace::trackEvent('order_shipped');
+
+    $job = Queue::pushed(HandleEventJob::class)->first();
+    $buffer = app(RanetraceBatchBuffer::class);
+
+    $job->handle($buffer);
+    $job->handle($buffer);
+
+    $buffered = $buffer->getItems('events', 10);
+
+    expect($buffered)->toHaveCount(2)
+        ->and($buffered[0]['data']['id'])->toBeString()->not->toBe('')
+        ->and($buffered[1]['data']['id'])->toBe($buffered[0]['data']['id'])
+        ->and($buffered[1]['id'])->not->toBe($buffered[0]['id']);
 });
 
 test('it includes authenticated user id when available', function (): void {

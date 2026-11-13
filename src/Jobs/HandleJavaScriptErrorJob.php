@@ -41,6 +41,7 @@ class HandleJavaScriptErrorJob extends BaseRanetraceJob
     protected function getAllowedKeys(): array
     {
         return [
+            'id',
             'message',
             'stack',
             'type',

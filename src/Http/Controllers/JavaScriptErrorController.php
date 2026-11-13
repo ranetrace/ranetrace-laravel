@@ -20,7 +20,7 @@ use Throwable;
 /**
  * The endpoint the browser capture script posts to.
  *
- * The fifteen-key item, its caps and its breadcrumb rules live in
+ * The sixteen-key item, its id, its caps and its breadcrumb rules live in
  * `Ranetrace\Php\JavaScript\ErrorItemBuilder`, shared with
  * `ranetrace/ranetrace-php`. What stays here is the Laravel half: the config
  * gates, the validator, the ignore and sample filters, and the four fields a

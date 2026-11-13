@@ -141,7 +141,8 @@ test('the test items carry the keys the real capture path buffers, and only fiel
         ->and(array_keys($sent['events'][0]))->toBe(array_keys($captured['events']))
         ->and(Arr::only($sent['errors'][0], ['message', 'type', 'file', 'line', 'environment', 'is_console', 'user']))
         ->toBe(Arr::only($captured['errors'], ['message', 'type', 'file', 'line', 'environment', 'is_console', 'user']))
-        ->and(Arr::except($sent['events'][0], ['timestamp']))->toBe(Arr::except($captured['events'], ['timestamp']));
+        ->and(Arr::except($sent['events'][0], ['id', 'timestamp']))->toBe(Arr::except($captured['events'], ['id', 'timestamp']))
+        ->and($sent['events'][0]['id'])->not->toBe($captured['events']['id']);
 
     foreach ($sent as $type => [$item]) {
         $fields = WireContract::item($type)['fields'];

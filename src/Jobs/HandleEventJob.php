@@ -52,6 +52,7 @@ class HandleEventJob extends BaseRanetraceJob
     protected function getAllowedKeys(): array
     {
         return [
+            'id',
             'event_name',
             'properties',
             'user',

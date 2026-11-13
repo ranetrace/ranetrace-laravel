@@ -47,6 +47,30 @@ test('it validates required fields', function (): void {
     $response->assertJsonValidationErrors(['message']);
 });
 
+/**
+ * The API reads two items with one id as one report sent twice. A browser that
+ * chose the id could send the id of a report it wants ignored before that
+ * report arrives, so the id is made here and a payload's own is dropped.
+ */
+test('a report is queued with an id made on the server, never the one the browser sent', function (): void {
+    $claimed = '5f0c2a9e-7d41-4b83-a6e2-0c9d3f1b8a57';
+
+    $this->postJson(route('ranetrace.javascript-errors.store'), [
+        'id' => $claimed,
+        'message' => 'Test error message',
+        'url' => 'https://example.com/test',
+        'timestamp' => now()->toISOString(),
+    ])->assertOk();
+
+    Bus::assertDispatched(HandleJavaScriptErrorJob::class, function (HandleJavaScriptErrorJob $job) use ($claimed): bool {
+        $id = $job->getErrorData()['id'] ?? null;
+
+        return is_string($id)
+            && preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/D', $id) === 1
+            && $id !== $claimed;
+    });
+});
+
 test('it accepts valid error data', function (): void {
     $response = $this->postJson(route('ranetrace.javascript-errors.store'), [
         'message' => 'Test error message',

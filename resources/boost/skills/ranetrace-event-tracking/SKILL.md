@@ -120,6 +120,7 @@ Each event includes:
 - Timestamp
 - Current URL
 - User agent hash and session ID hash (privacy-first, no raw values stored)
+- An id of its own, made when the event is tracked. Ranetrace stores an event once even when the batch it travels in is sent twice, and stores two events alike in every other field as two. So tracking the same event twice records it twice
 
 ## Testing
 

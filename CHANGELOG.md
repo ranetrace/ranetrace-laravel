@@ -6,6 +6,12 @@ This file starts at 1.0.0. The package was re-versioned to share a major with `r
 
 ## [Unreleased]
 
+Requires `ranetrace/ranetrace-php` 1.4.0 or later: the event id and the JavaScript error id below are made by that release's item builders.
+
+### Added
+- **Every event carries an id of its own, so Ranetrace can tell an event sent twice from two events.** A batch whose answer is lost on the way is kept and sent again, and the API has to recognise its events or store them twice. It did that by comparing fields, which also made one event of two that were alike in every field within one second: `Ranetrace::trackEvent('order_shipped')` called twice in a loop of a command or a queued job, where an event has no URL and no hashes. The second one was dropped without a trace. Each event now carries `id`, a random UUID made when it is tracked, before it is queued. A queue that runs the capture job twice, a put-back into the buffer and every later send all carry that one id. The API holds it for 30 minutes: the same id again is one event sent twice and is ignored, and two events with two ids are both stored, however alike they are. So tracking the same event twice now records it twice. The API has accepted the field since 2026-11-13, so there is nothing to do on upgrade
+- **Every JavaScript error report carries an id of its own, so a batch that is sent again does not count an occurrence twice.** The API had no way to recognise a JavaScript error report it had stored, so a batch sent again after a lost answer stored every report in it a second time. Each report now carries `id`, made on your server when it receives the report from the browser. A browser cannot choose it: an `id` in the browser's payload is dropped
+
 ## [1.4.0] - 2026-11-13
 
 Requires `ranetrace/ranetrace-php` 1.3.0 or later: the three entries under Fixed are changes in the shared core's secret scrubber, and the console event below needs that release's event builder.
