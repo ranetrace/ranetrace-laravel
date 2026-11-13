@@ -41,16 +41,13 @@ class RanetraceEventTestCommand extends Command
         }
 
         $buffered = $this->countBuffered('events', 'events', function (): void {
-            // Test event name validation
-            $this->info('1. Testing event name validation...');
-
-            $this->info('   ✓ Valid event name: user_registered');
+            $this->info('1. Tracking an event with a valid name (user_registered)');
             RanetraceEvents::custom('user_registered', ['source' => 'test']);
 
-            $this->info('   ✓ Using predefined constant: EventTracker::PRODUCT_ADDED_TO_CART');
+            $this->info('2. Tracking an event by a predefined constant (EventTracker::PRODUCT_ADDED_TO_CART)');
             Ranetrace::trackEvent(EventTracker::PRODUCT_ADDED_TO_CART, ['test' => true]);
 
-            $this->info('   ⚠ Testing invalid event name (this will show validation error)...');
+            $this->info('3. Tracking an event with an invalid name, which is refused before it is captured');
             try {
                 // Direct call (not via the RanetraceEvents facade) so static
                 // analysis can see the InvalidArgumentException throw path.
@@ -59,15 +56,13 @@ class RanetraceEventTestCommand extends Command
                 $this->warn('   Expected validation error: '.$e->getMessage());
             }
 
-            // Test basic event tracking
-            $this->info('2. Tracking basic custom event...');
+            $this->info('4. Tracking a basic custom event');
             Ranetrace::trackEvent('test_event', [
                 'test_property' => 'test_value',
                 'timestamp' => now()->toISOString(),
             ]);
 
-            // Test e-commerce events using the helper
-            $this->info('3. Tracking product added to cart event...');
+            $this->info('5. Tracking a product added to cart event');
             RanetraceEvents::productAddedToCart(
                 productId: 'PROD-123',
                 productName: 'Awesome Widget',
@@ -77,7 +72,7 @@ class RanetraceEventTestCommand extends Command
                 additionalProperties: ['color' => 'blue', 'size' => 'large']
             );
 
-            $this->info('4. Tracking sale event...');
+            $this->info('6. Tracking a sale event');
             RanetraceEvents::sale(
                 orderId: 'ORDER-456',
                 totalAmount: 89.97,
@@ -99,19 +94,19 @@ class RanetraceEventTestCommand extends Command
                 additionalProperties: ['payment_method' => 'credit_card']
             );
 
-            $this->info('5. Tracking user registration event...');
+            $this->info('7. Tracking a user registration event');
             RanetraceEvents::userRegistered(
                 userId: 123,
                 additionalProperties: ['registration_source' => 'website']
             );
 
-            $this->info('6. Tracking page view event...');
+            $this->info('8. Tracking a page view event');
             RanetraceEvents::pageView(
                 pageName: 'Product Details',
                 additionalProperties: ['product_id' => 'PROD-123']
             );
 
-            $this->info('7. Tracking custom event using validated method...');
+            $this->info('9. Tracking a custom event through the validated method');
             RanetraceEvents::custom(
                 eventName: 'newsletter_signup',
                 properties: ['source' => 'footer', 'email_provided' => true],

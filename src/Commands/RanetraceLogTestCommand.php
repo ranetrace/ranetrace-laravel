@@ -9,7 +9,6 @@ use Illuminate\Support\Facades\Log;
 use Ranetrace\Laravel\Support\BatchConfig;
 use Ranetrace\Laravel\Support\CoreConfig;
 use Ranetrace\Laravel\Support\GuardsFeatureTest;
-use Throwable;
 
 class RanetraceLogTestCommand extends Command
 {
@@ -47,17 +46,6 @@ class RanetraceLogTestCommand extends Command
                 'test_context' => 'laravel_log_test',
                 'error_code' => 'TEST_001',
             ]);
-
-            if (config('logging.channels.production') || config('logging.channels.development')) {
-                try {
-                    Log::stack(['ranetrace'])->critical('Test stack logging', [
-                        'test_context' => 'stack_test',
-                        'component' => 'testing',
-                    ]);
-                } catch (Throwable $e) {
-                    $this->warn('   ⚠ Stack logging failed: '.$e->getMessage());
-                }
-            }
 
             $this->info('2. Writing a warning and a notice');
 

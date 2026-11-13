@@ -175,13 +175,59 @@ test('the error test says what each step reports', function (): void {
     );
 });
 
-test('the events test says it tracks its events, not that it sends them', function (): void {
+test('the events test says what each step tracks, not that it sends it', function (): void {
     Queue::fake();
     [, $output] = featureTestRun('ranetrace:test-events');
 
-    expect($output)->toContain('2. Tracking basic custom event...')
-        ->not->toContain('Sending');
+    expect($output)->toContain(
+        "1. Tracking an event with a valid name (user_registered)\n"
+        ."2. Tracking an event by a predefined constant (EventTracker::PRODUCT_ADDED_TO_CART)\n"
+        ."3. Tracking an event with an invalid name, which is refused before it is captured\n"
+        .'   Expected validation error: ',
+    )->toContain(
+        "4. Tracking a basic custom event\n"
+        ."5. Tracking a product added to cart event\n"
+        ."6. Tracking a sale event\n"
+        ."7. Tracking a user registration event\n"
+        ."8. Tracking a page view event\n"
+        ."9. Tracking a custom event through the validated method\n",
+    )->not->toContain('Sending');
 });
+
+/**
+ * A stack of the host's own would add a record on one host and not on another,
+ * and the closing line counts what was buffered.
+ */
+test('the logging test writes its nine records whatever log channels the host defines', function (array $channels): void {
+    Config::set('ranetrace.logging.queue', false);
+
+    foreach ($channels as $channel) {
+        Config::set("logging.channels.{$channel}", ['driver' => 'single', 'path' => storage_path('logs/host.log')]);
+    }
+
+    featureTestRun('ranetrace:test-logging');
+
+    expect(app(RanetraceBatchBuffer::class)->count('logs'))->toBe(9);
+})->with([
+    'the channels Laravel ships' => [[]],
+    'a production and a development channel' => [['production', 'development']],
+]);
+
+test('a command that prints a feature flag on a line of its own says where it goes in the same words as for the key', function (string $command, array $switchedOff, string $hint): void {
+    Queue::fake();
+
+    foreach ($switchedOff as $feature) {
+        Config::set("ranetrace.{$feature}.enabled", false);
+    }
+
+    [, $output] = featureTestRun($command);
+
+    expect($output)->toContain($hint);
+})->with([
+    'analytics' => ['ranetrace:test-analytics', ['website_analytics'], "💡 To enable it, set in the environment that reports to Ranetrace (on a server, in its .env):\n   RANETRACE_WEBSITE_ANALYTICS_ENABLED=true\n"],
+    'javascript errors' => ['ranetrace:test-javascript-errors', ['javascript_errors'], "💡 To enable it, set in the environment that reports to Ranetrace (on a server, in its .env):\n   RANETRACE_JAVASCRIPT_ERRORS_ENABLED=true\n"],
+    'the summary, with every feature off' => ['ranetrace:test', ['errors', 'events', 'logging', 'website_analytics', 'javascript_errors'], "💡 Enable features in the environment that reports to Ranetrace (on a server, in its .env):\n   RANETRACE_ERRORS_ENABLED=true\n"],
+]);
 
 test('the summary shows a switched-off feature as skipped and does not fail on it', function (string $off, string $feature, string $row): void {
     Queue::fake();
@@ -291,6 +337,7 @@ test('a feature test command that buffers nothing claims no step a success, and 
         ->and($output)->not->toContain($claim);
 })->with([
     'errors' => ['ranetrace:test-errors', 'errors', 'errors', '❌ No test errors were buffered: the capture failed.', 'reported'],
+    'events' => ['ranetrace:test-events', 'events', 'events', '❌ No test events were buffered: the capture failed.', 'Valid event name'],
     'logging' => ['ranetrace:test-logging', 'logging', 'logs', '❌ No test logs were buffered: the capture failed.', 'written'],
 ]);
 

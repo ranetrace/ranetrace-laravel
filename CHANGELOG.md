@@ -14,6 +14,8 @@ Requires `ranetrace/ranetrace-php` 1.4.0 or later: the event id and the JavaScri
 
 ### Changed
 - **A page visit no longer sends its full URL.** The API keeps a visit's path and never stored the `url` that travelled beside it, so the SDK stops sending it. A visit is reported by its `path`, redacted as before. Nothing changes in what Ranetrace shows. `ranetrace:test-analytics` lists "Path" where it listed "URL & path"
+- **`ranetrace:test-events` no longer ticks a name before it has tracked anything.** Its first step printed "✓ Valid event name: user_registered" and "✓ Using predefined constant: ..." before the calls they describe. Each step now says what the command does, "1. Tracking an event with a valid name (user_registered)", as `ranetrace:test-errors` and `ranetrace:test-logging` do, and the closing line, which counts what the run put in the buffer, is the only verdict. The steps are numbered 1 to 9
+- **`ranetrace:test-logging` writes the same nine records in every application.** One more record went through `Log::stack(['ranetrace'])`, but only in an application that defines a log channel named `production` or `development`, which Laravel does not ship. That step is gone: it tested nothing the channel calls before it did not
 
 ## [1.4.0] - 2026-11-13
 
