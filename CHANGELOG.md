@@ -6,6 +6,8 @@ This file starts at 1.0.0. The package was re-versioned to share a major with `r
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-11-13
+
 Requires `ranetrace/ranetrace-php` 1.3.0 or later: the three entries under Fixed are changes in the shared core's secret scrubber, and the console event below needs that release's event builder.
 
 ### Changed
