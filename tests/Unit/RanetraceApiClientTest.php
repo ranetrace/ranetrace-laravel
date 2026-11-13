@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 use Ranetrace\Laravel\Services\RanetraceApiClient;
 use Ranetrace\Php\Http\ResponsePolicy;
@@ -179,6 +180,29 @@ test('it handles network exceptions gracefully', function (): void {
     expect($result['success'])->toBeFalse();
     expect($result['error'])->toContain('Network error');
 });
+
+test('a request that got no answer carries the cause alone, as the shared core words it', function (string $message, string $cause): void {
+    Http::fake(function () use ($message): never {
+        throw new ConnectionException($message);
+    });
+
+    $result = (new RanetraceApiClient('test-key'))->sendErrorBatch([['message' => 'Test']]);
+
+    expect($result['status'])->toBe(0)
+        ->and($result['error'])->toBe($cause);
+})->with([
+    'a refused connection' => [
+        'cURL error 7: Failed to connect to 127.0.0.1:9 after 0 ms: Could not connect to server (see https://curl.se/libcurl/c/libcurl-errors.html) for http://127.0.0.1:9/v1/errors/store',
+        'Failed to connect to 127.0.0.1:9 after 0 ms: Could not connect to server',
+    ],
+    'an older libcurl reference' => [
+        'cURL error 28: Operation timed out after 5001 milliseconds with 0 bytes received (see https://curl.haxx.se/libcurl/c/libcurl-errors.html) for https://api.ranetrace.com/v1/errors/store',
+        'Operation timed out after 5001 milliseconds with 0 bytes received',
+    ],
+    'a message with no cURL parts' => ['Connection refused', 'Connection refused'],
+    'a message that only mentions a url' => ['No route for https://api.ranetrace.com/v1 in this sandbox', 'No route for https://api.ranetrace.com/v1 in this sandbox'],
+    'the missing key message' => ['API key not configured', 'API key not configured'],
+]);
 
 test('it returns error for empty batch', function (): void {
     Http::fake();

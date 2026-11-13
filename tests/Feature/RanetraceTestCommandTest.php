@@ -200,6 +200,10 @@ test('each answer that accepts nothing gets the shared line, sets no pause and f
         static fn (): never => throw new ConnectionException('Connection refused'),
         'failed: could not reach https://api.ranetrace.com/v1 (Connection refused)',
     ],
+    'a connection failure in the words of Guzzle' => [
+        static fn (): never => throw new ConnectionException('cURL error 7: Failed to connect to api.ranetrace.com port 443 after 0 ms: Could not connect to server (see https://curl.se/libcurl/c/libcurl-errors.html) for https://api.ranetrace.com/v1/errors/store'),
+        'failed: could not reach https://api.ranetrace.com/v1 (Failed to connect to api.ranetrace.com port 443 after 0 ms: Could not connect to server)',
+    ],
     'a 200 whose body is not json' => [
         static fn (): mixed => Http::response('<html>Welcome</html>', 200),
         'failed: the API answered 200 without counting the test item, so https://api.ranetrace.com/v1 may not be the Ranetrace API',

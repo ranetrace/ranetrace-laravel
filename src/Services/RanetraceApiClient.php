@@ -171,7 +171,7 @@ class RanetraceApiClient
 
             return $this->formatResponse($response);
         } catch (Throwable $e) {
-            return $this->formatErrorResponse($e->getMessage());
+            return $this->formatErrorResponse($this->unreachableCause($e->getMessage()));
         }
     }
 
@@ -221,5 +221,22 @@ class RanetraceApiClient
             'error' => $message,
             'headers' => [],
         ];
+    }
+
+    /**
+     * The cause alone from Guzzle's message for a request that got no answer,
+     * without its `cURL error 7: ` prefix, its libcurl reference link and its
+     * trailing ` for <url>`. The shared core reports the same failure with
+     * curl's own message, so both SDKs print one line for one cause, and the
+     * URL is already in the line the reader sees. A message without these
+     * parts passes through as it is.
+     */
+    private function unreachableCause(string $message): string
+    {
+        return preg_replace([
+            '/ for https?:\/\/\S+$/',
+            '/ \(see https?:\/\/curl\.(?:haxx\.)?se\/libcurl\/c\/libcurl-errors\.html\)$/',
+            '/^cURL error \d+: /',
+        ], '', $message) ?? $message;
     }
 }
