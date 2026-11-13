@@ -1,5 +1,6 @@
 providers:
   - Ranetrace\Laravel\RanetraceServiceProvider
+  - Workbench\App\Providers\WorkbenchServiceProvider
 
 env:
   CACHE_STORE: array

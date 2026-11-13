@@ -7,11 +7,14 @@ namespace Workbench\App\Providers;
 use Illuminate\Console\Events\CommandStarting;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
+use Workbench\App\Console\ReleaseCheckCommand;
 
 class WorkbenchServiceProvider extends ServiceProvider
 {
     public function boot(): void
     {
+        $this->commands([ReleaseCheckCommand::class]);
+
         Event::listen(CommandStarting::class, function ($event) {
             if (str_starts_with($event->command, 'boost:')) {
                 app()->setBasePath(realpath(__DIR__.'/../../../'));
