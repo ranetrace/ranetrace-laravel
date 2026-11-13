@@ -9,6 +9,7 @@ use Psr\Log\LoggerInterface;
 use Ranetrace\Laravel\Events\EventTracker;
 use Ranetrace\Laravel\Facades\Ranetrace;
 use Ranetrace\Laravel\Jobs\HandleEventJob;
+use Ranetrace\Laravel\Support\Core;
 
 test('it validates event names correctly', function (): void {
     // Valid event names
@@ -56,49 +57,70 @@ test('it tracks events without validation when disabled', function (): void {
     });
 });
 
-test('it includes user agent hash in event data', function (): void {
-    Queue::fake();
+/**
+ * What an HTTP request says about an event tracked in it: the URL, the user
+ * agent hash, the session hash and the path secret resolver.
+ *
+ * The suite runs under the CLI SAPI, so `runningInConsole()` is true and the
+ * ordinary path leaves all four out. The console flag is therefore stated
+ * rather than detected, which is the only way to reach the request branch.
+ *
+ * @return array{0: string|null, 1: string|null, 2: string|null, 3: callable|null}
+ */
+function eventRequestContext(Request $request): array
+{
+    $ranetrace = new \Ranetrace\Laravel\Ranetrace;
 
-    $this->withHeaders(['User-Agent' => 'Mozilla/5.0 Test Browser']);
+    return new ReflectionMethod($ranetrace, 'eventRequestContext')->invoke($ranetrace, $request, false);
+}
 
-    Ranetrace::trackEvent('test_event', []);
+test('an event tracked in a request carries its url and the hashes of its user agent and session', function (): void {
+    $this->travelTo('2026-11-13 10:00:00');
 
-    Queue::assertPushed(HandleEventJob::class, function ($job): bool {
-        $eventData = $job->getEventData();
+    $request = Request::create('https://app.test/checkout?step=2', server: [
+        'HTTP_USER_AGENT' => 'Mozilla/5.0 Test Browser',
+        'REMOTE_ADDR' => '203.0.113.10',
+    ]);
 
-        return isset($eventData['user_agent_hash'])
-            && ! empty($eventData['user_agent_hash']);
-    });
+    [$url, $userAgentHash, $sessionIdHash] = eventRequestContext($request);
+    $fingerprints = Core::fingerprints();
+
+    expect($url)->toBe('https://app.test/checkout?step=2')
+        ->and($userAgentHash)->toBe($fingerprints->generateUserAgentHash('Mozilla/5.0 Test Browser'))
+        ->and($userAgentHash)->toHaveLength(64)
+        ->and($sessionIdHash)->toBe($fingerprints->generateSessionIdHash('203.0.113.10', 'Mozilla/5.0 Test Browser', '2026-11-13'))
+        ->and($sessionIdHash)->toHaveLength(64);
 });
 
-test('an event tracked without a user agent carries a null user agent hash, not an empty string', function (): void {
-    Queue::fake();
-
+test('an event tracked in a request without a user agent carries a null user agent hash, not an empty string, and still a session hash', function (): void {
     $request = Request::create('/');
     $request->headers->remove('User-Agent');
-    app()->instance('request', $request);
 
-    Ranetrace::trackEvent('test_event', []);
+    [, $userAgentHash, $sessionIdHash] = eventRequestContext($request);
 
-    Queue::assertPushed(HandleEventJob::class, function (HandleEventJob $job): bool {
-        $eventData = $job->getEventData();
-
-        return array_key_exists('user_agent_hash', $eventData)
-            && $eventData['user_agent_hash'] === null
-            && array_key_exists('user_agent_hash', (array) $job->bufferedItem());
-    });
+    expect($userAgentHash)->toBeNull()
+        ->and($sessionIdHash)->toHaveLength(64);
 });
 
-test('it includes session id hash in event data', function (): void {
+/**
+ * Laravel hands a console process a request whose user agent is `Symfony` and
+ * whose address is `127.0.0.1`. Hashing those would give every event of every
+ * command, scheduled task and queued job one session, which the backend
+ * counts as one visitor.
+ */
+test('an event tracked from a console process carries no url, no user agent hash and no session hash', function (): void {
     Queue::fake();
 
-    Ranetrace::trackEvent('test_event', []);
+    expect(request()->userAgent())->toBe('Symfony');
 
-    Queue::assertPushed(HandleEventJob::class, function ($job): bool {
-        $eventData = $job->getEventData();
+    Ranetrace::trackEvent('invoice_sent', []);
 
-        return isset($eventData['session_id_hash'])
-            && ! empty($eventData['session_id_hash']);
+    Queue::assertPushed(HandleEventJob::class, function (HandleEventJob $job): bool {
+        $buffered = (array) $job->bufferedItem();
+
+        return array_key_exists('url', $buffered) && $buffered['url'] === null
+            && array_key_exists('user_agent_hash', $buffered) && $buffered['user_agent_hash'] === null
+            && array_key_exists('session_id_hash', $buffered) && $buffered['session_id_hash'] === null;
     });
 });
 

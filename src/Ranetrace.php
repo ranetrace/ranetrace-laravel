@@ -164,17 +164,42 @@ class Ranetrace
         $userId ??= CoreConfig::authenticatedUserId();
         $user = $userId === null ? null : ['id' => $userId];
 
-        $isConsole = app()->runningInConsole();
-        $request = request();
-
-        $fingerprints = Core::fingerprints();
+        [$url, $userAgentHash, $sessionIdHash, $sensitivePathValues] = $this->eventRequestContext(request(), app()->runningInConsole());
 
         return (new EventItemBuilder(Core::scrubber()))->build(
             $eventName,
             $properties,
             $user,
             Carbon::now()->toIso8601String(),
-            $isConsole ? null : $request->fullUrl(),
+            $url,
+            $userAgentHash,
+            $sessionIdHash,
+            $sensitivePathValues,
+        );
+    }
+
+    /**
+     * What the request lets Laravel say about an event: its URL, the user
+     * agent hash, the session hash, and the resolver for the path secrets of
+     * the URLs the event holds.
+     *
+     * A console process has none of them. Laravel hands it a request all the
+     * same, with the user agent `Symfony` and the address `127.0.0.1`, and
+     * hashing those would give every event of every command, scheduled task
+     * and queued job one session, which the backend counts as one visitor.
+     *
+     * @return array{0: string|null, 1: string|null, 2: string|null, 3: (callable(string): (array<int, string>|null))|null}
+     */
+    private function eventRequestContext(HttpRequest $request, bool $isConsole): array
+    {
+        if ($isConsole) {
+            return [null, null, null, null];
+        }
+
+        $fingerprints = Core::fingerprints();
+
+        return [
+            $request->fullUrl(),
             $fingerprints->generateUserAgentHash($request->userAgent()),
             $fingerprints->generateSessionIdHash(
                 $request->ip(),
@@ -184,10 +209,10 @@ class Ranetrace
                 Carbon::now()->format('Y-m-d'),
             ),
             // The event's own URL is this request's, whose route the router
-            // already bound; every OTHER url hiding in $properties describes
-            // some other request and gets its own lookup.
-            $isConsole ? null : RouteSecretResolver::resolver(RouteSecretResolver::forRequest($request)),
-        );
+            // already bound; every OTHER url hiding in the properties
+            // describes some other request and gets its own lookup.
+            RouteSecretResolver::resolver(RouteSecretResolver::forRequest($request)),
+        ];
     }
 
     /**
