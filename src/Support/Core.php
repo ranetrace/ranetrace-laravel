@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Ranetrace\Laravel\Support;
 
+use Ranetrace\Php\Events\EventLimits;
 use Ranetrace\Php\Support\FingerprintGenerator;
 use Ranetrace\Php\Support\SecretScrubber;
 
@@ -26,6 +27,15 @@ final class Core
     public static function scrubber(): SecretScrubber
     {
         return new SecretScrubber(CoreConfig::make(), new CoreDiagnostics);
+    }
+
+    /**
+     * Holds an event to the events endpoint's limits, writing each cut and
+     * each drop to this package's internal channel.
+     */
+    public static function eventLimits(): EventLimits
+    {
+        return new EventLimits(new CoreDiagnostics);
     }
 
     public static function fingerprints(): FingerprintGenerator

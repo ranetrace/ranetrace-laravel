@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Illuminate\Support\Facades\Queue;
 use Ranetrace\Laravel\Facades\RanetraceEvents;
 use Ranetrace\Laravel\Jobs\HandleEventJob;
+use Ranetrace\Php\Events\EventLimits;
 
 test('RanetraceEvents facade is available', function (): void {
     expect(class_exists(RanetraceEvents::class))->toBeTrue();
@@ -52,6 +53,40 @@ test('sale helper works', function (): void {
             && $eventData['properties']['total_amount'] === 89.97
             && count($eventData['properties']['products']) === 2;
     });
+});
+
+/**
+ * The events endpoint refuses an event over 5,120 bytes, and refused is final.
+ * A sale has no cap of its own: the event-wide cut replaces the largest
+ * property, so the products list goes and the figures that say what was sold
+ * arrive.
+ */
+test('a sale with a products list too large for the endpoint is queued with its order, total, currency and count', function (): void {
+    Queue::fake();
+
+    $products = array_map(static fn (int $index): array => [
+        'id' => "PROD-{$index}",
+        'name' => "Organic cotton t-shirt, size M, colour number {$index}",
+        'sku' => "TS-ORG-M-{$index}",
+        'category' => 'Clothing',
+        'price' => 29.99,
+        'quantity' => 2,
+    ], range(1, 40));
+
+    expect(mb_strlen((string) json_encode($products), '8bit'))->toBeGreaterThan(EventLimits::MAX_ITEM_BYTES);
+
+    RanetraceEvents::sale(orderId: 'ORD-4821', totalAmount: 2399.20, products: $products, currency: 'EUR');
+
+    $eventData = Queue::pushed(HandleEventJob::class)->first()->getEventData();
+
+    expect($eventData['properties'])->toBe([
+        'order_id' => 'ORD-4821',
+        'total_amount' => 2399.20,
+        'currency' => 'EUR',
+        'products' => ['_truncated' => EventLimits::PROPERTY_REPLACED_REASON],
+        'product_count' => 40,
+    ])
+        ->and(mb_strlen((string) json_encode($eventData), '8bit'))->toBeLessThanOrEqual(EventLimits::MAX_ITEM_BYTES);
 });
 
 test('user registered helper works', function (): void {

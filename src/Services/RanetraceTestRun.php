@@ -126,7 +126,9 @@ class RanetraceTestRun
                 return (new HandleErrorJob($this->ranetrace->buildErrorPayload($this->testException())))->bufferedItem();
             }
 
-            return (new HandleEventJob($this->ranetrace->buildEventPayload('test_event', ['source' => 'ranetrace:test'])))->bufferedItem();
+            $event = $this->ranetrace->buildEventPayload('test_event', ['source' => 'ranetrace:test']);
+
+            return $event === null ? null : (new HandleEventJob($event))->bufferedItem();
         } catch (Throwable $e) {
             InternalLogger::error('Failed to build the test item', [
                 'type' => $type,

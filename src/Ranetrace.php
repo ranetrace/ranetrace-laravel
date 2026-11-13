@@ -118,6 +118,10 @@ class Ranetrace
         try {
             $eventData = $this->buildEventPayload($eventName, $properties, $userId);
 
+            if ($eventData === null) {
+                return;
+            }
+
             if (config('ranetrace.events.queue', true)) {
                 HandleEventJob::dispatch($eventData);
             } else {
@@ -152,21 +156,27 @@ class Ranetrace
     }
 
     /**
-     * Build the event payload sent to Ranetrace, without validating its name.
+     * Build the event payload sent to Ranetrace, without validating its name,
+     * held to the events endpoint's limits. Null when the event cannot be
+     * brought within them, which the internal log records.
+     *
+     * The limits run here, before the capture job is queued, so the queued
+     * payload is already small and the job's per-item budget has nothing left
+     * to do for an event.
      *
      * @internal Shared with `ranetrace:test`, which sends the item {@see HandleEventJob::bufferedItem()} makes of it straight to the API.
      *
      * @param  array<string, mixed>  $properties
-     * @return array<string, mixed>
+     * @return array<string, mixed>|null
      */
-    public function buildEventPayload(string $eventName, array $properties = [], int|string|null $userId = null): array
+    public function buildEventPayload(string $eventName, array $properties = [], int|string|null $userId = null): ?array
     {
         $userId ??= CoreConfig::authenticatedUserId();
         $user = $userId === null ? null : ['id' => $userId];
 
         [$url, $userAgentHash, $sessionIdHash, $sensitivePathValues] = $this->eventRequestContext(request(), app()->runningInConsole());
 
-        return (new EventItemBuilder(Core::scrubber()))->build(
+        return Core::eventLimits()->fit((new EventItemBuilder(Core::scrubber()))->build(
             $eventName,
             $properties,
             $user,
@@ -175,7 +185,7 @@ class Ranetrace
             $userAgentHash,
             $sessionIdHash,
             $sensitivePathValues,
-        );
+        ));
     }
 
     /**

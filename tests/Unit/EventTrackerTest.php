@@ -13,6 +13,7 @@ use Ranetrace\Laravel\Facades\Ranetrace;
 use Ranetrace\Laravel\Jobs\HandleEventJob;
 use Ranetrace\Laravel\Services\RanetraceBatchBuffer;
 use Ranetrace\Laravel\Support\Core;
+use Ranetrace\Php\Events\EventLimits;
 
 test('it validates event names correctly', function (): void {
     // Valid event names
@@ -252,6 +253,77 @@ test('an auth guard that throws costs the event its user, never the event', func
     $logger->shouldHaveReceived('warning')->once()
         ->with('Ranetrace user resolver failed', ['exception' => 'Session store unreachable']);
     $logger->shouldNotHaveReceived('error');
+});
+
+/**
+ * The cut runs before the queue, so the job carries the small event and a
+ * queue that serializes its payload never holds the oversize one.
+ */
+test('an event over the endpoint limits is queued cut, and the cut is logged to the internal channel once', function (): void {
+    Queue::fake();
+    $logger = Mockery::spy(LoggerInterface::class);
+    Log::shouldReceive('channel')->with('ranetrace_internal')->andReturn($logger);
+
+    Ranetrace::trackEvent('checkout_started', [
+        'note' => str_repeat('p', 100_000),
+        'cart' => array_map(static fn (int $index): array => ['sku' => "SKU-{$index}", 'name' => "Product {$index}"], range(1, 200)),
+    ]);
+
+    $eventData = Queue::pushed(HandleEventJob::class)->first()->getEventData();
+
+    expect($eventData['properties'])->toBe([
+        'note' => str_repeat('p', 485).'... (truncated)',
+        'cart' => ['_truncated' => EventLimits::PROPERTY_REPLACED_REASON],
+    ])
+        ->and(mb_strlen((string) json_encode($eventData), '8bit'))->toBeLessThanOrEqual(EventLimits::MAX_ITEM_BYTES);
+
+    $logger->shouldHaveReceived('warning')->once()
+        ->with('Event exceeded the events endpoint limits and was cut', [
+            'event_name' => 'checkout_started',
+            'cut_properties' => ['note'],
+            'max_property_value_bytes' => EventLimits::MAX_PROPERTY_VALUE_BYTES,
+            'replaced_properties' => ['cart'],
+            'max_item_bytes' => EventLimits::MAX_ITEM_BYTES,
+        ]);
+});
+
+test('an event the job buffers is the cut one, and the per-item budget leaves it alone', function (): void {
+    Config::set('ranetrace.batch.cache_driver', 'array');
+    Cache::store('array')->flush();
+    Queue::fake();
+
+    Ranetrace::trackEvent('checkout_started', ['cart' => range(1, 2_000)]);
+
+    $job = Queue::pushed(HandleEventJob::class)->first();
+    $job->handle(app(RanetraceBatchBuffer::class));
+
+    $buffered = app(RanetraceBatchBuffer::class)->getItems('events', 10);
+
+    expect($buffered)->toHaveCount(1)
+        ->and($buffered[0]['data'])->toBe($job->getEventData())
+        ->and($buffered[0]['data']['properties'])->toBe(['cart' => ['_truncated' => EventLimits::PROPERTY_REPLACED_REASON]]);
+});
+
+/**
+ * A console process has no URL, so a real event cannot be made too large for
+ * the whole-properties fallback here; the drop itself is the shared core's
+ * and tested there. What is this SDK's own is that a dropped event queues
+ * nothing and throws nothing.
+ */
+test('an event the limits drop is not queued and does not throw', function (): void {
+    Queue::fake();
+
+    $ranetrace = new class extends \Ranetrace\Laravel\Ranetrace
+    {
+        public function buildEventPayload(string $eventName, array $properties = [], int|string|null $userId = null): ?array
+        {
+            return null;
+        }
+    };
+
+    expect(fn () => $ranetrace->trackEvent('search_performed'))->not->toThrow(Throwable::class);
+
+    Queue::assertNothingPushed();
 });
 
 test('event constants have valid names', function (): void {

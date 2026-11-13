@@ -124,6 +124,8 @@ Each event includes:
 - User agent hash and session ID hash (privacy-first, no raw values stored)
 - An id of its own, made when the event is tracked. Ranetrace stores an event once even when the batch it travels in is sent twice, and stores two events alike in every other field as two. So tracking the same event twice records it twice
 
+An event over the events endpoint's size limits is cut before it is queued, so it arrives instead of being refused: a top-level string property over 500 bytes is cut with a `... (truncated)` suffix, and an event over 5,120 bytes JSON-encoded loses its largest top-level properties first to a `_truncated` marker, so a sale with a long products list arrives with its order id, total, currency and product count and without the list. Each cut writes a warning naming the event and its properties to the `ranetrace_internal` log channel.
+
 ## Testing
 
 ```bash
