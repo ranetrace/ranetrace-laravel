@@ -48,6 +48,8 @@ Analytics is privacy-first: no cookies, no fingerprinting, no consent banner, an
 ],
 ```
 
+Keep `RANETRACE_WEBSITE_ANALYTICS_TIMEOUT` at 8 seconds or more. The server takes up to 8 seconds over a batch, and a client that gives up sooner sends a batch again that the server already stored.
+
 ## Human-verification beacon
 
 Every filter above reads what a request claims about itself, which an HTTP client can lie about. The beacon asks the other side to prove it: a real browser that ran JavaScript and had the page visible posts one opaque token back, and the visit is reported as verified or not.

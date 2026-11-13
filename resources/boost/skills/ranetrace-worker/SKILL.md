@@ -52,11 +52,13 @@ Alternatively, use the built-in queue worker:
 php artisan queue:work
 ```
 
-Ranetrace's jobs go to the connection's default queue unless a queue name is set, so a plain worker drains them. If a custom queue name is configured via `RANETRACE_BATCH_QUEUE_NAME` (or a feature's own `RANETRACE_*_QUEUE_NAME`), a worker must listen on it:
+Ranetrace's jobs go to the connection's default queue unless a queue name is set, so a plain worker drains them. They come in two kinds, each with its own setting: the batch jobs `ranetrace:work` dispatches go to `RANETRACE_BATCH_QUEUE_NAME`, and the capture jobs, one per captured item, go to their feature's own `RANETRACE_*_QUEUE_NAME` (`RANETRACE_ERRORS_QUEUE_NAME`, `RANETRACE_EVENTS_QUEUE_NAME` and so on). With only the batch queue name set, the capture jobs stay on the default queue, so a worker for a custom queue listens on the connection's default queue as well (`default` here):
 
 ```bash
-php artisan queue:work --queue=ranetrace
+php artisan queue:work --queue=default,ranetrace
 ```
+
+A worker on `ranetrace` alone, while any capture job still goes to the default queue, never runs those jobs: that feature's buffer stays empty and nothing of it is sent.
 
 ## Configuration
 
@@ -112,6 +114,11 @@ php artisan ranetrace:pause-clear --all
 - 429: wait for auto-resume or reduce schedule frequency
 - Clear manually: `php artisan ranetrace:pause-clear --feature=<type>`
 - A paused feature whose buffer has waited longer than its pause explains (30 minutes after a 403, 413, 422 or 429, ten minutes after a pause that followed the retries) makes `healthy` false: `ranetrace:status` prints "Paused and not sending" and `--json` lists it under `drain.paused_stalled`. Fix the reason on its row, then let the pause end or clear it
+
+**Logs or page visits missing after a burst, with nothing paused:**
+- The API takes at most 10,000 logs and 10,000 page visits a minute per website, each type counted on its own. Errors, events and JavaScript errors have no such cap
+- Past it, the API answers the batch with the rest counted as `ignored`. The SDK treats an ignored item as done: it is not sent again, nothing pauses, and `ranetrace:status` stays healthy. Those items are not stored
+- A log burst that large usually comes from code that logs in a loop. `RANETRACE_LOGGING_LEVEL` (default `notice`) sets the lowest level that is sent
 
 **Cache driver not available:**
 - The batch buffer uses the cache store set by `RANETRACE_BATCH_CACHE_DRIVER` (defaults to your app's cache store: `CACHE_STORE`/`CACHE_DRIVER`, i.e. `file` unless you've changed it)

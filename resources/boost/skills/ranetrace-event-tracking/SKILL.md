@@ -112,6 +112,8 @@ Invalid: `UserRegistered`, `a`, `123_event`, `my-event`
 ],
 ```
 
+Keep `RANETRACE_EVENTS_TIMEOUT` at 8 seconds or more. The server takes up to 8 seconds over a batch, and a client that gives up sooner sends a batch again that the server already stored.
+
 ## What gets captured
 
 Each event includes:

@@ -290,7 +290,7 @@ Moving over is one line of client config: point the client at `https://api.ranet
 ### What the tools answer
 
 - Errors: search and investigate with filtering, full error details, statistics, activity, investigation notes, and error state (resolve, ignore, snooze, delete, restore).
-- Monitors: which of your monitors needs a look (uptime, performance, Lighthouse, certificate, domain, broken links and DNS), and the detail behind any one of them except DNS.
+- Monitors: which of your monitors needs a look (uptime, performance, Lighthouse, certificate, domain, broken links and DNS, and port scan when you have that beta), and the detail behind any one of them except DNS and port scan. Sitemap and blocklist monitoring are not reported.
 
 Every monitor tool answers verdict first: what we found, why it matters, what to do, the same guidance you read on the dashboard, with the raw measurements following as its evidence.
 

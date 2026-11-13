@@ -70,9 +70,10 @@ Also set `RANETRACE_KEY` from your Ranetrace dashboard if it is not already
 configured. Records at or above `notice` are forwarded; tune the threshold with
 `RANETRACE_LOGGING_LEVEL`.
 
-To verify the wiring before deploying, set the same flags in your local `.env`.
-That ships your development logs to Ranetrace, so treat it as a one-off check
-rather than a permanent local setting.
+To verify the wiring before deploying, set the same flags and `RANETRACE_KEY` in
+your local `.env`: for the length of the check, your own machine is the
+environment that reports to Ranetrace. That ships your development logs to
+Ranetrace, so treat it as a one-off check rather than a permanent local setting.
 
 ## Configuration
 
@@ -93,6 +94,9 @@ rather than a permanent local setting.
 - `level`: minimum level the auto-registered channel captures (default `notice`).
 - `excluded_channels`: record channel names to skip (matched against
   `$record->channel`). Use it to drop noisy or sensitive channels.
+- `timeout`: keep it at 8 seconds or more. The server takes up to 8 seconds over
+  a batch, and a client that gives up sooner sends a batch again that the server
+  already stored.
 
 ## Overriding the channel
 

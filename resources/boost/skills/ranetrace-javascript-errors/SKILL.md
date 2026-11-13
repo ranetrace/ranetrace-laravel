@@ -106,6 +106,7 @@ window.Ranetrace.addBreadcrumb('custom', 'User selected plan', {
 
 ### Key options
 
+- **`timeout`**: keep it at 8 seconds or more. The server takes up to 8 seconds over a batch, and a client that gives up sooner sends a batch again that the server already stored.
 - **`sample_rate`**: `1.0` captures 100% of errors, `0.1` captures 10%. Useful for high-traffic sites.
 - **`capture_console_errors`**: when `true`, intercepts `console.error()` calls and reports them.
 - **`max_breadcrumbs`**: maximum number of breadcrumbs stored per error (default: 20).
