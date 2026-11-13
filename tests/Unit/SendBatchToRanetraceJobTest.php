@@ -242,6 +242,28 @@ test('a 429 without Retry-After falls back to a 60-second pause, never 0', funct
         ->and($pauseManager->isFeaturePaused('events'))->toBeTrue();
 });
 
+/**
+ * Every non-200 carries `{"success": false, "error": {"message": ...}}`, the
+ * 401 of a rejected key and the 429 of the route throttle included. Its
+ * message is read for the diagnostics log only, so the log is where it has to
+ * arrive.
+ */
+test('the internal log carries the message of a 401 and a 429 error body', function (int $status, string $level, string $message): void {
+    Http::fake([
+        'api.ranetrace.com/*' => Http::response(['success' => false, 'error' => ['message' => $message]], $status),
+    ]);
+    app(RanetraceBatchBuffer::class)->addItem('events', ['event_name' => 'first']);
+
+    $logger = Mockery::mock(LoggerInterface::class)->shouldIgnoreMissing();
+    $logger->shouldReceive($level)->once()->with(Mockery::type('string'), Mockery::subset(['message' => $message]));
+    Log::shouldReceive('channel')->with('ranetrace_internal')->andReturn($logger);
+
+    runEventsBatchJob();
+})->with([
+    'a rejected key' => [401, 'error', 'Unauthenticated'],
+    'the route throttle' => [429, 'warning', 'Too many requests'],
+]);
+
 test('a 401 sets a global pause and re-buffers the whole batch', function (): void {
     Http::fake([
         'api.ranetrace.com/*' => Http::response(['error' => ['message' => 'invalid key']], 401),

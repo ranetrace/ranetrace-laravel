@@ -245,6 +245,7 @@ class SendBatchToRanetraceJob implements ShouldBeUnique, ShouldQueue
             429 => $this->logWarning('Rate limit exceeded', [
                 'type' => $this->type,
                 'retry_after' => $outcome->pauseSeconds,
+                'message' => ResponsePolicy::errorMessage($data, 'Too Many Requests'),
             ]),
             500 => $this->logError('Server error during batch processing', [
                 'type' => $this->type,
