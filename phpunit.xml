@@ -44,5 +44,7 @@
         <env name="RANETRACE_KEY" value="test-api-key-12345"/>
         <env name="DB_CONNECTION" value="sqlite"/>
         <env name="DB_DATABASE" value=":memory:"/>
+        <!-- Testbench's own default, pinned: a .env in its skeleton (vendor/orchestra/testbench-core/laravel), which a workbench command leaves behind, would otherwise pick the queue for the suite on that machine only. -->
+        <env name="QUEUE_CONNECTION" value="sync"/>
     </php>
 </phpunit>

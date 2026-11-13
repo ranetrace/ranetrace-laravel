@@ -29,6 +29,10 @@ function dispatchedTestJavaScriptError(): array
 
 beforeEach(function (): void {
     Bus::fake();
+    // The bus is faked, so no job runs. On a connection that runs a job at
+    // once the command counts what its own run buffered, finds nothing and
+    // fails, so these tests sit on one that hands the job to a worker.
+    Config::set('queue.default', 'database');
     Config::set('ranetrace.javascript_errors.enabled', true);
     Config::set('ranetrace.key', 'test-key');
 });

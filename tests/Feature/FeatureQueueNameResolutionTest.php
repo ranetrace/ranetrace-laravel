@@ -101,6 +101,9 @@ test('ranetrace:test names the connection default queue for an unset feature que
 
 test('ranetrace:test-javascript-errors names the connection default queue for an unset queue name', function (?string $unsetValue): void {
     Bus::fake();
+    // No job runs on the faked bus, so the command must not count what its
+    // own run buffered: it does on a connection that runs a job at once.
+    Config::set('queue.default', 'database');
     Config::set('ranetrace.javascript_errors.queue_name', $unsetValue);
 
     $this->artisan('ranetrace:test-javascript-errors')
