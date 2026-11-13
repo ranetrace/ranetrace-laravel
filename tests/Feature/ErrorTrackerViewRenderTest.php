@@ -16,12 +16,12 @@ beforeEach(function (): void {
 /**
  * What a rendered capture script is recognised by.
  *
- * Its header comment used to serve as this marker. `ranetrace/ranetrace-php`
- * ships the script minified now, so every comment and every local name in it is
- * gone: the marker has to be something minification keeps. This is the public API
- * the script hangs on `window`, which is a property path rather than a local
- * name, is unique to this script, and reads the same in the minified and the
- * unminified spelling, so it holds across the dependency bump too.
+ * `ranetrace/ranetrace-php` ships the script minified, so every comment and every
+ * local name in it is gone: the marker has to be something minification keeps.
+ * This is the public API the script hangs on `window`, which is a property path
+ * rather than a local name, is unique to this script, and reads the same in the
+ * minified and the unminified spelling, so it holds whichever of the two the
+ * resolved dependency ships.
  */
 function captureScriptMarker(): string
 {
@@ -60,7 +60,7 @@ function renderedTrackerConfig(string $html): array
 }
 
 test('error tracker view renders to valid output', function (): void {
-    // Regression guard: `view(...)` alone does not compile the Blade template;
+    // `view(...)` alone does not compile the Blade template;
     // only render() does. A directive/PHP syntax error in the view (e.g. the
     // un-compiled `<script@if` nonce conditional) surfaces here as a
     // ViewException and would 500 every host page using the snippet.
@@ -188,9 +188,9 @@ function renderedBeaconConfig(string $html): array
 /**
  * What a rendered beacon is recognised by.
  *
- * Its explanatory header used to serve as this marker. Those notes are Blade
- * comments now and never reach the page, so the marker is a line of the beacon's
- * own code instead: the visibility gate, which nothing else in this output has.
+ * The notes explaining the beacon are Blade comments and never reach the page,
+ * so the marker is a line of the beacon's own code: the visibility gate, which
+ * nothing else in this output has.
  */
 function beaconMarker(): string
 {
@@ -405,9 +405,9 @@ test('the error tracker view adds no comments of its own around the shared scrip
 
 /**
  * The stronger form of the guard above: with the shared script minified, the
- * directive ships no comment at all, from either view. Some 9 KB of the notes
- * explaining the capture script used to be downloaded by every visitor of every
- * site that installs the package.
+ * directive ships no comment at all, from either view. Shipped, the notes
+ * explaining the capture script would be some 9 KB downloaded by every visitor of
+ * every site that installs the package.
  *
  * It skips while the resolved `ranetrace/ranetrace-php` predates the minified
  * twin, because until then the script really does carry its comments and this

@@ -126,11 +126,10 @@ test('every field the endpoint requires is emitted and not null', function (stri
 })->with(WireContract::itemTypes());
 
 /**
- * The legacy spelling is tolerated at ingest only so already-deployed Laravel
- * SDK versions keep reporting. This SDK emitting it anywhere, at the top level
- * or nested inside a log's free-shape `extra`, is what keeps that compatibility
- * branch on the backend alive, so the check walks the whole payload rather than
- * only its top level.
+ * The ingest refuses an error item carrying the retired key, and a log's `extra`
+ * carries the generic framework pair in its place. This SDK must not emit it
+ * anywhere, at the top level or nested inside a log's free-shape `extra`, so the
+ * check walks the whole payload rather than only its top level.
  */
 test('no emitted payload carries the legacy laravel_version key at any depth', function (): void {
     $found = [];

@@ -251,7 +251,7 @@ test('it keeps throttling across a minute boundary within the throttle window', 
     Bus::assertDispatchedTimes(HandlePageVisitJob::class, 1);
 
     // 30s later, now in the NEXT minute, but still inside the 120s window.
-    // The old per-minute key bucket would have reset and dispatched again.
+    // A per-minute key bucket would reset here and dispatch again.
     $this->travelTo(Carbon::create(2026, 1, 1, 10, 1, 20));
     $this->withHeaders($headers)->get('/test-page');
     Bus::assertDispatchedTimes(HandlePageVisitJob::class, 1);

@@ -85,17 +85,17 @@ test('a capture job allow-lists exactly the fields its endpoint declares', funct
 })->with(contractCaptureJobs());
 
 /**
- * The generic `framework` / `framework_version` pair replaced it. The endpoint
- * still tolerates the old spelling, but only for Laravel SDK versions already
- * deployed: keeping it on the allow-list here would keep that compatibility
- * branch alive on the backend forever.
+ * The generic `framework` / `framework_version` pair carries the framework
+ * identity. The ingest refuses an error item carrying the retired key, so
+ * keeping it on the allow-list here would let such an item through to be
+ * refused.
  */
 test('the error allow-list has retired the legacy laravel_version key', function (): void {
     $allowed = contractCaptureJobAllowedKeys(HandleErrorJob::class);
 
-    // Older fixture versions listed the retired spelling under legacy_fields;
-    // the key is gone from the contract since the ingest dropped it, so the
-    // name is pinned here as well rather than read from the fixture.
+    // The fixture carries no legacy_fields block, so the retired name is pinned
+    // here rather than read from it; a spelling a fixture lists under
+    // legacy_fields is kept off the allow-list too.
     $legacy = array_keys(WireContract::item('errors')['legacy_fields'] ?? []);
 
     expect($allowed)

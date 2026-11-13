@@ -260,20 +260,20 @@ class HumanProbabilityScorer
      * the same IP inside one fixed one-minute window, which puts the penalty
      * on the 12th request of a window and every one after it.
      *
-     * The window is fixed from its first request. It used to slide: every
-     * request rewrote the counter with a fresh one-minute expiry, so the count
-     * only reset after a full quiet minute, and an IP that kept coming back at
-     * least once a minute took the penalty on every request after its eleventh
-     * forever. That pushed browsers with weaker signals (no Sec-Fetch, no
-     * cookie on a first view, no Sec-CH-UA outside Chromium) under the
-     * `min_human_score` floor, worst on a shared IP where many people add up.
+     * The window is fixed from its first request, not sliding. A counter given
+     * a fresh one-minute expiry on every request only resets after a full
+     * quiet minute, so an IP that keeps coming back at least once a minute
+     * would take the penalty on every request after its eleventh, forever.
+     * That pushes browsers with weaker signals (no Sec-Fetch, no cookie on a
+     * first view, no Sec-CH-UA outside Chromium) under the `min_human_score`
+     * floor, worst on a shared IP where many people add up.
      *
      * `add()` is an atomic put-if-absent and sets the expiry once, when the
      * window opens; `increment()` is atomic and leaves the expiry alone on the
      * stores Laravel ships (array and database update the value only, redis
      * and memcached keep the key's TTL, the file store rewrites the payload
-     * with its remaining seconds). That replaces the old get-then-put, which
-     * also lost counts to concurrent requests.
+     * with its remaining seconds). A get-then-put would also lose counts to
+     * concurrent requests.
      */
     protected function scoreRequestFrequency(Request $request, int $score): int
     {

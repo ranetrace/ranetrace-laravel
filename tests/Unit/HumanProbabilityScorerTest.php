@@ -179,10 +179,10 @@ test('it never writes to the host session', function (): void {
 
 /*
  * The request-frequency penalty is meant for more than 10 requests from one IP
- * within one minute. Every request used to rewrite the counter with a fresh
- * one-minute expiry, so the count only reset after a full quiet minute: an IP
- * that kept coming back at least once a minute took the penalty on every
- * request after its eleventh, which drops real visitors on a shared IP.
+ * within one minute. A counter given a fresh one-minute expiry on every request
+ * only resets after a full quiet minute: an IP that keeps coming back at least
+ * once a minute would take the penalty on every request after its eleventh,
+ * which drops real visitors on a shared IP.
  */
 
 /**

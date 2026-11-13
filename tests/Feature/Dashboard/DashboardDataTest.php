@@ -67,7 +67,7 @@ test('a numeric-string last-batch timestamp (Redis-style) counts as a recent dra
 
 test('a buffer left alone for hours is still reported as stalled, with its items dated when they were captured', function (): void {
     // The worker stopped right after its last drain: nothing drains the buffer
-    // and nothing writes to it, which is when an expiring buffer used to vanish
+    // and nothing writes to it, which is when a buffer that expires would vanish
     // and take the stalled signal with it.
     $this->freezeTime();
     $capturedAt = now()->timestamp;

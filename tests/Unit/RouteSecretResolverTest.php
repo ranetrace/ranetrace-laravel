@@ -66,9 +66,9 @@ test('forUrl never throws on a malformed url', function (): void {
 });
 
 test('resolving a foreign url leaves the current request route binding intact', function (): void {
-    // Regression guard for the reason forUrl() binds a CLONE: routes are shared
-    // singletons, so binding the route object the current request is using would
-    // hand the host application the foreign URL's parameters instead of its own.
+    // forUrl() binds a CLONE: routes are shared singletons, so binding the route
+    // object the current request is using would hand the host application the
+    // foreign URL's parameters instead of its own.
     Route::get('/password-reset/{token}', function (string $token): string {
         RouteSecretResolver::forUrl('http://localhost/password-reset/someone-elses-token');
 

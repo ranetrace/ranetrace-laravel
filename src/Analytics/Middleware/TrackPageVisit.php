@@ -265,13 +265,13 @@ class TrackPageVisit
         // cap it at ~60s).
         // The collector reports a decoded path, which is what makes this key
         // sound: `/login`, `/%6Cogin` and `/%6cogin` all route to the same
-        // handler and now share ONE bucket, where keying on the raw request
-        // line handed an attacker an unlimited supply of distinct keys for a
+        // handler and share ONE bucket, where keying on the raw request line
+        // would hand an attacker an unlimited supply of distinct keys for a
         // single URL.
         // The user-agent hash separates devices behind one IP: an office or a
-        // mobile carrier's NAT puts many people on one address, and keying on
-        // IP + path alone counted everyone opening the same page within the
-        // window as one visit. One device reloading still sends the same user
+        // mobile carrier's NAT puts many people on one address, and keyed on
+        // IP + path alone, everyone opening the same page within the window
+        // would count as one visit. One device reloading still sends the same user
         // agent, so a reload still counts once. The collector's salted hash is
         // reused rather than the raw header being hashed again here.
         $cacheKey = 'ranetrace:visit:'.md5(

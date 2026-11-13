@@ -14,10 +14,9 @@
     the directive needs nothing but the env var.
 
     The browser capture script is NOT in this file. It lives once, in
-    `ranetrace/ranetrace-php`, and both SDKs render it from there. It used to live
-    here too, inline and byte-identical for some 370 lines, and because each SDK's
-    relay validates exactly what its own copy sent, a fix applied to one copy
-    silently stranded the other.
+    `ranetrace/ranetrace-php`, and both SDKs render it from there: each SDK's
+    relay validates exactly what the script sends, so with a second copy a fix
+    applied to one would silently strand the other.
 
     That package ships the script as a pair: `resources/js/error-tracker.js` is
     the readable source and the file to change, `resources/js/error-tracker.min.js`

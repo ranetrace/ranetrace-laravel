@@ -15,11 +15,11 @@ use Throwable;
  * Resolves the secret-bearing values inside a URL's PATH, using the host
  * application's routes as the oracle.
  *
- * This is what Laravel adds to the shared scrubber and the reason this class
- * stayed behind when `Utilities\SecretScrubber` was deleted: a path segment
- * carries no marker saying "this is a token", only the route definition knows,
- * because it named the segment `{token}`, `{hash}` or `{invitation:token}`, and
- * a framework-agnostic library has no router to ask. Three situations exist:
+ * This is what Laravel adds to the shared scrubber, and why it lives in this
+ * package rather than in the shared one: a path segment carries no marker
+ * saying "this is a token", only the route definition knows, because it named
+ * the segment `{token}`, `{hash}` or `{invitation:token}`, and a
+ * framework-agnostic library has no router to ask. Three situations exist:
  *
  * - {@see forRequest()}: the URL belongs to the request being handled, so the
  *   router already resolved and bound its route. Free, and the only lookup that

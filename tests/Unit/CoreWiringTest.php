@@ -40,8 +40,8 @@ test('a config change between captures is picked up, because the scrubber is bui
 });
 
 test('the fingerprint salt falls back to the ranetrace api key, not the application key', function (): void {
-    // It used to fall back to `app.key`. Both SDKs now salt with the API key,
-    // so the same visitor hashes the same way whichever SDK observed them.
+    // Both SDKs salt with the API key, so the same visitor hashes the same way
+    // whichever SDK observed them.
     config([
         'ranetrace.fingerprint_salt' => null,
         'ranetrace.key' => 'rt-key-for-salting',

@@ -16,9 +16,9 @@ use Ranetrace\Laravel\Services\RanetracePauseManager;
 /*
  * A float JSON has no spelling for (INF, -INF, NAN) reaches a log record's
  * context through Monolog, which takes anything. The cache buffer does not
- * encode, so such an item used to get in, fail the JSON encode of its whole
- * batch at send, and hold up to a thousand good items through the retries and
- * the pause that followed. These tests follow it from the log call to the
+ * encode, so such an item let in as it is would fail the JSON encode of its
+ * whole batch at send and hold up to a thousand good items through the retries
+ * and the pause that follow. These tests follow it from the log call to the
  * request body, and pin that an item already in the buffer that cannot be
  * encoded is dropped at send rather than holding up its batch.
  */

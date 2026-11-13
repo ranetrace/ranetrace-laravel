@@ -305,8 +305,8 @@ test('it rejects a non-numeric browser_info dimension', function (): void {
 });
 
 test('it scrubs a sensitive path segment inside breadcrumb and context URLs', function (): void {
-    // The top-level `url` was already path-redacted; the same reset link copied
-    // into a navigation breadcrumb or into context used to ship the live token.
+    // The top-level `url` is path-redacted, and the same reset link copied into
+    // a navigation breadcrumb or into context has to lose its token as well.
     Route::get('/reset-password/{token}', fn (): string => 'reset');
 
     $this->postJson(route('ranetrace.javascript-errors.store'), [
@@ -405,7 +405,7 @@ test('it scrubs a stringified rejection object in the message', function (): voi
 
 test('it accepts an explicit null breadcrumbs value', function (): void {
     // `nullable|array` permits null, and input()'s default does not replace a
-    // stored null. Passing it on used to raise a TypeError and a 500.
+    // stored null. Passed on as it is, it would raise a TypeError and a 500.
     $response = $this->postJson(route('ranetrace.javascript-errors.store'), [
         'message' => 'Test error',
         'url' => 'https://example.com/',

@@ -13,9 +13,8 @@ use Ranetrace\Laravel\Services\RanetraceBatchBuffer;
  * refuses to compile is thrown from inside the scrubber. Here the cause is a
  * list of `scrubbing.extra_keys` too long for one pattern, which a host can
  * write into its own config. The capture must still arrive, with the strings
- * the scrubber could not read replaced by the placeholder: before, the log
- * record and the error report were dropped and the browser got a 500, with
- * nothing to show for it but a line in the internal log.
+ * the scrubber could not read replaced by the placeholder, not dropped with a
+ * 500 for the browser and nothing to show for it but a line in the internal log.
  *
  * Nothing is faked: the capture runs inline under the application's own error
  * handler, into the array buffer.

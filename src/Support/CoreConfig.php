@@ -26,8 +26,7 @@ use Throwable;
 final class CoreConfig
 {
     /**
-     * The `framework` half of the pair the error and log payloads carry. Its
-     * introduction is what retired the old `laravel_version` key.
+     * The `framework` half of the pair the error and log payloads carry.
      */
     public const string FRAMEWORK = 'laravel';
 

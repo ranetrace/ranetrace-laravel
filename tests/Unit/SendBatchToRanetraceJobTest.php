@@ -238,7 +238,6 @@ test('a 429 without Retry-After falls back to a 60-second pause, never 0', funct
 
     $pause = $pauseManager->getFeaturePause('events');
 
-    // Regression guard: an absent Retry-After previously produced a 0-second pause.
     expect(Carbon::parse($pause['paused_until'])->timestamp - now()->timestamp)->toBe(60)
         ->and($pauseManager->isFeaturePaused('events'))->toBeTrue();
 });
