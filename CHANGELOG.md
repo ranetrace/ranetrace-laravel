@@ -6,7 +6,7 @@ This file starts at 1.0.0. The package was re-versioned to share a major with `r
 
 ## [Unreleased]
 
-Requires `ranetrace/ranetrace-php` 1.2.2 or later: the three entries under Fixed are changes in the shared core's secret scrubber, and the console event below needs that release's event builder.
+Requires `ranetrace/ranetrace-php` 1.3.0 or later: the three entries under Fixed are changes in the shared core's secret scrubber, and the console event below needs that release's event builder.
 
 ### Changed
 - **The feature test commands ask for a feature flag in the same words as for the key.** Since 1.3.0 every text that asks for `RANETRACE_KEY` says where it goes: the environment that reports to Ranetrace, which on a server is its `.env`. The sentences that ask for a flag still said "in your .env file", so one command's output said two things. `ranetrace:test`, `ranetrace:test-errors`, `ranetrace:test-events`, `ranetrace:test-logging`, `ranetrace:test-analytics` and `ranetrace:test-javascript-errors` now say, for example, "Set RANETRACE_ERRORS_ENABLED=true in the environment that reports to Ranetrace (on a server, in its .env)"
