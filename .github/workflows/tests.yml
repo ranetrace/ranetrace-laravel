@@ -35,6 +35,14 @@ jobs:
           extensions: mbstring, dom, curl, libxml, fileinfo, intl
           coverage: none
 
+      - name: Link PHP 8.4 to Ubuntu's own PCRE2
+        # setup-php installs PHP together with a current libpcre2. Production PHP often links the older one its distribution ships, so this leg goes back to Ubuntu's package.
+        if: matrix.php == '8.4'
+        run: |
+          sudo apt-get update --quiet
+          version=$(apt-cache madison libpcre2-8-0 | awk '$3 ~ /^10\.42/ { print $3; exit }')
+          sudo apt-get install --yes --allow-downgrades "libpcre2-8-0=${version}"
+
       - name: Require PCRE2 older than 10.43 on PHP 8.4
         # Production PHP often links the system PCRE2; this leg keeps patterns that need 10.43+ (variable-length lookbehind) failing here first.
         if: matrix.php == '8.4'
