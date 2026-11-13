@@ -36,12 +36,18 @@ jobs:
           coverage: none
 
       - name: Link PHP 8.4 to Ubuntu's own PCRE2
-        # setup-php installs PHP together with a current libpcre2. Production PHP often links the older one its distribution ships, so this leg goes back to Ubuntu's package.
+        # setup-php unpacks PHP together with a current libpcre2, as a file beside the one Ubuntu's package owns. Production PHP often links the older one its distribution ships, so this leg removes the newer file and loads Ubuntu's again.
         if: matrix.php == '8.4'
         run: |
-          sudo apt-get update --quiet
-          version=$(apt-cache madison libpcre2-8-0 | awk '$3 ~ /^10\.42/ { print $3; exit }')
-          sudo apt-get install --yes --allow-downgrades "libpcre2-8-0=${version}"
+          library=/usr/lib/x86_64-linux-gnu
+          owned=$(dpkg --listfiles libpcre2-8-0 | grep 'libpcre2-8\.so\.0\.')
+          # The link moves first: sudo loads this library itself.
+          sudo ln --symbolic --force "$(basename "$owned")" "$library/libpcre2-8.so.0"
+          for file in "$library"/libpcre2-8.so.0.*; do
+            [ "$file" = "$owned" ] || sudo rm --verbose "$file"
+          done
+          sudo ldconfig
+          ls -l "$library"/libpcre2-8.so.0*
 
       - name: Require PCRE2 older than 10.43 on PHP 8.4
         # Production PHP often links the system PCRE2; this leg keeps patterns that need 10.43+ (variable-length lookbehind) failing here first.
