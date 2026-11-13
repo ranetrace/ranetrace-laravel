@@ -8,6 +8,7 @@ use Carbon\Carbon;
 use Illuminate\Contracts\Cache\Repository;
 use Illuminate\Support\Facades\Cache;
 use Ranetrace\Laravel\Support\BatchConfig;
+use Throwable;
 
 class RanetracePauseManager
 {
@@ -61,15 +62,7 @@ class RanetracePauseManager
      */
     public function isGloballyPaused(): bool
     {
-        $pauseData = $this->store()->get(self::GLOBAL_PAUSE_KEY);
-
-        if (! $pauseData) {
-            return false;
-        }
-
-        $pausedUntil = Carbon::parse($pauseData['paused_until']);
-
-        return Carbon::now()->lessThan($pausedUntil);
+        return $this->isActive($this->getGlobalPause());
     }
 
     /**
@@ -77,15 +70,7 @@ class RanetracePauseManager
      */
     public function isFeaturePaused(string $feature): bool
     {
-        $pauseData = $this->store()->get($this->getFeaturePauseKey($feature));
-
-        if (! $pauseData) {
-            return false;
-        }
-
-        $pausedUntil = Carbon::parse($pauseData['paused_until']);
-
-        return Carbon::now()->lessThan($pausedUntil);
+        return $this->isActive($this->getFeaturePause($feature));
     }
 
     /**
@@ -125,10 +110,12 @@ class RanetracePauseManager
     }
 
     /**
-     * A stored pause with its reason as a string. This class only writes
-     * strings, but the entry sits in a cache other writers can reach, and
-     * every reader prints the reason or matches on it: a reason that is not
-     * a scalar reads as `''`, the reason nothing is known about.
+     * A stored pause, in the shape every reader counts on. This class only
+     * writes that shape, but the entry sits in a cache other writers can
+     * reach. An entry that does not say when it ends reads as no pause: held
+     * as one, it would stop every send until someone cleared it by hand.
+     * Every reader prints the reason or matches on it, so a reason that is
+     * not a scalar reads as `''`, the reason nothing is known about.
      *
      * @return array{paused_until: string, reason: string}|null
      */
@@ -136,13 +123,39 @@ class RanetracePauseManager
     {
         $pause = $this->store()->get($key);
 
-        if (! is_array($pause)) {
+        if (! is_array($pause) || $this->endOf($pause['paused_until'] ?? null) === null) {
             return null;
         }
 
-        $pause['reason'] = is_scalar($pause['reason'] ?? null) ? (string) $pause['reason'] : '';
+        return [
+            ...$pause,
+            'reason' => is_scalar($pause['reason'] ?? null) ? (string) $pause['reason'] : '',
+        ];
+    }
 
-        return $pause;
+    /**
+     * @param  array{paused_until: string, reason: string}|null  $pause
+     */
+    protected function isActive(?array $pause): bool
+    {
+        return $pause !== null && Carbon::now()->lessThan($this->endOf($pause['paused_until']));
+    }
+
+    /**
+     * The moment a stored `paused_until` names, or null when it names none.
+     * Carbon reads an empty string as now, which is no end either.
+     */
+    protected function endOf(mixed $pausedUntil): ?Carbon
+    {
+        if (! is_string($pausedUntil) || mb_trim($pausedUntil) === '') {
+            return null;
+        }
+
+        try {
+            return Carbon::parse($pausedUntil);
+        } catch (Throwable) {
+            return null;
+        }
     }
 
     /**

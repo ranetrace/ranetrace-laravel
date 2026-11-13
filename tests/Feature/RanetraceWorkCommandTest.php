@@ -35,6 +35,27 @@ test('ranetrace:work fails cleanly when the cache backend is unavailable', funct
     $this->artisan('ranetrace:work')->assertFailed();
 });
 
+test('ranetrace:work sends past a pause entry that does not say when it ends', function (mixed $entry): void {
+    // The pause store only writes well-formed entries, so this takes one
+    // another writer or a damaged cache left behind. Read as a pause, or as a
+    // reason to stop, it would hold every run back until someone clears it.
+    Bus::fake();
+    Config::set('ranetrace.key', 'test-key');
+    Cache::store('array')->forever('ranetrace.global.pause', $entry);
+    Cache::store('array')->forever('ranetrace.feature.events.pause', $entry);
+    app(RanetraceBatchBuffer::class)->addItem('events', ['event_name' => 'e1']);
+
+    $this->artisan('ranetrace:work')
+        ->expectsOutputToContain('Dispatched batch job for events: 1 items')
+        ->assertSuccessful();
+
+    Bus::assertDispatched(SendBatchToRanetraceJob::class);
+})->with([
+    'not an array' => ['paused'],
+    'an array without paused_until' => [['reason' => '429']],
+    'a paused_until that is no date' => [['paused_until' => 'not a date', 'reason' => '429']],
+]);
+
 test('without an ingest key ranetrace:work dispatches nothing, names what waits in the buffer and fails', function (?string $key): void {
     Bus::fake();
     Config::set('ranetrace.key', $key);
