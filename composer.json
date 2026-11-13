@@ -46,9 +46,6 @@
         }
     },
     "scripts": {
-        "post-update-cmd": [
-            "@php artisan boost:update --ansi"
-        ],
         "analyse": "vendor/bin/phpstan analyse",
         "test": "vendor/bin/pest --exclude-testsuite=Browser",
         "test-fast": "vendor/bin/pest --parallel --tia --exclude-testsuite=Browser",
