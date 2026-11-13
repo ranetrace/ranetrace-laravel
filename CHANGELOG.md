@@ -6,6 +6,8 @@ This file starts at 1.0.0. The package was re-versioned to share a major with `r
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-11-13
+
 Requires `ranetrace/ranetrace-php` 1.4.0 or later: the event id and the JavaScript error id below are made by that release's item builders.
 
 ### Added
