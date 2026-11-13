@@ -166,3 +166,17 @@ test('path and query secrets are both redacted in the same url', function () use
         ->and($data['url'])->toBe('http://localhost/invitations/[REDACTED]?page=2&token=[REDACTED]')
         ->and($data['url'])->not->toContain('dual-secret');
 });
+
+test('a prefixed token written percent-encoded is redacted in the url, the path and the referrer of a visit', function () use ($browserHeaders, $visitData): void {
+    $encodedKey = implode('', ['sk%5Flive', '%5F51HabcDEF0123456789']);
+
+    $this->withHeaders($browserHeaders + ['Referer' => 'http://localhost/articles/first?ref='.$encodedKey])
+        ->get('/articles/'.$encodedKey.'?next=https%3A%2F%2Fapp.test%2Fkeys%2Fsk_live_51HabcDEF0123456789')
+        ->assertSuccessful();
+
+    $data = $visitData();
+
+    expect($data['url'])->toBe('http://localhost/articles/[REDACTED]?next=https%3A%2F%2Fapp.test%2Fkeys%2F[REDACTED]')
+        ->and($data['path'])->toBe('/articles/[REDACTED]')
+        ->and($data['referrer'])->toBe('http://localhost/articles/first?ref=[REDACTED]');
+});

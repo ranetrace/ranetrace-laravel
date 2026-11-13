@@ -37,12 +37,12 @@ try {
 ## What gets captured
 
 Each error report includes:
-- Exception message (key=value secrets redacted, and URL passwords and credential-prefixed tokens such as `sk_live_...` or a JWT by their value), type, file, and line number
+- Exception message (key=value secrets redacted, and by their value: URL passwords, credential-prefixed tokens such as `sk_live_...` or a JWT, a Telegram bot token as in `https://api.telegram.org/bot[REDACTED]/sendMessage`, and the secret part of a Slack or Discord webhook URL), type, file, and line number
 - Stack trace as text (truncated to 5000 chars; secrets redacted as in the message)
 - Stack frames (up to 50 per trace, the middle dropped first and counted): file, line, class and function, never argument values
 - Source lines (5 lines before and after the error line, and around each frame in the app's own code; secret-scrubbed, each line length-capped; the literals passed to a known credential-taking call such as `new PDO(...)` are redacted, while a credential passed by position to any other call, such as `connect($host, 'root', 'hunter2')`, is not caught). Vendor frames carry none. A frame in a compiled Blade view shows the template's path, line and lines, while the error's own file and line stay the compiled view's, which keeps existing error groups whole. `RANETRACE_ERRORS_CAPTURE_SOURCE=false` (`ranetrace.errors.capture_source`) keeps every source line in the app, the error line's included
 - Previous exceptions (up to 5, nearest first), each with its message, throw site, source lines and frames
-- The exception's own `context()` array, when it has one (secrets masked by key, and URL passwords and credential-prefixed tokens by value; bounded in keys, depth and size)
+- The exception's own `context()` array, when it has one (secrets masked by key, and the same secrets as in the message by value; bounded in keys, depth and size)
 - HTTP request data (URL with sensitive query params redacted, method, allowlisted headers only; the client IP / `x-forwarded-for` is masked, not captured)
 - Authenticated user ID (email only when `ranetrace.errors.capture_user_email` is enabled; off by default)
 - PHP and Laravel versions
