@@ -162,7 +162,7 @@ test('an item still unencodable after the shrink pass is dropped and logged, nev
 });
 
 /**
- * A 23-key error item whose structured frames carry `$lineLength`-character
+ * A 24-key error item whose structured frames carry `$lineLength`-character
  * source lines, with `$previousCount` previous exceptions of their own frames.
  *
  * @return array<string, mixed>
@@ -182,6 +182,7 @@ function errorItemWithFrames(int $lineLength, int $previousCount = 2, string $tr
     ], range(0, 49));
 
     return [
+        'id' => '8b3e6d14-2c7a-4f95-b0d1-6e4a9c2f7b38',
         'message' => 'Call to a member function diffInSeconds() on string',
         'file' => 'storage/framework/views/abc.php',
         'line' => 4,

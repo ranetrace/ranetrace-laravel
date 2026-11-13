@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Illuminate\Http\Request;
 use Illuminate\Routing\Route;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
@@ -13,6 +14,7 @@ use Ranetrace\Laravel\Events\EventTracker;
 use Ranetrace\Laravel\Jobs\HandleErrorJob;
 use Ranetrace\Laravel\Jobs\HandleEventJob;
 use Ranetrace\Laravel\Ranetrace;
+use Ranetrace\Laravel\Services\RanetraceBatchBuffer;
 
 beforeEach(function (): void {
     Queue::fake();
@@ -251,10 +253,54 @@ test('error payload has no `console_options` field', function (): void {
     expect($payload)->not->toHaveKey('console_options');
 });
 
-test('error payload has exactly 23 fields', function (): void {
+test('error payload has exactly 24 fields', function (): void {
     $payload = invokeBuildErrorPayload(new RuntimeException('boom'));
 
-    expect(count($payload))->toBe(23);
+    expect(count($payload))->toBe(24);
+});
+
+/**
+ * The API reads two error items with one id as one report sent twice. The id
+ * is made when the error is captured, before the queue, so a job the queue runs
+ * twice buffers one id twice and the API counts one occurrence, while the same
+ * exception reported twice is two occurrences.
+ */
+test('two errors reported alike in every field each carry their own uuid', function (): void {
+    $exception = new RuntimeException('boom');
+
+    (new Ranetrace)->report($exception);
+    (new Ranetrace)->report($exception);
+
+    $ids = Queue::pushed(HandleErrorJob::class)
+        ->map(fn (HandleErrorJob $job): mixed => ((array) $job->bufferedItem())['id'] ?? null)
+        ->all();
+
+    expect($ids)->toHaveCount(2)
+        ->and($ids[0])->toMatch('/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/D')
+        ->and($ids[1])->toMatch('/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/D')
+        ->and($ids[1])->not->toBe($ids[0]);
+});
+
+test('an error job that runs twice buffers the error with the id its capture made both times', function (): void {
+    Config::set('ranetrace.batch.cache_driver', 'array');
+    Cache::store('array')->flush();
+
+    (new Ranetrace)->report(new RuntimeException('boom'));
+
+    $job = Queue::pushed(HandleErrorJob::class)->first();
+    $capturedId = (new ReflectionProperty($job, 'errorData'))->getValue($job)['id'];
+    $buffer = app(RanetraceBatchBuffer::class);
+
+    $job->handle($buffer);
+    $job->handle($buffer);
+
+    $buffered = $buffer->getItems('errors', 10);
+
+    expect($buffered)->toHaveCount(2)
+        ->and($capturedId)->toBeString()->not->toBe('')
+        ->and($buffered[0]['data']['id'])->toBe($capturedId)
+        ->and($buffered[1]['data']['id'])->toBe($capturedId)
+        ->and($buffered[1]['id'])->not->toBe($buffered[0]['id']);
 });
 
 test('error payload sends the generic framework pair instead of laravel_version', function (): void {

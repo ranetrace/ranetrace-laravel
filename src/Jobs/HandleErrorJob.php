@@ -44,6 +44,7 @@ class HandleErrorJob extends BaseRanetraceJob
     protected function getAllowedKeys(): array
     {
         return [
+            'id',
             'message',
             'file',
             'line',

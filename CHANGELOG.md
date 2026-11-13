@@ -6,6 +6,11 @@ This file starts at 1.0.0. The package was re-versioned to share a major with `r
 
 ## [Unreleased]
 
+Needs the next `ranetrace/ranetrace-php` release: the error id below is made by that release's error builder, and the version constraint moves to it when it is tagged.
+
+### Added
+- **Every error report carries an id of its own, so a batch that is sent again does not count an occurrence twice.** A batch whose answer is lost on the way is kept and sent again 60 to 900 seconds later. The API counts an error report as an occurrence even when it does not store it, so it has to recognise a report it has already handled, and it can only do that when the report carries an id. Each error report now carries `id`, a random UUID made when the error is reported, before it is queued. A queue that runs the capture job twice, a put-back into the buffer and every later send all carry that one id. The API holds it for 30 minutes: the same id again is one report sent twice and is ignored, and the same exception reported twice is two occurrences. `HandleErrorJob` allows the key. **This release must wait for the backend.** The errors endpoint allow-lists its fields, so until it accepts `id` it refuses every error report that carries the key, and a refused report is not sent again
+
 ## [1.5.0] - 2026-11-13
 
 Requires `ranetrace/ranetrace-php` 1.4.0 or later: the event id and the JavaScript error id below are made by that release's item builders.

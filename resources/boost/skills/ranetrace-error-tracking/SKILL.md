@@ -48,6 +48,7 @@ Each error report includes:
 - PHP and Laravel versions
 - Environment name
 - Console command details (for CLI errors)
+- An id of its own, made when the error is reported, before it is queued. Ranetrace counts a report once even when the batch it travels in is sent twice, and counts the same exception reported twice as two occurrences
 
 Every file path is sent relative to the application's base path, and the base path is taken off the paths inside the message, the text trace, the source lines, the console command and the `context()` array too: a view error ends in `(View: resources/views/profile.blade.php)`, not in the server's absolute path. The base path named on its own arrives as `[project root]`.
 
