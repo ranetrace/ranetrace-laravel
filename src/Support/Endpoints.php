@@ -10,11 +10,11 @@ use Ranetrace\Php\Http\EndpointTable;
 /**
  * Where each capture type's batch goes, for this SDK.
  *
- * The four contracted types come from `ranetrace/ranetrace-php` so the paths,
- * the wrapper keys and the User-Agent format cannot drift between the two SDKs.
- * `page_visits` is appended here because website analytics is a Laravel-only
- * feature: it is not in the shared wire contract, and putting it in the shared
- * table would claim a capability the PHP SDK does not have.
+ * The four types both SDKs send come from `ranetrace/ranetrace-php` so the
+ * paths, the wrapper keys and the User-Agent format cannot drift between the two
+ * SDKs. `page_visits` is appended here because website analytics is a
+ * Laravel-only feature: the shared wire contract describes the item, and putting
+ * it in the shared table would claim a capability the PHP SDK does not have.
  */
 final class Endpoints
 {

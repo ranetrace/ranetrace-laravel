@@ -43,7 +43,7 @@ const CONTRACT_TRANSPORT_HEADERS = ['Host', 'Content-Length'];
 /**
  * The `{Feature}` segment of the User-Agent, per item type.
  *
- * headers.json describes the format and names the four features in prose
+ * headers.json describes the format and names the five features in prose
  * rather than as a machine-readable map, and no casing rule turns
  * `javascript_errors` into `JavaScriptErrors`, so the mapping is spelled out
  * here and the surrounding format is taken from the fixture.
@@ -55,6 +55,7 @@ const CONTRACT_USER_AGENT_FEATURES = [
     'events' => 'Events',
     'logs' => 'Logs',
     'javascript_errors' => 'JavaScriptErrors',
+    'page_visits' => 'PageVisits',
 ];
 
 /**
@@ -117,7 +118,7 @@ test('a batch goes to the path the contract names for its type', function (strin
     $baseUrl = WireContract::endpoints()['base_url_default'];
 
     expect(contractSentBatchRequest($type)->url())->toBe($baseUrl.$endpoint['path']);
-})->with(WireContract::itemTypes());
+})->with(WireContract::describedItemTypes());
 
 test('a batch body is a single wrapper key holding a plain array of items', function (string $type): void {
     $wrapper = WireContract::endpoints()['endpoints'][$type]['wrapper'];
@@ -127,7 +128,7 @@ test('a batch body is a single wrapper key holding a plain array of items', func
         ->and(array_keys($body))->toBe([$wrapper])
         ->and($body[$wrapper])->toBeArray()
         ->and(array_keys($body[$wrapper]))->toBe([0]);
-})->with(WireContract::itemTypes());
+})->with(WireContract::describedItemTypes());
 
 test('a batch travels with exactly the five contracted headers', function (string $type): void {
     $contract = WireContract::headers();
@@ -146,7 +147,7 @@ test('a batch travels with exactly the five contracted headers', function (strin
         ->and($sent['Ranetrace-API-Version'])->toBe($contract['api_version'])
         ->and($sent['Authorization'])->toBe(str_replace('{api key}', 'test-api-key-12345', $contract['request']['Authorization']['format']))
         ->and($sent['User-Agent'])->toBe($userAgent);
-})->with(WireContract::itemTypes());
+})->with(WireContract::describedItemTypes());
 
 test('the batch budgets equal the envelope contract', function (): void {
     $envelope = WireContract::envelope();

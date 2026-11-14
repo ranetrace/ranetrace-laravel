@@ -20,7 +20,10 @@ use Ranetrace\Php\Support\Utf8;
 class VisitDataCollector
 {
     /**
-     * Maximum length kept for a visitor-supplied campaign parameter.
+     * The longest campaign parameter the page visits endpoint takes, in
+     * characters. This and the two limits below are the `max` of their fields
+     * in `contract/items/page_visits.json` of `ranetrace/ranetrace-php`, and
+     * `tests/Contract/PageVisitConformsTest.php` holds each cut to that file.
      */
     private const int MAX_UTM_LENGTH = 255;
 
