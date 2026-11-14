@@ -6,6 +6,8 @@ This file starts at 1.0.0. The package was re-versioned to share a major with `r
 
 ## [Unreleased]
 
+Requires `ranetrace/ranetrace-php` 1.6.0 or later: the entries below about cut strings, the environment name, the breadcrumb message and the redacted tokens are changes in the shared core, and the contract tests read that release's page visit fixture.
+
 ### Changed
 - **A page visit whose path or referrer is over the endpoint's limit is cut to fit, where it was refused and lost.** The page visits endpoint takes a `path` of at most 1,024 characters and a `referrer` of at most 2,048, and refuses a visit past either. A refused visit is counted `failed`, which is final. A referrer that long is ordinary: a search result, an OAuth redirect, a link with a tracking query. `Analytics\VisitDataCollector` now cuts both to their first characters, counted as the endpoint counts them, after the secret scrub, so a redaction that lengthens the value cannot push it over. A visit within both limits is sent exactly as before. Nothing to do on upgrade
 - **A string field over its endpoint's limit is cut to fit, where the whole item was refused and lost.** The shared item builders of `ranetrace/ranetrace-php` now hold every string to the limit its endpoint holds, after the secret scrub. An error's `console_command` is cut to 1,000 characters, so a queue worker or a scheduled command started with a longer command line no longer has every error it reports refused. A JavaScript error's `message`, `url` and `stack` are cut after the scrub, which can lengthen them, as are its `type`, `filename` and each breadcrumb's `category` and `message`. A log record's `channel` is cut to 255 characters. A value within its limit is sent exactly as before. Nothing to do on upgrade
