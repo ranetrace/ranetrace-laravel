@@ -227,7 +227,7 @@ The connection already scopes every call to one website, so none of them takes p
 
 Each answers **verdict first**: what was found, why it matters, what to do, the same guidance a human reads on the dashboard, with the raw measurements following as its evidence. Read the verdict before the numbers, and pass its wording on rather than re-deriving your own conclusion from the data. A monitor that is switched off answers with an error saying its monitoring is disabled for this website, instead of returning stale figures; pass that message on as-is. `GetMonitorStatusTool` lists such monitors as not running.
 
-When the newest Lighthouse or broken links audit failed after one that completed, and the completed one shows no problem, the verdict is a Warning: "The latest Lighthouse audit failed." or "The latest broken links audit failed." The figures that follow are from the last completed audit, and the next audit retries on its own. `GetMonitorStatusTool` reports either, and `GetLighthouseAuditTool` answers with the same verdict.
+When the newest Lighthouse or broken links audit failed after one that completed, and the completed one shows no problem, the verdict is a Warning: "The latest Lighthouse audit failed." or "The latest broken links audit failed." The figures that follow are from the last completed audit, and the next audit retries on its own. `GetMonitorStatusTool` reports either, and `GetLighthouseAuditTool` and `GetBrokenLinksTool` each answer with the same verdict for their own monitor.
 
 ## Notification rules
 
