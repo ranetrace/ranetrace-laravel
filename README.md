@@ -272,7 +272,7 @@ VS Code, in `~/.copilot/mcp-config.json` or in `.mcp.json` at the root of a work
 
 The approval screen asks two things: which one of your websites the connection is for, and whether the agent may write. The connection reaches that one site and nothing else in your account.
 
-Write actions are off unless you turn them on. A read-only connection can read your errors, monitors, notes and notification rules, and the tools that change anything are not offered to it at all. Allow write actions and it can also resolve, ignore and delete errors, write notes, and change your notification rules.
+Write actions are off unless you turn them on. A read-only connection can read your errors, monitors, notes, notification rules and the names of your notification channels, and the tools that change anything are not offered to it at all. Allow write actions and it can also resolve, ignore and delete errors, write notes, change your notification rules, and add the website to your notification channels or take it off them.
 
 Every connection you have approved is listed under agent connections in your Ranetrace account, at `/user/profile/connections`, where you can see what each one reaches and revoke it. The instructions for connecting an agent live on that page too.
 

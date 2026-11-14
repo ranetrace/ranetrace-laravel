@@ -122,7 +122,7 @@ The `servers` entry in `.vscode/mcp.json` that VS Code read before belongs to it
 Two things, both chosen by the user and neither of them changeable from the agent's side:
 
 - **One website.** The connection reaches that site and nothing else in the account.
-- **Read or write.** Writes are off by default. A read-only connection lists the read tools and nothing else: no write tools, and no meta tools either, so there is no catalog for it to search and nothing to refuse at call time. That is why a tool below may simply not be there. Allowing write actions adds `search_tools` and `execute_tools` next to the reads, and the error state tools, the bulk tools, the note create/update/delete tools and the notification-rule update all run through those two.
+- **Read or write.** Writes are off by default. A read-only connection lists the read tools and nothing else: no write tools, and no meta tools either, so there is no catalog for it to search and nothing to refuse at call time. That is why a tool below may simply not be there. Allowing write actions adds `search_tools` and `execute_tools` next to the reads, and the error state tools, the bulk tools, the note create/update/delete tools, the notification-rule update and the tool that sets which channels carry the website all run through those two.
 
 Connections are listed and revoked by the user on the agent connections page in their Ranetrace account, at `/user/profile/connections`, which also carries the connect instructions. A machine with no browser can use the device authorization grant instead, entering the code it displays at `https://app.ranetrace.com/oauth/device`.
 
@@ -237,12 +237,17 @@ Each answers **verdict first**: what was found, why it matters, what to do, the 
 
 When the newest Lighthouse or broken links audit failed after one that completed, and the completed one shows no problem, the verdict is a Warning: "The latest Lighthouse audit failed." or "The latest broken links audit failed." The figures that follow are from the last completed audit, and the next audit retries on its own. `GetMonitorStatusTool` reports either, and `GetLighthouseAuditTool` and `GetBrokenLinksTool` each answer with the same verdict for their own monitor.
 
-## Notification rules
+## Notifications
 
 | Tool | Description | Where |
 |---|---|---|
-| `GetNotificationRulesTool` | The owner's notification rules, verdict first: it flags when a key alert such as website down is switched off | Listed |
+| `GetNotificationRulesTool` | The owner's notification rules and who hears about this website, verdict first: it flags when a key alert such as website down is switched off, or reaches no channel outside the owner's inbox | Listed |
 | `UpdateNotificationRulesTool` | Change those rules; they are account-wide, so a change made through one website's connection affects every website the owner has | Catalog |
+| `SetChannelWebsiteTool` | Add this connection's website to one of the owner's channels, or take it off, by the `channel_id` that `GetNotificationRulesTool` prints. It changes nothing else about a channel | Catalog |
+
+The rules are account-wide; who hears about an alert is per website. A channel is a place alerts go outside the owner's Ranetrace inbox: the owner's email address, or a Slack, Discord or Microsoft Teams webhook or a Telegram chat the owner connected. Each channel carries the websites and the kinds of alert the owner picked. `GetNotificationRulesTool` lists, for each kind of alert, the channels that carry it for this website, and every channel of the owner by name and type, never by its webhook URL or chat id.
+
+`SetChannelWebsiteTool` takes `channel_id` and `carries_website` (true or false) and nothing else. Adding or removing a channel, and a channel's name, kinds of alert and on/off switch, are the owner's, on the Channels page in Ranetrace. Taking the website off the last channel that carries it is allowed, and the verdict in the answer then says its alerts reach the owner's inbox only.
 
 ## Testing
 
