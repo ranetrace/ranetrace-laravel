@@ -167,6 +167,8 @@ Listed directly, so call these by name.
 
 To find errors that mention a phrase, or that come from one class or file, pass it as `query` to `SearchErrorsTool` instead of paging through results and filtering them yourself. The match is a case-insensitive substring, at most 200 characters, and `%` and `_` are literal. For a PHP error the message is the one of its latest occurrence; for a JavaScript error the page URL is matched too. `query` combines with every other filter, so `query` plus `sort=last_occurred` also answers "the latest errors that mention this".
 
+A long message is printed in part. The lists (`LatestErrorsTool`, `SearchErrorsTool` and the top ten of `ErrorStatsTool`) print the first 300 characters of a longer message, and `GetErrorTool` the first 2,000. A cut message says so after its closing quote, with the length of the whole message, as in `(first 300 of 7,012 characters, get-error-tool prints more)`. `query` still matches the whole stored message, and the whole message is on the error's page in Ranetrace.
+
 An archived error, one `SearchErrorsTool` lists with `include_archived`, is still read by `GetErrorTool`, `GetErrorActivityTool`, `ListNotesTool` and `GetNoteTool`, and each prints `**Archived:** yes` for it.
 
 ### Managing error states
