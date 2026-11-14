@@ -235,7 +235,10 @@ Give your MCP client the server URL. The client asks Ranetrace for access, your 
 
 ```bash
 claude mcp add --transport http ranetrace https://api.ranetrace.com/mcp
+claude mcp login ranetrace
 ```
+
+In Claude Code the first command saves the server, and the login opens your browser to approve the connection.
 
 On claude.ai, add that same URL as a custom connector. Cursor and VS Code are configured from a file, and each reads its own shape. Neither needs an `Authorization` header, because the client runs the approval.
 

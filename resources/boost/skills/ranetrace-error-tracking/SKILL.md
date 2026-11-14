@@ -82,7 +82,10 @@ Any MCP client that supports OAuth connects with no pre-shared secret. Give it t
 
 ```bash
 claude mcp add --transport http ranetrace https://api.ranetrace.com/mcp
+claude mcp login ranetrace
 ```
+
+In Claude Code the first command only saves the server, which `claude mcp list` then shows as needing authentication. The login opens the browser for the approval. It needs an interactive terminal, so it is the user's to run: from an agent's own shell it stops and says so. A server added while a session runs is loaded by the next session.
 
 On claude.ai the same URL is added as a custom connector. Cursor and VS Code are configured from a file, and each reads its own shape, so write the one that belongs to the client in use. Neither carries an `Authorization` header, because the client runs the approval.
 
