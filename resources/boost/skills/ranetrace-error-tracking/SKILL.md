@@ -220,15 +220,18 @@ The same MCP server also answers for the website being monitored, not only the a
 
 | Tool | Description |
 |---|---|
-| `GetMonitorStatusTool` | Which of my monitors needs a look: every enabled monitor with its verdict. DNS is reported here only, with no detail tool: a failed lookup is a warning, otherwise it gives the record count. Port scan is reported here only too, for an owner who has that beta. Sitemap and blocklist are not reported, so their absence says nothing about their state |
+| `GetMonitorStatusTool` | Which of my monitors needs a look: every enabled monitor with its verdict. For DNS a failed lookup is a warning, otherwise it gives the record count. Port scan is reported here only, with no detail tool, for an owner who has that beta. Sitemap and blocklist are not reported, so their absence says nothing about their state |
 | `GetUptimeStatusTool` | Up or down, 24h uptime, and the recent outages |
 | `GetPerformanceStatsTool` | 24h average response time and where that time goes |
 | `GetLighthouseAuditTool` | Latest Lighthouse scores, metrics, trend, and ranked opportunities |
 | `GetCertificateStatusTool` | HTTPS, issuer, validity window, days until expiry |
 | `GetDomainStatusTool` | Registrar, expiry, DNSSEC, registrar locks |
+| `GetDnsStatusTool` | The DNS records, and the last change to them: when it was found and, per changed record set, the value before and now |
 | `GetBrokenLinksTool` | Broken links from the latest site audit, with the page each was found on; filterable and paged |
 
 The connection already scopes every call to one website, so none of them takes parameters, with one exception. A list of broken links can be longer than one answer should be, so `GetBrokenLinksTool` lists 100 links per call and takes four optional parameters: `status_code` (only links that answered with this HTTP status, 0 for a link that gave no HTTP answer), `source_page` (only links found on this page URL), `redirects` (true lists the internal links that redirect to a working page instead of the broken ones, each with its first redirect status and where it lands; it cannot be combined with `status_code`) and `cursor` (the next-cursor value of the previous answer, to walk the rest of the list with the same filters). The filters narrow the list only: the verdict and the counts always describe the whole audit.
+
+The last change `GetDnsStatusTool` prints is the one the DNS records changed alert reported, so addresses that only moved within Cloudflare and address sets that keep rotating are not in it. `before none` or `now none` means the record set did not exist on that side, and `no value` means a record stored without one.
 
 Each answers **verdict first**: what was found, why it matters, what to do, the same guidance a human reads on the dashboard, with the raw measurements following as its evidence. Read the verdict before the numbers, and pass its wording on rather than re-deriving your own conclusion from the data. A monitor that is switched off answers with an error saying its monitoring is disabled for this website, instead of returning stale figures; pass that message on as-is. `GetMonitorStatusTool` lists such monitors as not running.
 
