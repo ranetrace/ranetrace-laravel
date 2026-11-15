@@ -226,10 +226,12 @@ The same MCP server also answers for the website being monitored, not only the a
 | `GetLighthouseAuditTool` | Latest Lighthouse scores, metrics, trend, and ranked opportunities |
 | `GetCertificateStatusTool` | HTTPS, issuer, validity window, days until expiry |
 | `GetDomainStatusTool` | Registrar, expiry, DNSSEC, registrar locks |
-| `GetDnsStatusTool` | The DNS records, and the last change to them: when it was found and, per changed record set, the value before and now |
+| `GetDnsStatusTool` | The DNS records, which names were not looked up, which address sets keep rotating, and the last change to the records: when it was found and, per changed record set, the value before and now |
 | `GetBrokenLinksTool` | Broken links from the latest site audit, with the page each was found on; filterable and paged |
 
 The connection already scopes every call to one website, so none of them takes parameters, with one exception. A list of broken links can be longer than one answer should be, so `GetBrokenLinksTool` lists 100 links per call and takes four optional parameters: `status_code` (only links that answered with this HTTP status, 0 for a link that gave no HTTP answer), `source_page` (only links found on this page URL), `redirects` (true lists the internal links that redirect to a working page instead of the broken ones, each with its first redirect status and where it lands; it cannot be combined with `status_code`) and `cursor` (the next-cursor value of the previous answer, to walk the rest of the list with the same filters). The filters narrow the list only: the verdict and the counts always describe the whole audit.
+
+`GetDnsStatusTool` closes its record list with the lookup scope. The DNS check asks a few names only (the website's own host and, where they exist, its `www` twin and the domain's `_dmarc` name), so a record missing from the list on any other name, such as a DKIM selector, was not looked up. Do not report it as a record that does not exist. Under `Rotating address sets` it lists each address set that keeps changing from one check to the next, as a proxy or a load balancer that rotates its addresses does, with how often it changed. Changes to such a set are left out of the DNS records changed alert, so a set that differs between two calls is not an alert that was missed.
 
 The last change `GetDnsStatusTool` prints is the one the DNS records changed alert reported, so addresses that only moved within Cloudflare and address sets that keep rotating are not in it. `before none` or `now none` means the record set did not exist on that side, and `no value` means a record stored without one.
 
