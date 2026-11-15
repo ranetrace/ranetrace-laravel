@@ -183,7 +183,7 @@ test('each answer that accepts nothing gets the shared line, sets no pause and f
 })->with([
     'a 403' => [
         static fn (): mixed => Http::response(['error' => ['message' => 'Feature disabled']], 403),
-        'refused: the API answered 403 (Feature disabled). The key lacks access to this feature, the website is in maintenance mode, or the account has no access',
+        'refused: the API answered 403 (Feature disabled). The key lacks access to this feature, the website is deactivated, or the account has no access',
     ],
     'a 429 with Retry-After' => [
         static fn (): mixed => Http::response([], 429, ['Retry-After' => '30']),
