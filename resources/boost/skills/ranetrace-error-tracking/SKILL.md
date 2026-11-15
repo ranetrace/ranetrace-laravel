@@ -1,6 +1,6 @@
 ---
 name: ranetrace-error-tracking
-description: Track, investigate, and manage application errors with Ranetrace, and work with the hosted Ranetrace MCP server, including connecting an MCP client over OAuth and fixing a connection that fails, the tools for AI-assisted debugging, the search_tools and execute_tools flow for state changes, the monitored website's verdicts (uptime, performance, Lighthouse, certificate, domain, broken links, DNS) and the notification rules.
+description: Track, investigate, and manage application errors with Ranetrace, and work with the hosted Ranetrace MCP server, including connecting an MCP client over OAuth and fixing a connection that fails, the tools for AI-assisted debugging, the search_tools and execute_tools flow for state changes, the monitored website's verdicts (uptime, performance, Lighthouse, certificate, domain, broken links, DNS), maintenance windows for planned downtime such as a deploy, and the notification rules.
 ---
 
 # Ranetrace error tracking
@@ -122,7 +122,7 @@ The `servers` entry in `.vscode/mcp.json` that VS Code read before belongs to it
 Two things, both chosen by the user and neither of them changeable from the agent's side:
 
 - **One website.** The connection reaches that site and nothing else in the account.
-- **Read or write.** Writes are off by default. A read-only connection lists the read tools and nothing else: no write tools, and no meta tools either, so there is no catalog for it to search and nothing to refuse at call time. That is why a tool below may simply not be there. Allowing write actions adds `search_tools` and `execute_tools` next to the reads, and the error state tools, the bulk tools, the note create/update/delete tools, the notification-rule update and the tool that sets which channels carry the website all run through those two.
+- **Read or write.** Writes are off by default. A read-only connection lists the read tools and nothing else: no write tools, and no meta tools either, so there is no catalog for it to search and nothing to refuse at call time. That is why a tool below may simply not be there. Allowing write actions adds `search_tools` and `execute_tools` next to the reads, and the error state tools, the bulk tools, the note create/update/delete tools, the notification-rule update, the tool that sets which channels carry the website and the maintenance window tools all run through those two.
 
 Connections are listed and revoked by the user on the agent connections page in their Ranetrace account, at `/user/profile/connections`, which also carries the connect instructions. A machine with no browser can use the device authorization grant instead, entering the code it displays at `https://app.ranetrace.com/oauth/device`.
 
@@ -221,7 +221,7 @@ The same MCP server also answers for the website being monitored, not only the a
 | Tool | Description |
 |---|---|
 | `GetMonitorStatusTool` | Which of my monitors needs a look: every enabled monitor with its verdict. For DNS a failed lookup is a warning, otherwise it gives the record count. Port scan is reported here only, with no detail tool, for an owner who has that beta. Sitemap and blocklist are not reported, so their absence says nothing about their state |
-| `GetUptimeStatusTool` | Up or down, 24h uptime, and the recent outages |
+| `GetUptimeStatusTool` | Up or down, 24h uptime, the open and upcoming maintenance windows, and the recent outages, each marked when it was planned |
 | `GetPerformanceStatsTool` | 24h average response time and where that time goes |
 | `GetLighthouseAuditTool` | Latest Lighthouse scores, metrics, trend, and ranked opportunities |
 | `GetCertificateStatusTool` | HTTPS, issuer, validity window, days until expiry |
@@ -238,6 +238,29 @@ The last change `GetDnsStatusTool` prints is the one the DNS records changed ale
 Each answers **verdict first**: what was found, why it matters, what to do, the same guidance a human reads on the dashboard, with the raw measurements following as its evidence. Read the verdict before the numbers, and pass its wording on rather than re-deriving your own conclusion from the data. A monitor that is switched off answers with an error saying its monitoring is disabled for this website, instead of returning stale figures; pass that message on as-is. `GetMonitorStatusTool` lists such monitors as not running.
 
 When the newest Lighthouse or broken links audit failed after one that completed, and the completed one shows no problem, the verdict is a Warning: "The latest Lighthouse audit failed." or "The latest broken links audit failed." The figures that follow are from the last completed audit, and the next audit retries on its own. `GetMonitorStatusTool` reports either, and `GetLighthouseAuditTool` and `GetBrokenLinksTool` each answer with the same verdict for their own monitor.
+
+## Maintenance windows
+
+A maintenance window is a stretch of time the owner, or an agent, marked as planned work on the website. While one is open, downtime is planned: it sends no down or recovery alert and stays out of the uptime figures, and the scheduled checks other than uptime wait until it closes. Errors and logs from the application keep alerting.
+
+Reading: while a window is open, `GetUptimeStatusTool` and `GetMonitorStatusTool` say "Under maintenance" and until when. Do not report downtime inside a window as an outage. The uptime tool's `State` line keeps saying whether the site answers, so `down` under "Under maintenance" is planned downtime. Both tools list the open window and the upcoming ones, each with its start, end, note, who made it and a `window_id`. In the recent outages an outage reads `planned` when all of it fell inside a window, and `10m of it planned` when part of it did. The other monitors' verdicts date from before an open window, because their checks wait.
+
+Writing: before planned work that takes the site down, such as a deploy or a server move, start a window, and end it when the site is back. The tools are in the catalog, so find them with `search_tools` and run them with `execute_tools`.
+
+| Tool | Description |
+|---|---|
+| `StartMaintenanceTool` | Start a window now. Takes `minutes` (1 to 1440, from now) or `ends_at`, not both, and an optional `note` |
+| `ScheduleMaintenanceTool` | Schedule a window for later. Takes `starts_at`, `ends_at` and an optional `note` |
+| `RescheduleMaintenanceTool` | Change a window that has not started. Takes `window_id` and any of `starts_at`, `ends_at` and `note`; a field left out stays, and an empty `note` removes it |
+| `ExtendMaintenanceTool` | Move the end of an open or upcoming window later. Takes `window_id` and `minutes` (added to the current end) or `ends_at` |
+| `EndMaintenanceTool` | End the open window now. Takes no arguments, because a website has at most one open window. The window stays in the history |
+| `CancelMaintenanceTool` | Remove a window that has not started. Takes `window_id` |
+
+Every moment is UTC, written as ISO 8601 (`2026-11-15T23:00:00Z`). A window lasts 24 hours at most, also after extending, cannot start in the past, and cannot overlap another window of the website. A refused call says which rule it broke, and an overlap names the window in the way with its `window_id`. A started window cannot be cancelled or rescheduled: end it or extend it.
+
+The `note` is one line of at most 255 characters and is public: visitors read it on the website's status page, so write it for them ("Database upgrade"), never for yourself. The app shows that an agent made the window.
+
+End the window only when the site answers again. From that moment downtime counts, and a site that is still down two minutes later sends its down alert. When the work runs long, extend the window before it ends. A window closes by itself at its end, so a forgotten one cannot keep alerts quiet for longer than was asked.
 
 ## Notifications
 
