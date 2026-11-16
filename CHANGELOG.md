@@ -6,6 +6,8 @@ This file starts at 1.0.0. The package was re-versioned to share a major with `r
 
 ## [Unreleased]
 
+## [1.7.0] - 2026-11-16
+
 Requires `ranetrace/ranetrace-php` 1.6.0 or later: the entries below about cut strings, the environment name, the breadcrumb message and the redacted tokens are changes in the shared core, and the contract tests read that release's page visit fixture.
 
 ### Changed
