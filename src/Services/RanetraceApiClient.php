@@ -10,6 +10,7 @@ use Ranetrace\Laravel\Support\CoreConfig;
 use Ranetrace\Laravel\Support\Endpoints;
 use Ranetrace\Php\Config;
 use Ranetrace\Php\Http\Endpoint;
+use Ranetrace\Php\Http\Heartbeat;
 use Throwable;
 
 class RanetraceApiClient
@@ -141,6 +142,21 @@ class RanetraceApiClient
     }
 
     /**
+     * Tell the API this application's worker ran. The answer comes back in the
+     * same shape as a batch's, and the caller decides what it means.
+     *
+     * @return array<string, mixed>
+     */
+    public function sendHeartbeat(Heartbeat $heartbeat): array
+    {
+        if (! $this->hasKey()) {
+            return $this->formatErrorResponse('API key not configured');
+        }
+
+        return $this->post(Heartbeat::PATH, $heartbeat->userAgent(), Heartbeat::TIMEOUT_SECONDS, $heartbeat->body());
+    }
+
+    /**
      * Send one batch to a feature store endpoint. Shared by all five feature
      * batch methods, which differ only in the endpoint they name.
      *
@@ -157,22 +173,12 @@ class RanetraceApiClient
             return $this->formatErrorResponse('Empty batch provided');
         }
 
-        try {
-            $response = Http::withToken($this->apiKey)
-                ->withHeaders([
-                    'User-Agent' => $endpoint->userAgent(Endpoints::SDK),
-                    'Content-Type' => 'application/json',
-                    'Accept' => 'application/json',
-                    'Ranetrace-API-Version' => '1.0',
-                ])
-                ->connectTimeout(self::CONNECT_TIMEOUT)
-                ->timeout((int) config(Endpoints::timeoutKey($endpoint), 10))
-                ->post($this->apiUrl.$endpoint->path, [$endpoint->wrapper => $items]);
-
-            return $this->formatResponse($response);
-        } catch (Throwable $e) {
-            return $this->formatErrorResponse($this->unreachableCause($e->getMessage()));
-        }
+        return $this->post(
+            $endpoint->path,
+            $endpoint->userAgent(Endpoints::SDK),
+            (int) config(Endpoints::timeoutKey($endpoint), 10),
+            [$endpoint->wrapper => $items],
+        );
     }
 
     /**
@@ -221,6 +227,33 @@ class RanetraceApiClient
             'error' => $message,
             'headers' => [],
         ];
+    }
+
+    /**
+     * POST one request with the five headers the contract names. A request that
+     * gets no answer comes back as status 0 rather than throwing.
+     *
+     * @param  array<string, mixed>  $body
+     * @return array<string, mixed>
+     */
+    private function post(string $path, string $userAgent, int $timeout, array $body): array
+    {
+        try {
+            $response = Http::withToken($this->apiKey)
+                ->withHeaders([
+                    'User-Agent' => $userAgent,
+                    'Content-Type' => 'application/json',
+                    'Accept' => 'application/json',
+                    'Ranetrace-API-Version' => '1.0',
+                ])
+                ->connectTimeout(self::CONNECT_TIMEOUT)
+                ->timeout($timeout)
+                ->post($this->apiUrl.$path, $body);
+
+            return $this->formatResponse($response);
+        } catch (Throwable $e) {
+            return $this->formatErrorResponse($this->unreachableCause($e->getMessage()));
+        }
     }
 
     /**

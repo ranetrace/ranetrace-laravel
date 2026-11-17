@@ -6,10 +6,13 @@ namespace Ranetrace\Laravel\Commands;
 
 use Illuminate\Console\Command;
 use Ranetrace\Laravel\Jobs\SendBatchToRanetraceJob;
+use Ranetrace\Laravel\Jobs\SendHeartbeatToRanetraceJob;
 use Ranetrace\Laravel\Services\RanetraceBatchBuffer;
 use Ranetrace\Laravel\Services\RanetracePauseManager;
+use Ranetrace\Laravel\Support\BatchConfig;
 use Ranetrace\Laravel\Support\CoreConfig;
 use Ranetrace\Laravel\Support\InternalLogger;
+use Ranetrace\Php\Http\Heartbeat;
 use Throwable;
 
 class RanetraceWorkCommand extends Command
@@ -97,7 +100,38 @@ class RanetraceWorkCommand extends Command
             $this->info("Dispatched {$sentCount} batch job(s).");
         }
 
+        $this->dispatchHeartbeat();
+
         return self::SUCCESS;
+    }
+
+    /**
+     * Dispatch at most one heartbeat per interval, whatever the buffers hold,
+     * whichever `--type` this run has and however many runs overlap.
+     *
+     * It never changes the exit code or costs the batches anything. A claim is
+     * kept when the dispatch throws, so a broken queue is tried once an
+     * interval rather than on every run.
+     */
+    protected function dispatchHeartbeat(): void
+    {
+        try {
+            if (! config('ranetrace.enabled', true)) {
+                return;
+            }
+
+            if (! BatchConfig::cacheStore()->add(SendHeartbeatToRanetraceJob::DISPATCH_CLAIM_KEY, now()->timestamp, Heartbeat::INTERVAL_SECONDS)) {
+                return;
+            }
+
+            SendHeartbeatToRanetraceJob::dispatch();
+
+            $this->info('Dispatched heartbeat job.');
+        } catch (Throwable $e) {
+            InternalLogger::warning('Heartbeat job could not be dispatched', [
+                'exception' => $e->getMessage(),
+            ]);
+        }
     }
 
     /**

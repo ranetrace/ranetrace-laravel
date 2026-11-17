@@ -19,6 +19,7 @@ use Ranetrace\Laravel\Dashboard\Checks\DrainStalledCheck;
 use Ranetrace\Laravel\Dashboard\Checks\InternalLoggingCheck;
 use Ranetrace\Laravel\Dashboard\Checks\QueueWorkerCheck;
 use Ranetrace\Laravel\Jobs\SendBatchToRanetraceJob;
+use Ranetrace\Laravel\Jobs\SendHeartbeatToRanetraceJob;
 use Ranetrace\Laravel\Services\RanetraceBatchBuffer;
 use Ranetrace\Laravel\Services\RanetracePauseManager;
 use Ranetrace\Laravel\Support\BatchConfig;
@@ -112,6 +113,10 @@ class DashboardData
      * they are not paused, a sign of the schedule or the queue worker, and
      * `paused_stalled` the paused features whose pause does not, or no longer,
      * explains the wait. Either makes the installation unhealthy.
+     *
+     * `heartbeat.last_sent` is when the API last accepted a heartbeat, as a
+     * Unix timestamp, or null when none was. It is information only and plays
+     * no part in `healthy`.
      *
      * @return array<string, mixed>
      */
@@ -244,6 +249,9 @@ class DashboardData
                 'last_batch' => $lastBatch,
                 'stalled' => $stalledFeatures,
                 'paused_stalled' => $pausedStalledFeatures,
+            ],
+            'heartbeat' => [
+                'last_sent' => $this->getLastHeartbeatTimestamp(),
             ],
             'failed_jobs_last_24h' => $failedJobsCount,
             'config' => [
@@ -488,6 +496,21 @@ class DashboardData
     {
         try {
             $value = BatchConfig::cacheStore()->get(SendBatchToRanetraceJob::LAST_BATCH_PREFIX.$feature);
+
+            return is_numeric($value) ? (int) $value : null;
+        } catch (Throwable) {
+            return null;
+        }
+    }
+
+    /**
+     * When the API last accepted a heartbeat, read the way
+     * {@see getLastBatchTimestamp()} reads a batch's.
+     */
+    protected function getLastHeartbeatTimestamp(): ?int
+    {
+        try {
+            $value = BatchConfig::cacheStore()->get(SendHeartbeatToRanetraceJob::LAST_SENT_KEY);
 
             return is_numeric($value) ? (int) $value : null;
         } catch (Throwable) {

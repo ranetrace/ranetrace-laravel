@@ -181,6 +181,8 @@ class RanetraceStatusCommand extends Command
             $this->displaySchedule($status['schedule']);
         }
 
+        $this->displayHeartbeat($status['heartbeat']['last_sent']);
+
         // Failed jobs
         $this->line('<fg=cyan>Failed jobs (last 24h)</>');
         $this->line('─────────────────────────────────────────────────────────────');
@@ -307,6 +309,26 @@ class RanetraceStatusCommand extends Command
                 $this->line('  leaves the lock behind, and every run is skipped until it expires, so nothing is sent for up to 24 hours.');
                 $this->line('  → Change the line in routes/console.php to ->withoutOverlapping(5)');
             }
+        }
+
+        $this->newLine();
+    }
+
+    /**
+     * The Heartbeat section: when the API last accepted one. Information only,
+     * so it carries no colour and no recommendation.
+     */
+    protected function displayHeartbeat(?int $lastSent): void
+    {
+        $this->line('<fg=cyan>Heartbeat</>');
+        $this->line('─────────────────────────────────────────────────────────────');
+
+        if ($lastSent === null) {
+            $this->line('No heartbeat sent yet');
+        } else {
+            $age = now()->timestamp - $lastSent;
+
+            $this->line('Last sent: '.($age <= 0 ? 'just now' : $this->formatDuration($age).' ago'));
         }
 
         $this->newLine();

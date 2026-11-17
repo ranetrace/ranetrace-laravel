@@ -6,7 +6,10 @@ use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\Http;
 use Ranetrace\Laravel\Dashboard\DashboardData;
+use Ranetrace\Laravel\Jobs\SendHeartbeatToRanetraceJob;
+use Ranetrace\Laravel\Services\RanetraceApiClient;
 use Ranetrace\Laravel\Services\RanetraceBatchBuffer;
 use Ranetrace\Laravel\Services\RanetracePauseManager;
 
@@ -407,4 +410,73 @@ test('an enabled flag left as a string by env() decides health by its truthiness
 })->with([
     'zero' => ['0', false],
     'one' => ['1', true],
+]);
+
+test('the --json output has no heartbeat before one is accepted and its time after', function (): void {
+    $this->freezeTime();
+    Http::fake(['api.ranetrace.com/*' => Http::response(['success' => true], 200)]);
+
+    $before = json_decode(mb_trim(statusOutput(['--json' => true])), true);
+
+    (new SendHeartbeatToRanetraceJob)->handle(app(RanetraceApiClient::class));
+
+    $after = json_decode(mb_trim(statusOutput(['--json' => true])), true);
+
+    expect($before['heartbeat'])->toBe(['last_sent' => null])
+        ->and($after['heartbeat'])->toBe(['last_sent' => now()->timestamp]);
+});
+
+test('the text output says no heartbeat was sent until one is, and then how long ago', function (): void {
+    $this->freezeTime();
+
+    expect(statusOutput())->toContain("Heartbeat\n─────────────────────────────────────────────────────────────\nNo heartbeat sent yet\n");
+
+    Cache::store('array')->put(SendHeartbeatToRanetraceJob::LAST_SENT_KEY, now()->timestamp - 125);
+
+    expect(statusOutput())
+        ->toContain("Heartbeat\n─────────────────────────────────────────────────────────────\nLast sent: 2m 5s ago\n")
+        ->not->toContain('No heartbeat sent yet');
+});
+
+test('the heartbeat section sits between the schedule and the failed jobs', function (): void {
+    $output = statusOutput();
+
+    expect(mb_strpos($output, 'Schedule'))->toBeLessThan(mb_strpos($output, 'Heartbeat'))
+        ->and(mb_strpos($output, 'Heartbeat'))->toBeLessThan(mb_strpos($output, 'Failed jobs (last 24h)'));
+});
+
+test('a heartbeat stamped now or in the future reads as just now', function (int $offset): void {
+    $this->freezeTime();
+    Cache::store('array')->put(SendHeartbeatToRanetraceJob::LAST_SENT_KEY, now()->timestamp + $offset);
+
+    expect(statusOutput())->toContain('Last sent: just now');
+})->with([
+    'now' => [0],
+    'a clock set back' => [30],
+]);
+
+test('a heartbeat stamp is read from a numeric string and ignored when it is no number', function (mixed $stored, ?int $expected): void {
+    Cache::store('array')->put(SendHeartbeatToRanetraceJob::LAST_SENT_KEY, $stored);
+
+    expect(app(DashboardData::class)->collectStatus()['heartbeat']['last_sent'])->toBe($expected);
+})->with([
+    'a numeric string, as Redis returns it' => ['1763380000', 1763380000],
+    'a word' => ['yesterday', null],
+    'an array' => [['at' => 1763380000], null],
+]);
+
+test('a heartbeat stamp does not change whether the installation is healthy', function (?string $key, bool $healthy): void {
+    Config::set('ranetrace.key', $key);
+
+    $without = json_decode(mb_trim(statusOutput(['--json' => true])), true)['healthy'];
+
+    Cache::store('array')->put(SendHeartbeatToRanetraceJob::LAST_SENT_KEY, now()->timestamp);
+
+    $with = json_decode(mb_trim(statusOutput(['--json' => true])), true)['healthy'];
+
+    expect($without)->toBe($healthy)
+        ->and($with)->toBe($healthy);
+})->with([
+    'a healthy installation' => ['test-api-key', true],
+    'an installation without a key' => [null, false],
 ]);

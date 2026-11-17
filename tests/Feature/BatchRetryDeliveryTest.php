@@ -7,8 +7,10 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Ranetrace\Laravel\Jobs\SendHeartbeatToRanetraceJob;
 use Ranetrace\Laravel\Services\RanetraceBatchBuffer;
 use Ranetrace\Laravel\Services\RanetracePauseManager;
+use Ranetrace\Laravel\Support\BatchConfig;
 use Ranetrace\Php\Http\ResponsePolicy;
 
 /*
@@ -25,6 +27,10 @@ beforeEach(function (): void {
     Config::set('queue.connections.database.connection', 'testing');
 
     $this->loadMigrationsFrom(dirname(__DIR__, 2).'/vendor/orchestra/testbench-core/laravel/migrations');
+
+    // The assertions count the batch job's rows in the queue and its requests.
+    // A heartbeat would add its own of each, so its claim is held throughout.
+    BatchConfig::cacheStore()->forever(SendHeartbeatToRanetraceJob::DISPATCH_CLAIM_KEY, now()->timestamp);
 });
 
 /**

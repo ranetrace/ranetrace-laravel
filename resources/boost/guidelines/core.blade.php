@@ -54,7 +54,7 @@ Add `@ranetraceErrorTracking` before `</body>`. It enables client-side JavaScrip
 
 ### Queue & batch processing
 
-All features use queue-based processing by default. Captured items are buffered in the cache store and sent to the API in batches by `ranetrace:work`, which the package does not schedule for you: until it runs on the scheduler, with a queue worker processing the jobs it dispatches, nothing leaves the application. Schedule it every minute in `routes/console.php`:
+Captured items are buffered in the cache store and sent to the API in batches by `ranetrace:work`, which the package does not schedule for you: until it runs on the scheduler, with a queue worker processing the jobs it dispatches, nothing leaves the application. Schedule it every minute in `routes/console.php`:
 
 @verbatim
 <code-snippet name="Schedule the Ranetrace batch worker" lang="php">
@@ -62,7 +62,7 @@ Schedule::command('ranetrace:work')->everyMinute()->withoutOverlapping(5)->runIn
 </code-snippet>
 @endverbatim
 
-Every queue name (`RANETRACE_BATCH_QUEUE_NAME` and each feature's `RANETRACE_*_QUEUE_NAME`) defaults to null: unset means the connection's default queue, so a plain `php artisan queue:work` drains the jobs. A name you set needs a worker listening on it. For queue names, pauses and a buffer that does not drain, activate the `ranetrace-worker` skill.
+Every queue name (`RANETRACE_BATCH_QUEUE_NAME` and each feature's `RANETRACE_*_QUEUE_NAME`) defaults to the connection's default queue, so a plain `php artisan queue:work` drains the jobs. A name you set needs a worker listening on it. Each run queues a heartbeat, and Ranetrace alerts after 30 minutes without one. For queue names, pauses, the heartbeat and a buffer that does not drain, activate the `ranetrace-worker` skill.
 
 ### Logging channel
 

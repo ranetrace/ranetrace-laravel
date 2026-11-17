@@ -3,8 +3,9 @@ name: ranetrace-worker
 description: >-
   Set up, schedule and troubleshoot the Ranetrace worker (ranetrace:work) that
   flushes buffered errors, events, logs, analytics and JavaScript errors to the
-  API. Use when buffers grow without draining, features show as paused, or
-  nothing reaches Ranetrace.
+  API. Use when buffers grow without draining, features show as paused,
+  nothing reaches Ranetrace, or Ranetrace says the application stopped
+  reporting.
 ---
 
 # Ranetrace worker
@@ -60,6 +61,18 @@ php artisan queue:work --queue=default,ranetrace
 
 A worker on `ranetrace` alone, while any capture job still goes to the default queue, never runs those jobs: that feature's buffer stays empty and nothing of it is sent.
 
+## Heartbeat
+
+`ranetrace:work` sends nothing while every buffer is empty, so Ranetrace could not tell a quiet application from one whose worker stopped. Each run therefore also dispatches a heartbeat job, at most one every 5 minutes: a small request that carries the SDK's name and this package's version, and nothing else. It needs no setup and has no switch of its own.
+
+The heartbeat travels through the queue on purpose, on the same queue as the batch jobs (`RANETRACE_BATCH_QUEUE_NAME`, or where a queue route sends `SendBatchToRanetraceJob`). It stops when the scheduler stops, when the queue worker stops and when the key is rejected, which are the things that stop the data. After 30 minutes without a heartbeat Ranetrace shows the application as stopped reporting and alerts its owner. An application that has never sent a heartbeat is not judged.
+
+No heartbeat is dispatched without `RANETRACE_KEY`, with `RANETRACE_ENABLED=false`, or while everything is paused (a rejected key). A paused feature does not stop it.
+
+The API's answer changes nothing in the application: no pause, no retry. A heartbeat that is not accepted writes one "Heartbeat was not accepted" warning to the `ranetrace_internal` log, and the next one goes out 5 minutes later.
+
+`php artisan down` stops Laravel's scheduler, and its queue workers unless they run with `--force`, so an application in maintenance mode sends no heartbeat. Maintenance that takes longer than 30 minutes reads as stopped reporting unless a maintenance window is open on the website in Ranetrace: the alert is held while it is open. Open one before the work starts, on the website's uptime page or with the hosted MCP server's `StartMaintenanceTool`, and end it when the site is back.
+
 ## Configuration
 
 ```php
@@ -97,6 +110,8 @@ php artisan ranetrace:pause-clear --all
 
 `ranetrace:status` reads the schedule and lists each `ranetrace:work` entry with its overlap lock. The `--json` output carries it under `schedule`, whose `warnings` name what it found: `not_scheduled` (no entry, and no batch in the last ten minutes), `default_lock_expiry` (a lock with Laravel's 24 hour default) and `lock_stuck` (a lock held while the drain is stalled). Only the command can read the schedule; the web dashboard cannot.
 
+`ranetrace:status` also shows when Ranetrace last accepted a heartbeat, under "Heartbeat". In `--json` it is `heartbeat.last_sent`, a Unix timestamp, or null when none was accepted yet. It is information only and does not change `healthy`.
+
 ## Troubleshooting
 
 **Buffers growing but not draining:**
@@ -106,6 +121,13 @@ php artisan ranetrace:pause-clear --all
 - Check the key when `ranetrace:work` fails with "RANETRACE_KEY is not set, so nothing is sent": without a key it dispatches nothing and lists what waits in the buffer. This happens when the key is removed, or missing from a cached config, after items were captured. Set `RANETRACE_KEY` and the next run sends them
 - Check for a stuck scheduler lock when data stopped after a deploy, a restart or a crash: a schedule line whose `withoutOverlapping()` has no expiry keeps its lock for 24 hours after a hard-killed run. Release it with `php artisan schedule:clear-cache`, then change the line to `withoutOverlapping(5)`. `ranetrace:status` warns about both: a lock with the 24 hour default, and a lock that is held while buffered items wait unsent
 - Nothing is lost by time alone: items wait in the buffer until they are sent, up to `RANETRACE_BATCH_MAX_BUFFER_SIZE` per feature, after which the oldest are dropped first. A cache store that evicts keys under memory pressure (Redis with an eviction `maxmemory-policy`, Memcached) can still drop a buffer, so use a lock-capable store with room to spare
+
+**Ranetrace says the application stopped reporting:**
+- No heartbeat arrived for 30 minutes. `ranetrace:status` shows when the last one was accepted
+- Verify that the scheduler runs `ranetrace:work` and that a queue worker processes the queue the batch jobs go to: the heartbeat takes the same road as the data
+- Check for a global pause in `ranetrace:status`: a rejected key stops the heartbeat as it stops the data
+- Check the `ranetrace_internal` log for "Heartbeat was not accepted", which carries the status the API answered with
+- Check whether the application was in maintenance mode: `php artisan down` stops the scheduler and the queue workers
 
 **Features paused:**
 - Check the reason in `ranetrace:status` output

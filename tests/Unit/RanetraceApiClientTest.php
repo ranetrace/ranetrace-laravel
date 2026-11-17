@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 use Ranetrace\Laravel\Services\RanetraceApiClient;
+use Ranetrace\Php\Http\Heartbeat;
 use Ranetrace\Php\Http\ResponsePolicy;
 
 test('it sends error batch to correct endpoint', function (): void {
@@ -254,4 +255,40 @@ test('it uses timeout from config', function (): void {
 
     // Note: Can't directly test timeout value, but it's being set from config
     Http::assertSent(fn ($req) => str_contains($req->url(), 'errors'));
+});
+
+test('a heartbeat without a key is refused before anything is sent, in the shape of a refused batch', function (): void {
+    Http::fake();
+    config(['ranetrace.key' => null]);
+    $client = new RanetraceApiClient(null);
+
+    $heartbeat = $client->sendHeartbeat(new Heartbeat('Laravel', 'v1.7.0'));
+
+    expect($heartbeat)->toBe($client->sendErrorBatch([['message' => 'Test']]))
+        ->and($heartbeat['status'])->toBe(0)
+        ->and($heartbeat['error'])->toBe('API key not configured');
+    Http::assertNothingSent();
+});
+
+test('a heartbeat that gets no answer comes back as status 0 instead of throwing', function (): void {
+    Http::fake(fn () => throw new ConnectionException('cURL error 7: Failed to connect to api.ranetrace.com port 443 for https://api.ranetrace.com/v1/heartbeat'));
+
+    $result = (new RanetraceApiClient('test-key'))->sendHeartbeat(new Heartbeat('Laravel', 'v1.7.0'));
+
+    expect($result['status'])->toBe(0)
+        ->and($result['success'])->toBeFalse()
+        ->and($result['error'])->toBe('Failed to connect to api.ranetrace.com port 443');
+});
+
+test('a heartbeat answer is passed on in the same shape as a batch answer', function (): void {
+    Http::fake(['*' => Http::response(['success' => false, 'error' => ['message' => 'Too Many Attempts.']], 429, ['Retry-After' => '60'])]);
+
+    $result = (new RanetraceApiClient('test-key'))->sendHeartbeat(new Heartbeat('Laravel', 'v1.7.0'));
+
+    expect($result)->toBe([
+        'status' => 429,
+        'success' => false,
+        'data' => ['success' => false, 'error' => ['message' => 'Too Many Attempts.']],
+        'headers' => ['retry-after' => '60'],
+    ]);
 });

@@ -57,6 +57,10 @@ The `5` is the lock's expiry in minutes. Keep it: without an expiry, a run that 
 
 > **Don't skip this step.** Without it, buffered telemetry never reaches Ranetrace. Run `php artisan ranetrace:status` at any time to verify health and see whether buffers are draining.
 
+The command also tells Ranetrace that it runs. It sends nothing while every buffer is empty, so a quiet application and one whose worker stopped would look the same. Each run therefore queues a heartbeat, at most one every 5 minutes: a small request with the SDK's name and this package's version, and nothing else. It travels through the queue like your data, so it stops when the scheduler stops, when the queue worker stops or when the key is rejected. After 30 minutes without a heartbeat Ranetrace shows the application as stopped reporting and alerts you. There is nothing to set up.
+
+`php artisan down` stops Laravel's scheduler and its queue workers, so an application in maintenance mode sends no heartbeat. For maintenance that takes longer than 30 minutes, open a maintenance window in Ranetrace first: the alert is held while it is open.
+
 ## Usage
 
 ### Error tracking
@@ -315,6 +319,8 @@ Reports overall health, configured features, buffer sizes, pause states (if the 
 Overall health, `healthy` in `--json`, is what the dashboard's badge shows too. It is false when an enabled installation has no ingest key, when everything is paused, when a buffer is at 80 percent of its capacity, when a drain is stalled (a buffer holds an item older than ten minutes and no batch of that type was sent in that time), when a paused feature has waited longer than its pause explains, or when ten or more Ranetrace jobs failed in the last 24 hours. A pause the API asked for, after a 403, 413, 422 or 429, excuses its feature for 30 minutes, measured the same way. A pause set after the batch job's own retries, after a network failure or a server error, excuses nothing beyond the ten minutes. In `--json`, `drain.stalled` lists the stalled features that are not paused, and `drain.paused_stalled` the paused ones that have waited too long.
 
 It also reads your schedule and lists each `ranetrace:work` entry with its overlap lock. It warns when the worker is not in the schedule and no batch was sent in the last ten minutes, when a lock keeps Laravel's 24 hour default expiry, and when a lock is held while buffered items wait unsent, which means it looks stuck. In `--json` these are the `schedule` key's `warnings`: `not_scheduled`, `default_lock_expiry` and `lock_stuck`. The dashboard cannot show this part, because Laravel defines the schedule only in console processes.
+
+It shows when Ranetrace last accepted a heartbeat, `heartbeat.last_sent` in `--json` (a Unix timestamp, or null when none was accepted yet). That is information only and does not change `healthy`.
 
 ### Diagnostics dashboard
 
