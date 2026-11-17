@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace Workbench\App\Console;
 
 use Illuminate\Console\Command;
+use Ranetrace\Laravel\Jobs\SendHeartbeatToRanetraceJob;
 use Ranetrace\Laravel\Services\RanetraceApiClient;
 use Ranetrace\Laravel\Services\RanetraceBatchBuffer;
 use Ranetrace\Laravel\Support\Endpoints;
+use Ranetrace\Php\Http\Heartbeat;
 use Ranetrace\Php\Http\ResponsePolicy;
 use Ranetrace\Php\Worker\TestResult;
 use Symfony\Component\Console\Output\BufferedOutput;
@@ -15,9 +17,9 @@ use Throwable;
 
 /**
  * The release gate: capture test items of all five types through the
- * package's own test commands, send them to the API, and say per type whether
- * the API took every one. Run it from the checkout at the commit about to be
- * tagged, before the tag:
+ * package's own test commands, send them to the API, then the heartbeat, and
+ * say for each whether the API took it. Run it from the checkout at the commit
+ * about to be tagged, before the tag:
  *
  *     vendor/bin/testbench release:check
  *
@@ -27,6 +29,12 @@ use Throwable;
  * for everyone who upgrades, and a tag cannot be taken back. A pushed backend
  * commit is not a deployed one, so this asks the deployed API itself. The page
  * visit is the item only this package sends, so no other check covers it.
+ *
+ * The heartbeat is the one {@see SendHeartbeatToRanetraceJob} sends, so a 2xx
+ * says the deployed API has the endpoint and takes this commit's body. It is
+ * a real one: it counts as a heartbeat of the release check website. The app
+ * watches a website only once heartbeats have kept arriving for a while, so
+ * the one heartbeat of a check does not make that website read as stopped.
  *
  * The key is an ingest key of a website kept for this check, read from a file
  * so that it is never typed into a command line: the file named as the
@@ -41,7 +49,7 @@ class ReleaseCheckCommand extends Command
 {
     protected $signature = 'release:check {key-file? : The file that holds the ingest key of the release check website}';
 
-    protected $description = 'Before a tag: send test items of every type to the Ranetrace API and fail when it refuses one';
+    protected $description = 'Before a tag: send test items of every type and a heartbeat to the Ranetrace API and fail when it refuses one';
 
     public function handle(): int
     {
@@ -86,10 +94,15 @@ class ReleaseCheckCommand extends Command
             $this->line(sprintf("  %-{$width}s  %s", $type, $line));
         }
 
+        [$taken, $line] = $this->sendHeartbeat($client);
+        $every = $every && $taken;
+
+        $this->line(sprintf("  %-{$width}s  %s", 'heartbeat', $line));
+
         $this->newLine();
         $this->line($every
-            ? 'The API took every item of every type.'
-            : 'The API did not take every item. Do not tag: find out which side is behind first.');
+            ? 'The API took every item of every type, and the heartbeat.'
+            : 'The API did not take everything this commit sends. Do not tag: find out which side is behind first.');
 
         return $every ? self::SUCCESS : self::FAILURE;
     }
@@ -132,6 +145,23 @@ class ReleaseCheckCommand extends Command
         }
 
         return [$accepted === $sent, $line];
+    }
+
+    /**
+     * Send the heartbeat the queued job sends, and read the answer.
+     *
+     * @return array{0: bool, 1: string} Whether the API took it, and its line.
+     */
+    private function sendHeartbeat(RanetraceApiClient $client): array
+    {
+        $answer = $client->sendHeartbeat(Heartbeat::forPackage(Endpoints::SDK, SendHeartbeatToRanetraceJob::PACKAGE));
+        $status = (int) ($answer['status'] ?? 0);
+
+        return match (true) {
+            $status >= 200 && $status < 300 => [true, 'accepted'],
+            $status === 0 => [false, "failed: could not reach {$client->baseUrl()} (".($answer['error'] ?? 'unknown network error').')'],
+            default => [false, "refused: the API answered {$status} (".ResponsePolicy::errorMessage(is_array($answer['data'] ?? null) ? $answer['data'] : [], 'no message').')'],
+        };
     }
 
     /**
