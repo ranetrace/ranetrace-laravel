@@ -6,6 +6,8 @@ This file starts at 1.0.0. The package was re-versioned to share a major with `r
 
 ## [Unreleased]
 
+## [1.8.0] - 2026-11-17
+
 Requires `ranetrace/ranetrace-php` 1.7.0 or later: the heartbeat below is built from that release's `Http\Heartbeat`, and the contract tests read its heartbeat fixture.
 
 ### Added
