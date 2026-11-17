@@ -220,7 +220,7 @@ The same MCP server also answers for the website being monitored, not only the a
 
 | Tool | Description |
 |---|---|
-| `GetMonitorStatusTool` | Which of my monitors needs a look: every enabled monitor with its verdict. For DNS a failed lookup is a warning, otherwise it gives the record count. Port scan is reported here only, with no detail tool, for an owner who has that beta. Sitemap and blocklist are not reported, so their absence says nothing about their state |
+| `GetMonitorStatusTool` | Which of my monitors needs a look: every enabled monitor with its verdict. For DNS a failed lookup is a warning, otherwise it gives the record count. Port scan is reported here only, with no detail tool, for an owner who has that beta. Sitemap and blocklist are not reported, so their absence says nothing about their state. While the application's worker has stopped reporting, the answer opens with that verdict, under `application` |
 | `GetUptimeStatusTool` | Up or down, 24h uptime, the open and upcoming maintenance windows, and the recent outages, each marked when it was planned |
 | `GetPerformanceStatsTool` | 24h average response time and where that time goes |
 | `GetLighthouseAuditTool` | Latest Lighthouse scores, metrics, trend, and ranked opportunities |
@@ -236,6 +236,8 @@ The connection already scopes every call to one website, so none of them takes p
 The last change `GetDnsStatusTool` prints is the one the DNS records changed alert reported, so addresses that only moved within Cloudflare and address sets that keep rotating are not in it. `before none` or `now none` means the record set did not exist on that side, and `no value` means a record stored without one.
 
 Each answers **verdict first**: what was found, why it matters, what to do, the same guidance a human reads on the dashboard, with the raw measurements following as its evidence. Read the verdict before the numbers, and pass its wording on rather than re-deriving your own conclusion from the data. A monitor that is switched off answers with an error saying its monitoring is disabled for this website, instead of returning stale figures; pass that message on as-is. `GetMonitorStatusTool` lists such monitors as not running.
+
+When the answer of `GetMonitorStatusTool` opens with a section `## application`, the application's worker stopped reporting: Ranetrace received no heartbeat from it for 30 minutes. Errors, logs and events may then be missing or late, so an empty error list is not an all-clear. Say so before you report on errors, and pass on what the verdict says to check. A website whose worker reports gets no such section. The `ranetrace-worker` skill explains the heartbeat and what stops it.
 
 When the newest Lighthouse or broken links audit failed after one that completed, and the completed one shows no problem, the verdict is a Warning: "The latest Lighthouse audit failed." or "The latest broken links audit failed." The figures that follow are from the last completed audit, and the next audit retries on its own. `GetMonitorStatusTool` reports either, and `GetLighthouseAuditTool` and `GetBrokenLinksTool` each answer with the same verdict for their own monitor.
 
