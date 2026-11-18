@@ -121,7 +121,7 @@ test('ranetrace:test-analytics dispatches a visit on every run, since the middle
     Bus::assertDispatchedTimes(HandlePageVisitJob::class, 2);
 });
 
-test('ranetrace:test-analytics keeps the test path when app.url names no host', function (string $appUrl): void {
+test('ranetrace:test-analytics keeps the test path whatever app.url holds', function (string $appUrl): void {
     Config::set('app.url', $appUrl);
 
     $this->artisan('ranetrace:test-analytics')->assertSuccessful();
@@ -132,17 +132,6 @@ test('ranetrace:test-analytics keeps the test path when app.url names no host', 
 })->with([
     'empty' => '',
     'without a scheme' => 'example.com',
-]);
-
-test('ranetrace:test-analytics keeps the test path when app.url carries a port, a trailing slash or a sub-path', function (string $appUrl): void {
-    Config::set('app.url', $appUrl);
-
-    $this->artisan('ranetrace:test-analytics')->assertSuccessful();
-
-    $visitData = dispatchedTestVisit();
-
-    expect($visitData['path'])->toBe('/ranetrace-test-analytics');
-})->with([
     'port' => 'http://example.test:8080',
     'trailing slash' => 'https://example.com/',
     'sub-path' => 'https://example.com/app',
