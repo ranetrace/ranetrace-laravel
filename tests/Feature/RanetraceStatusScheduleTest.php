@@ -342,7 +342,7 @@ test('a mutex that cannot be read costs the lock answer only', function (): void
         ->and($json['warnings'])->toBe([]);
 });
 
-test('a schedule that cannot be resolved leaves the schedule out and keeps the old question', function (): void {
+test('a schedule that cannot be resolved leaves the schedule out and asks whether the worker is scheduled', function (): void {
     stallTheEventsDrain();
     app()->bind(Schedule::class, fn (): never => throw new RuntimeException('No schedule here'));
 
@@ -437,7 +437,7 @@ test('a buffer near capacity keeps its advice while only another feature is paus
         ->toContain('• ranetrace:work is scheduled every minute. Check for a paused feature above, and that a queue worker processes the batch jobs: a run sends at most 1000 items per feature');
 });
 
-test('a buffer near capacity with a schedule that cannot be read keeps the old question', function (): void {
+test('a buffer near capacity with a schedule that cannot be read asks whether the worker runs on schedule', function (): void {
     fillTheEventsBufferNearCapacity();
     app()->bind(Schedule::class, fn (): never => throw new RuntimeException('No schedule here'));
 
