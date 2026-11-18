@@ -37,6 +37,25 @@ class VisitDataCollector
 
     private const int MAX_REFERRER_LENGTH = 2_048;
 
+    /**
+     * @return array{
+     *     path: mixed,
+     *     ip: string|null,
+     *     user_agent: string|null,
+     *     user_agent_hash: string|null,
+     *     referrer: mixed,
+     *     device_type: string|null,
+     *     browser_name: string|null,
+     *     utm_source: string|null,
+     *     utm_medium: string|null,
+     *     utm_campaign: string|null,
+     *     utm_content: string|null,
+     *     utm_term: string|null,
+     *     country_code: string|null,
+     *     session_id_hash: string,
+     *     timestamp: string,
+     * }
+     */
     public static function collect(Request $request): array
     {
         $userAgent = $request->userAgent();
