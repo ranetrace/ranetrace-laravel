@@ -84,7 +84,7 @@ test('a tracked visit carries only fields the endpoint declares, and every one i
         ->and($missing)->toBe([]);
 });
 
-test('the page visit job allow-lists the fields its endpoint declares, without the url it stopped sending', function (): void {
+test('the page visit job allow-lists every field its endpoint declares except the url', function (): void {
     $allowed = (new ReflectionMethod(HandlePageVisitJob::class, 'getAllowedKeys'))->invoke(new HandlePageVisitJob([]));
     $declared = ContractFields::topLevelKeys(WireContract::item('page_visits')['fields']);
 
