@@ -124,26 +124,18 @@ class DashboardData
     {
         $features = RanetraceBatchBuffer::TYPES;
 
-        // Check global pause
         try {
-            $globalPause = $this->pauseManager->getGlobalPause();
-            $isGloballyPaused = $this->pauseManager->isGloballyPaused();
+            $globalPause = $this->describePause($this->pauseManager->getGlobalPause());
         } catch (Throwable) {
             $globalPause = null;
-            $isGloballyPaused = false;
         }
 
-        // Check feature pauses
+        $isGloballyPaused = $globalPause['paused'] ?? false;
+
         $featurePauses = [];
         foreach ($features as $feature) {
             try {
-                $pauseData = $this->pauseManager->getFeaturePause($feature);
-                $featurePauses[$feature] = $pauseData ? [
-                    'paused' => $this->pauseManager->isFeaturePaused($feature),
-                    'paused_until' => $pauseData['paused_until'],
-                    'reason' => $pauseData['reason'],
-                    'time_remaining_seconds' => $this->remainingSecondsUntil($pauseData['paused_until']),
-                ] : null;
+                $featurePauses[$feature] = $this->describePause($this->pauseManager->getFeaturePause($feature));
             } catch (Throwable) {
                 $featurePauses[$feature] = null;
             }
@@ -232,12 +224,7 @@ class DashboardData
             'healthy' => $healthy,
             'timestamp' => Carbon::now()->toIso8601String(),
             'pauses' => [
-                'global' => $globalPause ? [
-                    'paused' => $isGloballyPaused,
-                    'paused_until' => $globalPause['paused_until'],
-                    'reason' => $globalPause['reason'],
-                    'time_remaining_seconds' => $this->remainingSecondsUntil($globalPause['paused_until']),
-                ] : null,
+                'global' => $globalPause,
                 'features' => $featurePauses,
             ],
             'buffers' => [
@@ -455,6 +442,28 @@ class DashboardData
         } catch (Throwable) {
             return null;
         }
+    }
+
+    /**
+     * A stored pause as the status reports it, or null when none is stored.
+     * `paused` is false for a pause whose end has passed but whose entry the
+     * cache still holds.
+     *
+     * @param  array{paused_until: string, reason: string}|null  $pause
+     * @return array{paused: bool, paused_until: string, reason: string, time_remaining_seconds: int}|null
+     */
+    protected function describePause(?array $pause): ?array
+    {
+        if ($pause === null) {
+            return null;
+        }
+
+        return [
+            'paused' => $this->pauseManager->isActive($pause),
+            'paused_until' => $pause['paused_until'],
+            'reason' => $pause['reason'],
+            'time_remaining_seconds' => $this->remainingSecondsUntil($pause['paused_until']),
+        ];
     }
 
     /**

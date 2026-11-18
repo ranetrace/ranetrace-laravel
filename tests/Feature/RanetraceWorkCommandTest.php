@@ -28,12 +28,36 @@ test('ranetrace:work accepts a valid --type', function (): void {
 test('ranetrace:work fails cleanly when the cache backend is unavailable', function (): void {
     // Pause/buffer state lives in the cache; simulate that backend being down.
     $this->mock(RanetracePauseManager::class, function ($mock): void {
-        $mock->shouldReceive('isGloballyPaused')->andThrow(new RuntimeException('cache backend unavailable'));
+        $mock->shouldReceive('getGlobalPause')->andThrow(new RuntimeException('cache backend unavailable'));
     });
 
     // The command must not let the raw exception escape: it logs and exits non-zero.
     $this->artisan('ranetrace:work')->assertFailed();
 });
+
+test('ranetrace:work reports a pause from the one read that found it active', function (string $method, array $arguments, string $line): void {
+    // The entry's cache lifetime is the pause's end, so it can expire between
+    // two reads. Read twice, the second read finds nothing to report.
+    Bus::fake();
+    Config::set('ranetrace.key', 'test-key');
+    app(RanetraceBatchBuffer::class)->addItem('events', ['event_name' => 'e1']);
+    $pause = ['paused_until' => now()->addMinutes(15)->toIso8601String(), 'reason' => '429'];
+
+    $this->mock(RanetracePauseManager::class, function ($mock) use ($method, $arguments, $pause): void {
+        $mock->shouldReceive('getGlobalPause')->andReturnNull()->byDefault();
+        $mock->shouldReceive($method)->with(...$arguments)->once()->andReturn($pause);
+        $mock->shouldReceive('isActive')->passthru();
+    });
+
+    $this->artisan('ranetrace:work')
+        ->expectsOutputToContain(sprintf($line, $pause['paused_until']))
+        ->assertSuccessful();
+
+    Bus::assertNotDispatched(SendBatchToRanetraceJob::class);
+})->with([
+    'global' => ['getGlobalPause', [], 'Ranetrace is globally paused until %s (reason: 429)'],
+    'feature' => ['getFeaturePause', ['events'], "Feature 'events' is paused until %s (reason: 429)"],
+]);
 
 test('ranetrace:work sends past a pause entry that does not say when it ends', function (mixed $entry): void {
     // The pause store only writes well-formed entries, so this takes one
@@ -165,7 +189,7 @@ test('the backend-unavailable error line speaks in two sentences, with no em-das
     // The house writing rule keeps the dash out of anything the package says,
     // and this line is what an operator reads on a failed scheduled run.
     $this->mock(RanetracePauseManager::class, function ($mock): void {
-        $mock->shouldReceive('isGloballyPaused')->andThrow(new RuntimeException('cache backend unavailable'));
+        $mock->shouldReceive('getGlobalPause')->andThrow(new RuntimeException('cache backend unavailable'));
     });
 
     $this->artisan('ranetrace:work')

@@ -110,6 +110,18 @@ class RanetracePauseManager
     }
 
     /**
+     * Whether a pause as `getGlobalPause()` or `getFeaturePause()` returns it
+     * has not ended yet. Callers that need the pause's data as well read it
+     * once and ask here, so the answer and the data come from the same read.
+     *
+     * @param  array{paused_until: string, reason: string}|null  $pause
+     */
+    public function isActive(?array $pause): bool
+    {
+        return $pause !== null && Carbon::now()->lessThan($this->endOf($pause['paused_until']));
+    }
+
+    /**
      * A stored pause, in the shape every reader counts on. This class only
      * writes that shape, but the entry sits in a cache other writers can
      * reach. An entry that does not say when it ends reads as no pause: held
@@ -131,14 +143,6 @@ class RanetracePauseManager
             ...$pause,
             'reason' => is_scalar($pause['reason'] ?? null) ? (string) $pause['reason'] : '',
         ];
-    }
-
-    /**
-     * @param  array{paused_until: string, reason: string}|null  $pause
-     */
-    protected function isActive(?array $pause): bool
-    {
-        return $pause !== null && Carbon::now()->lessThan($this->endOf($pause['paused_until']));
     }
 
     /**

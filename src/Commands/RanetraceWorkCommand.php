@@ -59,9 +59,10 @@ class RanetraceWorkCommand extends Command
             return $this->reportMissingKey($buffer, $specificType);
         }
 
-        if ($pauseManager->isGloballyPaused()) {
-            $pauseData = $pauseManager->getGlobalPause();
-            $this->warn('Ranetrace is globally paused until '.$pauseData['paused_until'].' (reason: '.$pauseData['reason'].')');
+        $globalPause = $pauseManager->getGlobalPause();
+
+        if ($pauseManager->isActive($globalPause)) {
+            $this->warn('Ranetrace is globally paused until '.$globalPause['paused_until'].' (reason: '.$globalPause['reason'].')');
 
             return self::SUCCESS;
         }
@@ -73,10 +74,10 @@ class RanetraceWorkCommand extends Command
         $sentCount = 0;
 
         foreach ($types as $type) {
-            // Check feature-specific pause
-            if ($pauseManager->isFeaturePaused($type)) {
-                $pauseData = $pauseManager->getFeaturePause($type);
-                $this->warn("Feature '{$type}' is paused until ".$pauseData['paused_until'].' (reason: '.$pauseData['reason'].')');
+            $featurePause = $pauseManager->getFeaturePause($type);
+
+            if ($pauseManager->isActive($featurePause)) {
+                $this->warn("Feature '{$type}' is paused until ".$featurePause['paused_until'].' (reason: '.$featurePause['reason'].')');
 
                 continue;
             }
