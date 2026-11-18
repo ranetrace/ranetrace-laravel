@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use Illuminate\Cache\ArrayStore;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Bus;
@@ -215,15 +214,7 @@ test('a heartbeat that could not be dispatched is not tried again within the int
 
 test('a cache store that cannot claim the heartbeat leaves the run successful with its batches dispatched', function (): void {
     Bus::fake();
-    Cache::extend('ranetrace-add-throws', fn () => Cache::repository(new class extends ArrayStore
-    {
-        public function add($key, $value, $seconds): bool
-        {
-            throw new RuntimeException('cache backend unavailable');
-        }
-    }));
-    Config::set('cache.stores.add-throws', ['driver' => 'ranetrace-add-throws']);
-    Config::set('ranetrace.batch.cache_driver', 'add-throws');
+    useBatchCacheStoreWhoseAddThrows();
     app(RanetraceBatchBuffer::class)->addItem('events', ['event_name' => 'e1']);
 
     $this->artisan('ranetrace:work')

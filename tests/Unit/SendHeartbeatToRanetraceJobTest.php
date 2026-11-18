@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use Illuminate\Cache\ArrayStore;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Cache;
@@ -143,15 +142,7 @@ test('without an ingest key the heartbeat sends nothing and throws nothing', fun
 
 test('a heartbeat whose cache store cannot be written sends nothing, throws nothing and logs the failure', function (): void {
     Http::fake();
-    Cache::extend('ranetrace-add-throws', fn () => Cache::repository(new class extends ArrayStore
-    {
-        public function add($key, $value, $seconds): bool
-        {
-            throw new RuntimeException('cache backend unavailable');
-        }
-    }));
-    Config::set('cache.stores.add-throws', ['driver' => 'ranetrace-add-throws']);
-    Config::set('ranetrace.batch.cache_driver', 'add-throws');
+    useBatchCacheStoreWhoseAddThrows();
 
     handleHeartbeatJob();
 

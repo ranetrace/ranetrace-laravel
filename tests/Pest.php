@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Illuminate\Cache\ArrayStore;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
@@ -98,6 +99,24 @@ function useThrowingAuthGuard(string $message): void
     Auth::viaRequest('ranetrace-throwing', static fn (): never => throw new RuntimeException($message));
     Config::set('auth.guards.throwing', ['driver' => 'ranetrace-throwing']);
     Auth::shouldUse('throwing');
+}
+
+/**
+ * Point the batch cache store at an array store whose `add()` throws
+ * "cache backend unavailable", as the store of a cache backend that is down
+ * does.
+ */
+function useBatchCacheStoreWhoseAddThrows(): void
+{
+    Cache::extend('ranetrace-add-throws', fn () => Cache::repository(new class extends ArrayStore
+    {
+        public function add($key, $value, $seconds): bool
+        {
+            throw new RuntimeException('cache backend unavailable');
+        }
+    }));
+    Config::set('cache.stores.add-throws', ['driver' => 'ranetrace-add-throws']);
+    Config::set('ranetrace.batch.cache_driver', 'add-throws');
 }
 
 /**
