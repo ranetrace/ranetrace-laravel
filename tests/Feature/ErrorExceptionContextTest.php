@@ -6,7 +6,6 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Exceptions\Handler;
 use Illuminate\Support\Facades\Cache;
 use Ranetrace\Laravel\Facades\Ranetrace;
-use Ranetrace\Laravel\Services\RanetraceBatchBuffer;
 
 beforeEach(function (): void {
     config([
@@ -16,20 +15,6 @@ beforeEach(function (): void {
 
     Cache::store('array')->flush();
 });
-
-/**
- * The one error item the capture path buffered.
- *
- * @return array<string, mixed>
- */
-function bufferedErrorItem(): array
-{
-    $items = (new RanetraceBatchBuffer)->getItems('errors', 10);
-
-    expect($items)->toHaveCount(1);
-
-    return $items[0]['data'];
-}
 
 function exceptionWithContext(): RuntimeException
 {
@@ -48,7 +33,7 @@ function exceptionWithContext(): RuntimeException
 test('a reported exception carries its own context() as exception_context', function (): void {
     Ranetrace::report(exceptionWithContext());
 
-    expect(bufferedErrorItem()['exception_context'])->toBe(['user_id' => 42, 'price' => 'price_123']);
+    expect(onlyBufferedItem('errors')['exception_context'])->toBe(['user_id' => 42, 'price' => 'price_123']);
 });
 
 test('an exception reported through the handler wiring carries its own context()', function (): void {
@@ -57,7 +42,7 @@ test('an exception reported through the handler wiring carries its own context()
 
     $handler->report(exceptionWithContext());
 
-    expect(bufferedErrorItem()['exception_context'])->toBe(['user_id' => 42, 'price' => 'price_123']);
+    expect(onlyBufferedItem('errors')['exception_context'])->toBe(['user_id' => 42, 'price' => 'price_123']);
 });
 
 test('an exception whose context() throws is still captured with a null exception_context', function (): void {
@@ -72,7 +57,7 @@ test('an exception whose context() throws is still captured with a null exceptio
         }
     });
 
-    $item = bufferedErrorItem();
+    $item = onlyBufferedItem('errors');
 
     expect($item['message'])->toBe('Checkout failed')
         ->and($item)->toHaveKey('exception_context')

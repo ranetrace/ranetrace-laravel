@@ -85,18 +85,6 @@ function compiledViewFile(string $contents): string
     return $path;
 }
 
-/**
- * @return array<string, mixed>
- */
-function bufferedBladeErrorItem(): array
-{
-    $items = (new RanetraceBatchBuffer)->getItems('errors', 10);
-
-    expect($items)->toHaveCount(1);
-
-    return $items[0]['data'];
-}
-
 function throwFromInsideBlade(): never
 {
     throw new RuntimeException('Thrown from a helper the template called');
@@ -118,7 +106,7 @@ test('a view error reads as the template: message names it, previous carries the
 
     Ranetrace::report(renderBladeTemplate($template));
 
-    $item = bufferedBladeErrorItem();
+    $item = onlyBufferedItem('errors');
     $cause = $item['previous'][0];
 
     expect($item['type'])->toBe(ViewException::class)
@@ -140,7 +128,7 @@ test('a view error never names the server path of the application, in its messag
 
     Ranetrace::report(renderBladeTemplate($template));
 
-    $item = bufferedBladeErrorItem();
+    $item = onlyBufferedItem('errors');
 
     expect($item['message'])->toEndWith("(View: {$this->viewDirectory}/performance.blade.php)")
         ->and($item['context'])->toContain("/**PATH {$this->viewDirectory}/performance.blade.php ENDPATH**/")
@@ -153,7 +141,7 @@ test('the item keeps the compiled throw site as its own file and line, so existi
 
     Ranetrace::report($exception);
 
-    $item = bufferedBladeErrorItem();
+    $item = onlyBufferedItem('errors');
 
     expect($item['file'])->toEndWith('.php')
         ->and($item['file'])->not->toEndWith('.blade.php')
@@ -172,7 +160,7 @@ test('a frame in a compiled view maps to the template path, line and source', fu
 
     Ranetrace::report(renderBladeTemplate($template));
 
-    $cause = bufferedBladeErrorItem()['previous'][0];
+    $cause = onlyBufferedItem('errors')['previous'][0];
     $templateFrame = $cause['frames'][0];
 
     expect($cause['message'])->toBe('Thrown from a helper the template called')
@@ -190,7 +178,7 @@ test('with source capture off no template line leaves the app, context included'
 
     Ranetrace::report(renderBladeTemplate($template));
 
-    $item = bufferedBladeErrorItem();
+    $item = onlyBufferedItem('errors');
     $sources = array_merge(
         array_column($item['frames'], 'source'),
         array_column($item['previous'], 'source'),

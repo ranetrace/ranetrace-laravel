@@ -7,7 +7,6 @@ use Illuminate\Foundation\Exceptions\Handler;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Ranetrace\Laravel\Facades\Ranetrace;
-use Ranetrace\Laravel\Services\RanetraceBatchBuffer;
 
 /**
  * A notification channel that fails wraps the exception of its HTTP client,
@@ -31,20 +30,6 @@ beforeEach(function (): void {
 
     Cache::store('array')->flush();
 });
-
-/**
- * The one item of $type the capture path buffered.
- *
- * @return array<string, mixed>
- */
-function bufferedItemOfFailedRequest(string $type): array
-{
-    $items = (new RanetraceBatchBuffer)->getItems($type, 10);
-
-    expect($items)->toHaveCount(1);
-
-    return $items[0]['data'];
-}
 
 /**
  * The secret half of a Telegram bot token, with made-up characters. It is
@@ -76,7 +61,7 @@ test('a failed telegram notification is reported without the bot token, in its m
 
     $handler->report(failedTelegramNotification());
 
-    $item = bufferedItemOfFailedRequest('errors');
+    $item = onlyBufferedItem('errors');
 
     expect($item['message'])->toBe('The communication with Telegram failed. `Client error: `POST https://api.telegram.org/bot[REDACTED]/sendMessage` resulted in a `401 Unauthorized` response`')
         ->and($item['previous'][0]['message'])->toBe('cURL error 28: Operation timed out for https://api.telegram.org/bot[REDACTED]/sendMessage')
@@ -88,7 +73,7 @@ test('a failed telegram notification logged with its exception reaches the log b
 
     Log::channel('ranetrace')->error($exception->getMessage(), ['exception' => $exception]);
 
-    $item = bufferedItemOfFailedRequest('logs');
+    $item = onlyBufferedItem('logs');
 
     expect($item['message'])->toContain('https://api.telegram.org/bot[REDACTED]/sendMessage')
         ->and((string) json_encode($item))->toContain('cURL error 28: Operation timed out for https:\/\/api.telegram.org\/bot[REDACTED]\/sendMessage')
@@ -98,7 +83,7 @@ test('a failed telegram notification logged with its exception reaches the log b
 test('a failed webhook request is reported without the secret part of its url', function (string $url, string $expected, string $secret): void {
     Ranetrace::report(new RuntimeException('Client error: `POST '.$url.'` resulted in a `404 Not Found` response'));
 
-    $item = bufferedItemOfFailedRequest('errors');
+    $item = onlyBufferedItem('errors');
 
     expect($item['message'])->toBe('Client error: `POST '.$expected.'` resulted in a `404 Not Found` response')
         ->and((string) json_encode($item))->not->toContain($secret);

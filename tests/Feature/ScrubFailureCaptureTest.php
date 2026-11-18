@@ -6,7 +6,6 @@ use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Ranetrace\Laravel\Facades\Ranetrace;
-use Ranetrace\Laravel\Services\RanetraceBatchBuffer;
 
 /**
  * Laravel turns every PHP warning into an ErrorException, so a pattern PCRE
@@ -38,25 +37,11 @@ beforeEach(function (): void {
     Cache::store('array')->flush();
 });
 
-/**
- * The one item of $type the capture path buffered.
- *
- * @return array<string, mixed>
- */
-function bufferedItemAfterScrubFailure(string $type): array
-{
-    $items = (new RanetraceBatchBuffer)->getItems($type, 10);
-
-    expect($items)->toHaveCount(1);
-
-    return $items[0]['data'];
-}
-
 test('an error whose scrub fails is buffered with its message redacted and its type and place intact', function (): void {
     $line = __LINE__ + 1;
     Ranetrace::report(new RuntimeException('Connection refused for password=hunter2'));
 
-    $item = bufferedItemAfterScrubFailure('errors');
+    $item = onlyBufferedItem('errors');
 
     expect($item['message'])->toBe('[REDACTED]')
         ->and($item['type'])->toBe(RuntimeException::class)
@@ -68,7 +53,7 @@ test('an error whose scrub fails is buffered with its message redacted and its t
 test('a log record whose scrub fails is buffered with its message redacted and its context scrubbed', function (): void {
     Log::channel('ranetrace')->error('Charge failed for token=tok_live_123', ['order' => 912, 'password' => 'hunter2']);
 
-    $item = bufferedItemAfterScrubFailure('logs');
+    $item = onlyBufferedItem('logs');
 
     expect($item['message'])->toBe('[REDACTED]')
         ->and($item['level'])->toBe('error')
@@ -84,7 +69,7 @@ test('a browser error whose scrub fails is accepted and buffered with its messag
         'url' => 'https://example.com/checkout',
     ])->assertOk();
 
-    $item = bufferedItemAfterScrubFailure('javascript_errors');
+    $item = onlyBufferedItem('javascript_errors');
 
     expect($item['message'])->toBe('[REDACTED]')
         ->and($item['type'])->toBe('TypeError')

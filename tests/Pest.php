@@ -359,3 +359,18 @@ function storeExpiredFeaturePause(string $feature, string $reason = '429'): void
         'reason' => $reason,
     ]);
 }
+
+/**
+ * The data of the one item of $type the capture path buffered, after checking
+ * that it is the only one.
+ *
+ * @return array<string, mixed>
+ */
+function onlyBufferedItem(string $type): array
+{
+    $items = (new RanetraceBatchBuffer)->getItems($type, 10);
+
+    expect($items)->toHaveCount(1);
+
+    return $items[0]['data'];
+}
