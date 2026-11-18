@@ -16,8 +16,12 @@ beforeEach(function (): void {
     Http::fake();
 });
 
-test('a key that is missing or only whitespace captures nothing, so nothing is buffered or sent', function (?string $key): void {
-    Config::set('ranetrace.key', $key);
+/**
+ * Report an error and track an event, each buffered at once rather than
+ * queued, and return the buffer they land in when they are captured.
+ */
+function bufferAfterAnErrorAndAnEvent(): RanetraceBatchBuffer
+{
     Config::set('ranetrace.errors.queue', false);
     Config::set('ranetrace.events.queue', false);
 
@@ -25,7 +29,13 @@ test('a key that is missing or only whitespace captures nothing, so nothing is b
     $ranetrace->report(new RuntimeException('boom'));
     $ranetrace->trackEvent('button_clicked');
 
-    $buffer = app(RanetraceBatchBuffer::class);
+    return app(RanetraceBatchBuffer::class);
+}
+
+test('a key that is missing or only whitespace captures nothing, so nothing is buffered or sent', function (?string $key): void {
+    Config::set('ranetrace.key', $key);
+
+    $buffer = bufferAfterAnErrorAndAnEvent();
 
     expect($buffer->count('errors'))->toBe(0)
         ->and($buffer->count('events'))->toBe(0);
@@ -40,14 +50,8 @@ test('a key that is missing or only whitespace captures nothing, so nothing is b
 
 test('a real key still captures', function (): void {
     Config::set('ranetrace.key', 'ingest-key');
-    Config::set('ranetrace.errors.queue', false);
-    Config::set('ranetrace.events.queue', false);
 
-    $ranetrace = new Ranetrace;
-    $ranetrace->report(new RuntimeException('boom'));
-    $ranetrace->trackEvent('button_clicked');
-
-    $buffer = app(RanetraceBatchBuffer::class);
+    $buffer = bufferAfterAnErrorAndAnEvent();
 
     expect($buffer->count('errors'))->toBe(1)
         ->and($buffer->count('events'))->toBe(1);
@@ -79,14 +83,8 @@ test('the feature test commands report a key of only whitespace as not set, and 
 
 test('a key that is not a string counts as missing for capture, the commands and the client', function (mixed $key): void {
     Config::set('ranetrace.key', $key);
-    Config::set('ranetrace.errors.queue', false);
-    Config::set('ranetrace.events.queue', false);
 
-    $ranetrace = new Ranetrace;
-    $ranetrace->report(new RuntimeException('boom'));
-    $ranetrace->trackEvent('button_clicked');
-
-    $buffer = app(RanetraceBatchBuffer::class);
+    $buffer = bufferAfterAnErrorAndAnEvent();
 
     expect(Ranetrace::isCaptureEnabled('errors'))->toBeFalse()
         ->and($buffer->count('errors'))->toBe(0)
