@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Config;
 use Ranetrace\Laravel\Dashboard\DashboardData;
@@ -111,8 +110,7 @@ test('ranetrace:status --json output is unchanged after the DashboardData extrac
     // (both derived from now()) are identical to the direct service call below.
     $this->freezeTime();
 
-    Artisan::call('ranetrace:status', ['--json' => true]);
-    $commandJson = json_decode(mb_trim(Artisan::output()), true);
+    $commandJson = statusJson();
 
     $serviceData = app(DashboardData::class)->collectStatus();
 

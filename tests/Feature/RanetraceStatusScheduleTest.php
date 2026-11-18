@@ -5,7 +5,6 @@ declare(strict_types=1);
 use Illuminate\Console\Scheduling\Event;
 use Illuminate\Console\Scheduling\EventMutex;
 use Illuminate\Console\Scheduling\Schedule;
-use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Config;
 use Ranetrace\Laravel\Commands\RanetraceWorkCommand;
@@ -21,26 +20,14 @@ beforeEach(function (): void {
 });
 
 /**
- * The text output of ranetrace:status, without styling tags.
- */
-function scheduleStatusText(): string
-{
-    expect(Artisan::call('ranetrace:status'))->toBe(0);
-
-    return Artisan::output();
-}
-
-/**
  * The `schedule` key of `ranetrace:status --json`, after checking that the
- * whole output is valid JSON.
+ * output holds it.
  *
  * @return array<string, mixed>|null
  */
 function scheduleStatusJson(): ?array
 {
-    expect(Artisan::call('ranetrace:status', ['--json' => true]))->toBe(0);
-
-    $status = json_decode(mb_trim(Artisan::output()), true, flags: JSON_THROW_ON_ERROR);
+    $status = statusJson();
 
     expect($status)->toHaveKey('schedule');
 
@@ -84,7 +71,7 @@ function recordEventsBatchSecondsAgo(int $seconds): void
 test('a worker scheduled with a five minute lock gets one healthy line and no warning', function (): void {
     app(Schedule::class)->command('ranetrace:work')->everyMinute()->withoutOverlapping(5)->runInBackground();
 
-    $output = scheduleStatusText();
+    $output = statusOutput();
 
     expect($output)->toContain("Schedule\n")
         ->and($output)->toContain('✓ ranetrace:work runs every minute, overlap lock expires after 5 minutes')
@@ -106,7 +93,7 @@ test('a worker scheduled with a five minute lock gets one healthy line and no wa
 test('a worker scheduled with the bare withoutOverlapping() is warned about the 24 hour default and given the fix', function (): void {
     app(Schedule::class)->command('ranetrace:work')->everyMinute()->withoutOverlapping()->runInBackground();
 
-    $output = scheduleStatusText();
+    $output = statusOutput();
     $json = scheduleStatusJson();
 
     expect($output)->toContain('! ranetrace:work runs every minute, overlap lock expires after 1440 minutes')
@@ -125,7 +112,7 @@ test('an explicit lock expiry other than the default gets no warning', function 
     app(Schedule::class)->command('ranetrace:work')->everyMinute()->withoutOverlapping($minutes);
 
     expect(scheduleStatusJson()['warnings'])->toBe([])
-        ->and(scheduleStatusText())->not->toContain('Recommendations');
+        ->and(statusOutput())->not->toContain('Recommendations');
 })->with([1, 60, 1439, 1441]);
 
 test('a worker scheduled without an overlap lock gets no warning', function (): void {
@@ -133,7 +120,7 @@ test('a worker scheduled without an overlap lock gets no warning', function (): 
 
     $json = scheduleStatusJson();
 
-    expect(scheduleStatusText())->toContain('✓ ranetrace:work runs every minute, without an overlap lock')
+    expect(statusOutput())->toContain('✓ ranetrace:work runs every minute, without an overlap lock')
         ->and($json['warnings'])->toBe([])
         ->and($json['entries'][0])->toMatchArray([
             'without_overlapping' => false,
@@ -148,7 +135,7 @@ test('a held lock while the drain is stalled is reported as stuck with the comma
     $event = app(Schedule::class)->command('ranetrace:work')->everyMinute()->withoutOverlapping(5);
     $event->mutex->create($event);
 
-    $output = scheduleStatusText();
+    $output = statusOutput();
     $json = scheduleStatusJson();
 
     expect($output)->toContain('✗ ranetrace:work runs every minute, overlap lock expires after 5 minutes')
@@ -169,7 +156,7 @@ test('a held lock with nothing stalled is a run in progress and says nothing', f
 
     $json = scheduleStatusJson();
 
-    expect(scheduleStatusText())->toContain('✓ ranetrace:work runs every minute, overlap lock expires after 5 minutes')
+    expect(statusOutput())->toContain('✓ ranetrace:work runs every minute, overlap lock expires after 5 minutes')
         ->not->toContain('stuck')
         ->and($json['entries'][0]['lock_held'])->toBeTrue()
         ->and($json['warnings'])->toBe([]);
@@ -187,7 +174,7 @@ test('a held lock while only a paused feature waits too long is not called stuck
 
     $json = scheduleStatusJson();
 
-    expect(scheduleStatusText())->toContain('! Paused and not sending: events')
+    expect(statusOutput())->toContain('! Paused and not sending: events')
         ->not->toContain('stuck')
         ->and($json['warnings'])->toBe([]);
 });
@@ -196,7 +183,7 @@ test('a stalled drain with no held lock points past the schedule at the cron ent
     stallTheEventsDrain();
     app(Schedule::class)->command('ranetrace:work')->everyMinute()->withoutOverlapping(5);
 
-    $output = scheduleStatusText();
+    $output = statusOutput();
 
     expect($output)->toContain("  ranetrace:work is scheduled. Check that the scheduler's own cron entry runs schedule:run every minute, and that a queue worker processes the batch jobs.")
         ->and($output)->toContain("• Check that the scheduler's own cron entry runs schedule:run every minute, and that a queue worker processes the batch jobs")
@@ -211,7 +198,7 @@ test('a killed run under the default lock gets both the stuck lock and the expir
     $event = app(Schedule::class)->command('ranetrace:work')->everyMinute()->withoutOverlapping();
     $event->mutex->create($event);
 
-    $output = scheduleStatusText();
+    $output = statusOutput();
 
     expect($output)->toContain('✗ ranetrace:work runs every minute, overlap lock expires after 1440 minutes')
         ->and($output)->toContain('  → Release it with php artisan schedule:clear-cache')
@@ -224,7 +211,7 @@ test('a worker missing from the schedule with no recent batch is warned about, w
         recordEventsBatchSecondsAgo($batchSecondsAgo);
     }
 
-    $output = scheduleStatusText();
+    $output = statusOutput();
     $lines = explode("\n", $output);
 
     expect($output)->toContain('✗ ranetrace:work was not found in the schedule')
@@ -246,7 +233,7 @@ test('a worker missing from the schedule with no recent batch is warned about, w
 test('a worker missing from the schedule that sent a batch recently runs some other way and gets no warning', function (): void {
     recordEventsBatchSecondsAgo(60);
 
-    $output = scheduleStatusText();
+    $output = statusOutput();
 
     expect($output)->toContain('✓ ranetrace:work was not found in the schedule, but a batch was sent in the last 10 minutes, so it runs some other way')
         ->and($output)->not->toContain('Recommendations')
@@ -301,7 +288,7 @@ test('with two entries the expiry warning names the one that has the default', f
     $schedule->command('ranetrace:work --type=errors')->everyMinute()->withoutOverlapping(5);
     $schedule->command('ranetrace:work --type=logs')->everyFiveMinutes()->withoutOverlapping();
 
-    $output = scheduleStatusText();
+    $output = statusOutput();
     $json = scheduleStatusJson();
 
     expect($output)->toContain('✓ ranetrace:work --type=errors runs every minute, overlap lock expires after 5 minutes')
@@ -337,7 +324,7 @@ test('a mutex that cannot be read costs the lock answer only', function (): void
 
     $json = scheduleStatusJson();
 
-    expect(scheduleStatusText())->toContain('✓ ranetrace:work runs every minute, overlap lock expires after 5 minutes')
+    expect(statusOutput())->toContain('✓ ranetrace:work runs every minute, overlap lock expires after 5 minutes')
         ->and($json['entries'][0]['lock_held'])->toBeNull()
         ->and($json['warnings'])->toBe([]);
 });
@@ -346,7 +333,7 @@ test('a schedule that cannot be resolved leaves the schedule out and asks whethe
     stallTheEventsDrain();
     app()->bind(Schedule::class, fn (): never => throw new RuntimeException('No schedule here'));
 
-    $output = scheduleStatusText();
+    $output = statusOutput();
 
     expect(explode("\n", $output))->not->toContain('Schedule')
         ->and($output)->toContain('  Is the ranetrace:work command scheduled (every minute)?')
@@ -358,7 +345,7 @@ test('a buffer near capacity under a worker scheduled every minute points at pau
     fillTheEventsBufferNearCapacity();
     app(Schedule::class)->command('ranetrace:work')->everyMinute()->withoutOverlapping(5);
 
-    expect(scheduleStatusText())
+    expect(statusOutput())
         ->toContain('• Buffers approaching capacity, data may be dropped: events')
         ->toContain('• ranetrace:work is scheduled every minute. Check for a paused feature above, and that a queue worker processes the batch jobs: a run sends at most 1000 items per feature')
         ->not->toContain('running on schedule');
@@ -368,7 +355,7 @@ test('a buffer near capacity under a worker scheduled less often than every minu
     fillTheEventsBufferNearCapacity();
     app(Schedule::class)->command('ranetrace:work')->everyFiveMinutes()->withoutOverlapping(5);
 
-    expect(scheduleStatusText())
+    expect(statusOutput())
         ->toContain('• ranetrace:work is scheduled, but not every minute. A run sends at most 1000 items per feature, so schedule it every minute')
         ->not->toContain('running on schedule');
 });
@@ -376,7 +363,7 @@ test('a buffer near capacity under a worker scheduled less often than every minu
 test('a buffer near capacity with the worker missing from the schedule leaves the advice to the schedule recommendation', function (): void {
     fillTheEventsBufferNearCapacity();
 
-    $output = scheduleStatusText();
+    $output = statusOutput();
 
     expect($output)
         ->toContain('• Buffers approaching capacity, data may be dropped: events')
@@ -389,7 +376,7 @@ test('a buffer near capacity under a worker that runs some other way says to che
     fillTheEventsBufferNearCapacity();
     recordEventsBatchSecondsAgo(60);
 
-    expect(scheduleStatusText())
+    expect(statusOutput())
         ->toContain('• ranetrace:work is not in the schedule. Check that whatever runs it does so every minute')
         ->not->toContain('running on schedule');
 });
@@ -399,7 +386,7 @@ test('a buffer near capacity whose drain is also stalled gets the stalled advice
     $this->travel(DashboardData::DRAIN_STALE_SECONDS + 1)->seconds();
     app(Schedule::class)->command('ranetrace:work')->everyMinute()->withoutOverlapping(5);
 
-    $output = scheduleStatusText();
+    $output = statusOutput();
 
     expect($output)
         ->toContain('• Buffers approaching capacity, data may be dropped: events')
@@ -415,7 +402,7 @@ test('a buffer near capacity whose feature is paused and not sending leaves the 
     app(RanetracePauseManager::class)->setFeaturePause('events', 900, '403');
     app(Schedule::class)->command('ranetrace:work')->everyMinute()->withoutOverlapping(5);
 
-    $output = scheduleStatusText();
+    $output = statusOutput();
 
     expect($output)
         ->toContain('• Buffers approaching capacity, data may be dropped: events')
@@ -432,7 +419,7 @@ test('a buffer near capacity keeps its advice while only another feature is paus
     fillTheEventsBufferNearCapacity();
     app(Schedule::class)->command('ranetrace:work')->everyMinute()->withoutOverlapping(5);
 
-    expect(scheduleStatusText())
+    expect(statusOutput())
         ->toContain('• Paused and not sending: errors.')
         ->toContain('• ranetrace:work is scheduled every minute. Check for a paused feature above, and that a queue worker processes the batch jobs: a run sends at most 1000 items per feature');
 });
@@ -441,7 +428,7 @@ test('a buffer near capacity with a schedule that cannot be read asks whether th
     fillTheEventsBufferNearCapacity();
     app()->bind(Schedule::class, fn (): never => throw new RuntimeException('No schedule here'));
 
-    expect(scheduleStatusText())->toContain('• Check if ranetrace:work command is running on schedule');
+    expect(statusOutput())->toContain('• Check if ranetrace:work command is running on schedule');
 });
 
 test('a buffer near capacity whose drain is stalled under a schedule that cannot be read gets one schedule line', function (): void {
@@ -449,7 +436,7 @@ test('a buffer near capacity whose drain is stalled under a schedule that cannot
     $this->travel(DashboardData::DRAIN_STALE_SECONDS + 1)->seconds();
     app()->bind(Schedule::class, fn (): never => throw new RuntimeException('No schedule here'));
 
-    $output = scheduleStatusText();
+    $output = statusOutput();
 
     expect($output)
         ->toContain('• Buffers approaching capacity, data may be dropped: events')
@@ -465,7 +452,7 @@ test('a buffer near capacity whose feature is paused and not sending under a sch
     app(RanetracePauseManager::class)->setFeaturePause('events', 900, '403');
     app()->bind(Schedule::class, fn (): never => throw new RuntimeException('No schedule here'));
 
-    $output = scheduleStatusText();
+    $output = statusOutput();
 
     expect($output)
         ->toContain('• Buffers approaching capacity, data may be dropped: events')
@@ -479,7 +466,7 @@ test('a disabled installation is still told when the worker is missing from the 
     // so its absence is worth knowing where Ranetrace is switched off too.
     Config::set('ranetrace.enabled', false);
 
-    expect(scheduleStatusText())
+    expect(statusOutput())
         ->toContain('✗ ranetrace:work was not found in the schedule')
         ->toContain('• Schedule ranetrace:work every minute in routes/console.php (the line is under Schedule above)');
 });
@@ -498,10 +485,10 @@ test('the schedule output has no all-caps words besides acronyms', function (): 
 
     $event = app(Schedule::class)->command('ranetrace:work')->everyMinute()->withoutOverlapping();
     $event->mutex->create($event);
-    $troubled = scheduleStatusText();
+    $troubled = statusOutput();
 
     app()->instance(Schedule::class, new Schedule);
-    $missing = scheduleStatusText();
+    $missing = statusOutput();
 
     foreach ([$troubled, $missing] as $output) {
         preg_match_all('/(?<!\w)[A-Z]{3,}(?!\w)/u', $output, $matches);

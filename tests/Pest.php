@@ -171,3 +171,27 @@ function artisanRun(string $command, array $parameters = []): array
 
     return [$exitCode, Artisan::output()];
 }
+
+/**
+ * The text output of `ranetrace:status`, as plain lines without styling tags,
+ * after checking that the command exited 0.
+ *
+ * @param  array<string, mixed>  $options
+ */
+function statusOutput(array $options = []): string
+{
+    expect(Artisan::call('ranetrace:status', $options))->toBe(0);
+
+    return Artisan::output();
+}
+
+/**
+ * The decoded output of `ranetrace:status --json`. Output that is not valid
+ * JSON throws.
+ *
+ * @return array<string, mixed>
+ */
+function statusJson(): array
+{
+    return json_decode(mb_trim(statusOutput(['--json' => true])), true, flags: JSON_THROW_ON_ERROR);
+}

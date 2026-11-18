@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use Illuminate\Console\Scheduling\Schedule;
-use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Http;
@@ -23,18 +22,6 @@ beforeEach(function (): void {
 
     app(Schedule::class)->command('ranetrace:work')->everyMinute()->withoutOverlapping(5)->runInBackground();
 });
-
-/**
- * The text output of ranetrace:status, as plain lines without styling tags.
- *
- * @param  array<string, mixed>  $options
- */
-function statusOutput(array $options = []): string
-{
-    Artisan::call('ranetrace:status', $options);
-
-    return Artisan::output();
-}
 
 test('status reports healthy with empty buffers', function (): void {
     $this->artisan('ranetrace:status')
@@ -84,7 +71,7 @@ test('a stalled drain is reported as unhealthy, in the text and in --json', func
 
     expect(statusOutput())->toContain('✗ Overall status: issues detected')
         ->not->toContain('✓ Overall status: healthy')
-        ->and(json_decode(mb_trim(statusOutput(['--json' => true])), true)['healthy'])->toBeFalse();
+        ->and(statusJson()['healthy'])->toBeFalse();
 });
 
 test('status reports the ingest key as configured without naming its value', function (): void {
@@ -234,7 +221,7 @@ function pauseFeaturesPastTheirGrace(array $features, string $reason = '403'): v
 test('the --json output lists a paused feature its pause no longer excuses and is unhealthy', function (): void {
     pauseFeaturesPastTheirGrace(['errors']);
 
-    $status = json_decode(mb_trim(statusOutput(['--json' => true])), true);
+    $status = statusJson();
 
     expect($status['healthy'])->toBeFalse()
         ->and($status['drain']['paused_stalled'])->toBe(['errors'])
@@ -334,7 +321,7 @@ test('an enabled app with no ingest key is reported as unhealthy, with the key r
 test('the --json output reports an enabled app with no ingest key as unhealthy', function (): void {
     Config::set('ranetrace.key', null);
 
-    $status = json_decode(mb_trim(statusOutput(['--json' => true])), true);
+    $status = statusJson();
 
     expect($status['healthy'])->toBeFalse()
         ->and($status['config']['enabled'])->toBeTrue()
@@ -348,7 +335,7 @@ test('an enabled app with an ingest key stays healthy and prints no enable hint'
         ->and($output)->toContain('Enabled: Yes')
         ->and($output)->not->toContain('→')
         ->and($output)->not->toContain('Recommendations')
-        ->and(json_decode(mb_trim(statusOutput(['--json' => true])), true)['healthy'])->toBeTrue();
+        ->and(statusJson()['healthy'])->toBeTrue();
 });
 
 test('a disabled app is healthy and shows how to turn it on under the Enabled row', function (?string $key): void {
@@ -365,7 +352,7 @@ test('a disabled app is healthy and shows how to turn it on under the Enabled ro
         ->and(mb_substr_count($output, 'RANETRACE_ENABLED'))->toBe(1)
         ->and($output)->not->toContain('Enable Ranetrace')
         ->and($output)->not->toContain('Recommendations')
-        ->and(json_decode(mb_trim(statusOutput(['--json' => true])), true)['healthy'])->toBeTrue();
+        ->and(statusJson()['healthy'])->toBeTrue();
 })->with([
     'without a key' => [null],
     'with a key' => ['ingest-key'],
@@ -403,7 +390,7 @@ test('an enabled flag left as a string by env() decides health by its truthiness
     Config::set('ranetrace.enabled', $enabled);
     Config::set('ranetrace.key', null);
 
-    $status = json_decode(mb_trim(statusOutput(['--json' => true])), true);
+    $status = statusJson();
 
     expect($status['config']['enabled'])->toBe($isEnabled)
         ->and($status['healthy'])->toBe(! $isEnabled);
@@ -416,11 +403,11 @@ test('the --json output has no heartbeat before one is accepted and its time aft
     $this->freezeTime();
     Http::fake(['api.ranetrace.com/*' => Http::response(['success' => true], 200)]);
 
-    $before = json_decode(mb_trim(statusOutput(['--json' => true])), true);
+    $before = statusJson();
 
     (new SendHeartbeatToRanetraceJob)->handle(app(RanetraceApiClient::class));
 
-    $after = json_decode(mb_trim(statusOutput(['--json' => true])), true);
+    $after = statusJson();
 
     expect($before['heartbeat'])->toBe(['last_sent' => null])
         ->and($after['heartbeat'])->toBe(['last_sent' => now()->timestamp]);
@@ -468,11 +455,11 @@ test('a heartbeat stamp is read from a numeric string and ignored when it is no 
 test('a heartbeat stamp does not change whether the installation is healthy', function (?string $key, bool $healthy): void {
     Config::set('ranetrace.key', $key);
 
-    $without = json_decode(mb_trim(statusOutput(['--json' => true])), true)['healthy'];
+    $without = statusJson()['healthy'];
 
     Cache::store('array')->put(SendHeartbeatToRanetraceJob::LAST_SENT_KEY, now()->timestamp);
 
-    $with = json_decode(mb_trim(statusOutput(['--json' => true])), true)['healthy'];
+    $with = statusJson()['healthy'];
 
     expect($without)->toBe($healthy)
         ->and($with)->toBe($healthy);
