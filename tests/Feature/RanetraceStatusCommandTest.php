@@ -387,16 +387,6 @@ test('a heartbeat stamped now or in the future reads as just now', function (int
     'a clock set back' => [30],
 ]);
 
-test('a heartbeat stamp is read from a numeric string and ignored when it is no number', function (mixed $stored, ?int $expected): void {
-    Cache::store('array')->put(SendHeartbeatToRanetraceJob::LAST_SENT_KEY, $stored);
-
-    expect(app(DashboardData::class)->collectStatus()['heartbeat']['last_sent'])->toBe($expected);
-})->with([
-    'a numeric string, as Redis returns it' => ['1763380000', 1763380000],
-    'a word' => ['yesterday', null],
-    'an array' => [['at' => 1763380000], null],
-]);
-
 test('a heartbeat stamp does not change whether the installation is healthy', function (?string $key, bool $healthy): void {
     Config::set('ranetrace.key', $key);
 

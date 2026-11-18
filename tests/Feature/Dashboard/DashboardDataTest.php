@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Config;
 use Ranetrace\Laravel\Dashboard\DashboardData;
 use Ranetrace\Laravel\Jobs\SendBatchToRanetraceJob;
+use Ranetrace\Laravel\Jobs\SendHeartbeatToRanetraceJob;
 use Ranetrace\Laravel\Services\RanetraceBatchBuffer;
 use Ranetrace\Laravel\Services\RanetracePauseManager;
 
@@ -58,6 +59,16 @@ test('a numeric-string last-batch timestamp (Redis-style) counts as a recent dra
     expect($status['drain']['last_batch']['events'])->toBe($now)
         ->and($status['drain']['stalled'])->not->toContain('events');
 });
+
+test('a heartbeat stamp is read from a numeric string and ignored when it is no number', function (mixed $stored, ?int $expected): void {
+    Cache::store('array')->put(SendHeartbeatToRanetraceJob::LAST_SENT_KEY, $stored);
+
+    expect(app(DashboardData::class)->collectStatus()['heartbeat']['last_sent'])->toBe($expected);
+})->with([
+    'a numeric string, as Redis returns it' => ['1763380000', 1763380000],
+    'a word' => ['yesterday', null],
+    'an array' => [['at' => 1763380000], null],
+]);
 
 test('a buffer left alone for hours is still reported as stalled, with its items dated when they were captured', function (): void {
     // The worker stopped right after its last drain: nothing drains the buffer
