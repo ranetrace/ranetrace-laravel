@@ -6,7 +6,6 @@ namespace Ranetrace\Laravel;
 
 use Illuminate\Http\Request as HttpRequest;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\Request;
 use Ranetrace\Laravel\Events\EventTracker;
 use Ranetrace\Laravel\Jobs\HandleErrorJob;
 use Ranetrace\Laravel\Jobs\HandleEventJob;
@@ -151,7 +150,7 @@ class Ranetrace
     {
         return $this->payloadBuilder()->build(
             $exception,
-            $this->errorContext(Request::instance(), app()->runningInConsole()),
+            $this->errorContext(request(), app()->runningInConsole()),
         );
     }
 
