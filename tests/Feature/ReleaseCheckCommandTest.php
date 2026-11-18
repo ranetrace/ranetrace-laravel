@@ -33,7 +33,7 @@ function releaseCheckRun(string $refuses = '', ?string $keyFile = null, int $hea
     });
 
     if ($keyFile === null) {
-        $keyFile = tempnam(sys_get_temp_dir(), 'release-check-key');
+        $keyFile = storage_path('release-check-key');
         file_put_contents($keyFile, "release-check-key-12345\n");
     }
 
