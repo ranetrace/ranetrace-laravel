@@ -165,15 +165,3 @@ test('ranetrace:test-analytics is a no-op when analytics is disabled', function 
 
     Bus::assertNotDispatched(HandlePageVisitJob::class);
 });
-
-test('ranetrace:test-analytics dispatches nothing and fails when the key is missing', function (?string $key): void {
-    Config::set('ranetrace.key', $key);
-
-    $this->artisan('ranetrace:test-analytics')->assertFailed();
-
-    Bus::assertNotDispatched(HandlePageVisitJob::class);
-})->with([
-    'null' => [null],
-    'empty' => [''],
-    'whitespace' => ['   '],
-]);

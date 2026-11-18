@@ -40,7 +40,7 @@ dataset('capturing feature test commands', [
     'logging' => ['ranetrace:test-logging', 'logging', 'logs', HandleLogJob::class, 'Test logs', null],
 ]);
 
-test('a feature test command with a blank key says so, captures nothing and fails', function (string $command, string $feature, string $type, string $job, string $items, ?int $count, ?string $key): void {
+test('a feature test command with a blank key says so, captures nothing and fails', function (string $command, string $feature, string $type, string $line, ?string $key): void {
     Queue::fake();
     Config::set('ranetrace.key', $key);
     Config::set("ranetrace.{$feature}.queue", false);
@@ -53,7 +53,7 @@ test('a feature test command with a blank key says so, captures nothing and fail
         ->and(featureTestBufferedCount())->toBe(0);
 
     Queue::assertNothingPushed();
-})->with('capturing feature test commands')->with([
+})->with('every feature test command')->with([
     'null' => [null],
     'empty' => [''],
     'whitespace' => ['   '],
