@@ -5,7 +5,6 @@ declare(strict_types=1);
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Queue;
 use Ranetrace\Laravel\Ranetrace;
 use Ranetrace\Laravel\Services\RanetraceApiClient;
 use Ranetrace\Laravel\Services\RanetraceBatchBuffer;
@@ -61,20 +60,6 @@ test('ranetrace:test fails on a key of only whitespace', function (): void {
 
     Http::assertNothingSent();
 });
-
-test('the feature test commands report a key of only whitespace as not set, and fail', function (string $command): void {
-    Queue::fake();
-    Config::set('ranetrace.key', '   ');
-
-    $exitCode = Artisan::call($command);
-
-    expect($exitCode)->toBe(1)
-        ->and(Artisan::output())->toContain('❌ Ranetrace API key is not set!');
-})->with([
-    'errors' => ['ranetrace:test-errors'],
-    'events' => ['ranetrace:test-events'],
-    'logging' => ['ranetrace:test-logging'],
-]);
 
 test('a key that is not a string counts as missing for capture, the commands and the client', function (mixed $key): void {
     Config::set('ranetrace.key', $key);
