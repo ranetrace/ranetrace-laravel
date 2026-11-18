@@ -47,7 +47,7 @@
         @endforelse
 
         @if (! empty($stalled))
-            <p class="rt-hint">Stalled drains usually mean the worker isn't running. Ensure <code>ranetrace:work</code> is scheduled every minute.</p>
+            <p class="rt-hint">Stalled drains usually mean the worker isn't running. Run <code>php artisan ranetrace:status</code> to see why: it reads your schedule, which this page cannot.</p>
         @endif
 
         <div class="rt-footnote">

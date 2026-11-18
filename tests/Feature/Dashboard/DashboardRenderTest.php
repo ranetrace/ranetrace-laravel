@@ -94,7 +94,9 @@ test('a stalled feature beside a paused one keeps the worker hint and each its o
 
     expect(mb_substr_count($html, "Paused: buffered items aren't being sent."))->toBe(1)
         ->and(mb_substr_count($html, "Drain stalled: buffered items aren't being sent."))->toBe(1)
-        ->and($html)->toContain('Stalled drains usually mean the worker');
+        ->and($html)->toContain('Stalled drains usually mean the worker')
+        ->and($html)->toContain('Run <code>php artisan ranetrace:status</code> to see why: it reads your schedule, which this page cannot.')
+        ->and($html)->not->toContain('is scheduled every minute');
 });
 
 test('the health badge reads Issues detected while a drain is stalled', function (): void {
