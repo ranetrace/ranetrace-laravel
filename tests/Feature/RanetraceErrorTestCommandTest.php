@@ -12,7 +12,8 @@ beforeEach(function (): void {
 });
 
 /**
- * The error items the command left in the buffer, keyed by message.
+ * Run ranetrace:test-errors, then return the error items it left in the
+ * buffer, keyed by message.
  *
  * @return array<string, array<string, mixed>>
  */
