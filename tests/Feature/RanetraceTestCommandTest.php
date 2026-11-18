@@ -12,6 +12,7 @@ use Ranetrace\Laravel\Ranetrace;
 use Ranetrace\Laravel\Services\RanetraceApiClient;
 use Ranetrace\Laravel\Services\RanetraceBatchBuffer;
 use Ranetrace\Laravel\Services\RanetracePauseManager;
+use Ranetrace\Laravel\Support\InternalLogger;
 use Ranetrace\Laravel\Tests\Contract\ContractFields;
 use Ranetrace\Php\Contract\WireContract;
 
@@ -388,7 +389,7 @@ test('an item that cannot be built is not captured, names the internal log that 
 
     [$exitCode, $output] = artisanRun('ranetrace:test');
 
-    $logFile = dirname((string) config('logging.channels.ranetrace_internal.path')).'/ranetrace-internal-'.date('Y-m-d').'.log';
+    $logFile = InternalLogger::todaysFile();
 
     expect($exitCode)->toBe(0)
         ->and($output)->toContain("  errors   not captured: the SDK could not build the test item. The reason is in {$logFile}\n  events   accepted\n")
