@@ -6,13 +6,13 @@ namespace Ranetrace\Laravel\Commands;
 
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
+use Ranetrace\Laravel\Commands\Concerns\RunsFeatureTest;
 use Ranetrace\Laravel\Support\BatchConfig;
 use Ranetrace\Laravel\Support\CoreConfig;
-use Ranetrace\Laravel\Support\GuardsFeatureTest;
 
 class RanetraceLogTestCommand extends Command
 {
-    use GuardsFeatureTest;
+    use RunsFeatureTest;
 
     protected $signature = 'ranetrace:test-logging';
 

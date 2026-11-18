@@ -7,14 +7,14 @@ namespace Ranetrace\Laravel\Commands;
 use Closure;
 use Exception;
 use Illuminate\Console\Command;
+use Ranetrace\Laravel\Commands\Concerns\RunsFeatureTest;
 use Ranetrace\Laravel\Facades\Ranetrace;
 use Ranetrace\Laravel\Support\BatchConfig;
 use Ranetrace\Laravel\Support\CoreConfig;
-use Ranetrace\Laravel\Support\GuardsFeatureTest;
 
 class RanetraceErrorTestCommand extends Command
 {
-    use GuardsFeatureTest;
+    use RunsFeatureTest;
 
     private const int TEST_COUNT = 4;
 

@@ -2,13 +2,16 @@
 
 declare(strict_types=1);
 
-namespace Ranetrace\Laravel\Support;
+namespace Ranetrace\Laravel\Commands\Concerns;
 
 use Closure;
 use Illuminate\Console\Command;
 use Ranetrace\Laravel\Ranetrace;
 use Ranetrace\Laravel\Services\CountingBatchBuffer;
 use Ranetrace\Laravel\Services\RanetraceBatchBuffer;
+use Ranetrace\Laravel\Support\BatchConfig;
+use Ranetrace\Laravel\Support\CoreConfig;
+use Ranetrace\Laravel\Support\InternalLogger;
 
 /**
  * What the feature test commands share: the checks capture makes before it
@@ -22,7 +25,7 @@ use Ranetrace\Laravel\Services\RanetraceBatchBuffer;
  *
  * @mixin Command
  */
-trait GuardsFeatureTest
+trait RunsFeatureTest
 {
     /**
      * Null when the test may capture, otherwise the exit code the command

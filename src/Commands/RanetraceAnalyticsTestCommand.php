@@ -8,13 +8,13 @@ use Illuminate\Console\Command;
 use Illuminate\Http\Request;
 use Ranetrace\Laravel\Analytics\HumanProbabilityScorer;
 use Ranetrace\Laravel\Analytics\Middleware\TrackPageVisit;
+use Ranetrace\Laravel\Commands\Concerns\RunsFeatureTest;
 use Ranetrace\Laravel\Jobs\HandlePageVisitJob;
 use Ranetrace\Laravel\Support\BatchConfig;
-use Ranetrace\Laravel\Support\GuardsFeatureTest;
 
 class RanetraceAnalyticsTestCommand extends Command
 {
-    use GuardsFeatureTest;
+    use RunsFeatureTest;
 
     private const string TEST_PATH = '/ranetrace-test-analytics';
 

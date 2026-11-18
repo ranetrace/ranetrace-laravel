@@ -5,16 +5,16 @@ declare(strict_types=1);
 namespace Ranetrace\Laravel\Commands;
 
 use Illuminate\Console\Command;
+use Ranetrace\Laravel\Commands\Concerns\RunsFeatureTest;
 use Ranetrace\Laravel\Jobs\HandleJavaScriptErrorJob;
 use Ranetrace\Laravel\Support\BatchConfig;
 use Ranetrace\Laravel\Support\Core;
 use Ranetrace\Laravel\Support\CoreConfig;
-use Ranetrace\Laravel\Support\GuardsFeatureTest;
 use Ranetrace\Php\JavaScript\ErrorItemBuilder;
 
 class RanetraceJavaScriptErrorTestCommand extends Command
 {
-    use GuardsFeatureTest;
+    use RunsFeatureTest;
 
     /**
      * A real desktop Chrome user agent, so the test item carries the browser
