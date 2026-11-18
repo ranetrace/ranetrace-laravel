@@ -8,7 +8,6 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 use Ranetrace\Laravel\Commands\Concerns\RunsFeatureTest;
 use Ranetrace\Laravel\Support\BatchConfig;
-use Ranetrace\Laravel\Support\CoreConfig;
 
 class RanetraceLogTestCommand extends Command
 {
@@ -111,12 +110,10 @@ class RanetraceLogTestCommand extends Command
         $this->table(
             ['Setting', 'Value'],
             [
-                ['Logging enabled', config('ranetrace.logging.enabled') ? 'Yes' : 'No'],
                 ['Queue enabled', config('ranetrace.logging.queue') ? 'Yes' : 'No'],
                 ['Queue name', BatchConfig::describeFeatureQueue('ranetrace.logging')],
                 ['Minimum level', config('ranetrace.logging.level', 'notice')],
                 ['Excluded channels', implode(', ', config('ranetrace.logging.excluded_channels', [])) ?: '(none)'],
-                ['API key set', CoreConfig::hasIngestKey() ? 'Yes' : 'No'],
             ]
         );
 
