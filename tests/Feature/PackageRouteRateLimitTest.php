@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use Illuminate\Contracts\Auth\Authenticatable;
+use Illuminate\Auth\GenericUser;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Route;
@@ -39,46 +39,6 @@ function postToPackageRoute(string $routeName): TestResponse
         : ['message' => 'Test error', 'url' => 'https://example.com/'];
 
     return test()->postJson(route($routeName), $payload);
-}
-
-function rateLimitedUser(int $id): Authenticatable
-{
-    return new class($id) implements Authenticatable
-    {
-        public function __construct(private int $id) {}
-
-        public function getAuthIdentifierName(): string
-        {
-            return 'id';
-        }
-
-        public function getAuthIdentifier(): int
-        {
-            return $this->id;
-        }
-
-        public function getAuthPasswordName(): string
-        {
-            return 'password';
-        }
-
-        public function getAuthPassword(): string
-        {
-            return '';
-        }
-
-        public function getRememberToken(): string
-        {
-            return '';
-        }
-
-        public function setRememberToken($value): void {}
-
-        public function getRememberTokenName(): string
-        {
-            return '';
-        }
-    };
 }
 
 test('a package route answers 429 once its configured limit is spent', function (string $routeName, string $configKey): void {
@@ -151,11 +111,11 @@ test('the two package routes count apart from each other', function (): void {
 test('signed-in users behind one IP each have their own count', function (string $routeName, string $configKey): void {
     config([$configKey => '1,1']);
 
-    $this->actingAs(rateLimitedUser(1));
+    $this->actingAs(new GenericUser(['id' => 1]));
     postToPackageRoute($routeName)->assertOk();
     postToPackageRoute($routeName)->assertTooManyRequests();
 
-    $this->actingAs(rateLimitedUser(2));
+    $this->actingAs(new GenericUser(['id' => 2]));
     postToPackageRoute($routeName)->assertOk();
 })->with('package routes');
 
@@ -176,40 +136,7 @@ test('a signed-in user and a guest whose IP reads like that user id do not share
     $this->withServerVariables(['REMOTE_ADDR' => '203.0.113.1']);
     postToPackageRoute('ranetrace.javascript-errors.store')->assertOk();
 
-    $user = new class implements Authenticatable
-    {
-        public function getAuthIdentifierName(): string
-        {
-            return 'id';
-        }
-
-        public function getAuthIdentifier(): string
-        {
-            return '203.0.113.1';
-        }
-
-        public function getAuthPasswordName(): string
-        {
-            return 'password';
-        }
-
-        public function getAuthPassword(): string
-        {
-            return '';
-        }
-
-        public function getRememberToken(): string
-        {
-            return '';
-        }
-
-        public function setRememberToken($value): void {}
-
-        public function getRememberTokenName(): string
-        {
-            return '';
-        }
-    };
+    $user = new GenericUser(['id' => '203.0.113.1']);
 
     $this->actingAs($user);
     postToPackageRoute('ranetrace.javascript-errors.store')->assertOk();
