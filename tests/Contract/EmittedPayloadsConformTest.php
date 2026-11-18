@@ -143,9 +143,7 @@ test('no emitted payload carries the legacy laravel_version key at any depth', f
 /**
  * `extra` is free-shape at ingest, so the server enforces nothing here: what
  * the SDKs put inside it is a convention between them, recorded as the log
- * item's `extra_vocabulary`. This pins the Laravel half of that convention,
- * including the move from `laravel_version` to the generic pair the PHP SDK
- * already sends.
+ * item's `extra_vocabulary`. This pins the Laravel half of that convention.
  */
 test('the log payload attaches the extra vocabulary the contract describes', function (): void {
     $extra = contractEmittedPayloads($this)['logs']['extra'];

@@ -20,8 +20,7 @@ beforeEach(function (): void {
  * local name in it is gone: the marker has to be something minification keeps.
  * This is the public API the script hangs on `window`, which is a property path
  * rather than a local name, is unique to this script, and reads the same in the
- * minified and the unminified spelling, so it holds whichever of the two the
- * resolved dependency ships.
+ * minified and the unminified spelling.
  */
 function captureScriptMarker(): string
 {
