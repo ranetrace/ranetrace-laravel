@@ -18,12 +18,7 @@ use Ranetrace\Laravel\Facades\Ranetrace;
 beforeEach(function (): void {
     config([
         'ranetrace.errors.queue' => false,
-        'ranetrace.logging.enabled' => true,
         'ranetrace.logging.queue' => false,
-        'logging.channels.ranetrace' => [
-            'driver' => 'ranetrace',
-            'level' => 'debug',
-        ],
     ]);
 });
 

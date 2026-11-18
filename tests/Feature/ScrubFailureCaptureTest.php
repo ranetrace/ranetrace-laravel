@@ -26,10 +26,6 @@ beforeEach(function (): void {
             static fn (int $number): string => "customer_secret_field_number_{$number}",
             range(1, 2_000),
         ),
-        'logging.channels.ranetrace' => [
-            'driver' => 'ranetrace',
-            'level' => 'debug',
-        ],
     ]);
 });
 
