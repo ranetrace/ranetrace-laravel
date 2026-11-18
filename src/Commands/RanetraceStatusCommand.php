@@ -417,13 +417,17 @@ class RanetraceStatusCommand extends Command
      */
     protected function nearCapacityAdvice(?array $schedule, bool $isAnsweredByDrainLine): ?string
     {
+        if ($isAnsweredByDrainLine) {
+            return null;
+        }
+
         if ($schedule === null) {
             return 'Check if ranetrace:work command is running on schedule';
         }
 
         $warnings = $schedule['warnings'];
 
-        if ($isAnsweredByDrainLine || in_array(WorkerSchedule::WARNING_NOT_SCHEDULED, $warnings, true) || in_array(WorkerSchedule::WARNING_LOCK_STUCK, $warnings, true)) {
+        if (in_array(WorkerSchedule::WARNING_NOT_SCHEDULED, $warnings, true) || in_array(WorkerSchedule::WARNING_LOCK_STUCK, $warnings, true)) {
             return null;
         }
 

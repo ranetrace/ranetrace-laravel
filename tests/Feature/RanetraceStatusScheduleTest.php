@@ -444,6 +444,36 @@ test('a buffer near capacity with a schedule that cannot be read keeps the old q
     expect(scheduleStatusText())->toContain('• Check if ranetrace:work command is running on schedule');
 });
 
+test('a buffer near capacity whose drain is stalled under a schedule that cannot be read gets one schedule line', function (): void {
+    fillTheEventsBufferNearCapacity();
+    $this->travel(DashboardData::DRAIN_STALE_SECONDS + 1)->seconds();
+    app()->bind(Schedule::class, fn (): never => throw new RuntimeException('No schedule here'));
+
+    $output = scheduleStatusText();
+
+    expect($output)
+        ->toContain('• Buffers approaching capacity, data may be dropped: events')
+        ->toContain('• Ensure ranetrace:work is scheduled every minute (see documentation)')
+        ->not->toContain('running on schedule')
+        ->and(mb_substr_count($output, '• '))->toBe(3);
+});
+
+test('a buffer near capacity whose feature is paused and not sending under a schedule that cannot be read leaves the advice to the paused line', function (): void {
+    $this->freezeTime();
+    fillTheEventsBufferNearCapacity();
+    $this->travel(DashboardData::PAUSED_DRAIN_GRACE_SECONDS + 1)->seconds();
+    app(RanetracePauseManager::class)->setFeaturePause('events', 900, '403');
+    app()->bind(Schedule::class, fn (): never => throw new RuntimeException('No schedule here'));
+
+    $output = scheduleStatusText();
+
+    expect($output)
+        ->toContain('• Buffers approaching capacity, data may be dropped: events')
+        ->toContain('• Paused and not sending: events.')
+        ->not->toContain('running on schedule')
+        ->and(mb_substr_count($output, '• '))->toBe(2);
+});
+
 test('a disabled installation is still told when the worker is missing from the schedule', function (): void {
     // The schedule line lives in code that is the same in every environment,
     // so its absence is worth knowing where Ranetrace is switched off too.
