@@ -8,7 +8,6 @@ use Illuminate\Support\Facades\Http;
 use InvalidArgumentException;
 use Ranetrace\Laravel\Support\CoreConfig;
 use Ranetrace\Laravel\Support\Endpoints;
-use Ranetrace\Php\Config;
 use Ranetrace\Php\Http\Endpoint;
 use Ranetrace\Php\Http\Heartbeat;
 use Throwable;
@@ -22,12 +21,8 @@ class RanetraceApiClient
     protected const int CONNECT_TIMEOUT = 5;
 
     /**
-     * The API base every ingest request here is built on.
-     *
-     * Resolved through the shared core's `base_url` rather than written down
-     * again, so this SDK and `ranetrace/ranetrace-php` cannot end up addressing
-     * different hosts. The trailing-slash trim mirrors the core's client for the
-     * same reason: the two senders have to agree on what a configured value means.
+     * The API base, as the shared core's `Config::baseUrl()` resolves it, so
+     * both SDKs address the same host.
      */
     protected string $apiUrl;
 
@@ -45,11 +40,7 @@ class RanetraceApiClient
 
         $this->apiKey = mb_trim($apiKey ?? $config->key());
 
-        $baseUrl = $config->get('base_url', Config::DEFAULT_BASE_URL);
-
-        $this->apiUrl = is_string($baseUrl) && $baseUrl !== ''
-            ? mb_rtrim($baseUrl, '/')
-            : Config::DEFAULT_BASE_URL;
+        $this->apiUrl = $config->baseUrl();
     }
 
     /**
