@@ -62,9 +62,8 @@ class RanetraceJavaScriptErrorTestCommand extends Command
         $this->info('✅ JavaScript error tracking is enabled and configured!');
         $this->newLine();
 
-        // Dispatch a synthetic JavaScript error so the user can verify the
-        // job → buffer → API path end-to-end without a browser. Mirrors the
-        // behavior of ranetrace:test-errors, test-events, and test-logging.
+        // A synthetic JavaScript error, built by the same builder the browser
+        // endpoint uses, so the test item has a real item's shape.
         $errorData = (new ErrorItemBuilder(CoreConfig::make(), Core::scrubber()))->build(
             payload: [
                 'message' => 'Test JavaScript error from ranetrace:test-javascript-errors',
