@@ -77,22 +77,3 @@ test('a capture job allow-lists exactly the fields its endpoint declares', funct
     expect(contractCaptureJobAllowedKeys($jobClass))
         ->toEqualCanonicalizing(ContractFields::topLevelKeys(WireContract::item($type)['fields']));
 })->with(contractCaptureJobs());
-
-/**
- * The generic `framework` / `framework_version` pair carries the framework
- * identity. The ingest refuses an error item carrying the retired key, so
- * keeping it on the allow-list here would let such an item through to be
- * refused.
- */
-test('the error allow-list has retired the legacy laravel_version key', function (): void {
-    $allowed = contractCaptureJobAllowedKeys(HandleErrorJob::class);
-
-    // The fixture carries no legacy_fields block, so the retired name is pinned
-    // here rather than read from it; a spelling a fixture lists under
-    // legacy_fields is kept off the allow-list too.
-    $legacy = array_keys(WireContract::item('errors')['legacy_fields'] ?? []);
-
-    expect($allowed)
-        ->not->toContain('laravel_version', ...$legacy)
-        ->toContain('framework', 'framework_version');
-});
