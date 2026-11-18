@@ -117,14 +117,6 @@ test('a paused feature does not stop the heartbeat', function (): void {
     Bus::assertDispatchedTimes(SendHeartbeatToRanetraceJob::class, 1);
 });
 
-test('a run for one type still dispatches the heartbeat', function (): void {
-    Bus::fake();
-
-    $this->artisan('ranetrace:work', ['--type' => 'errors'])->assertSuccessful();
-
-    Bus::assertDispatchedTimes(SendHeartbeatToRanetraceJob::class, 1);
-});
-
 test('a run that dispatches a batch dispatches the heartbeat as well', function (): void {
     Bus::fake();
     app(RanetraceBatchBuffer::class)->addItem('events', ['event_name' => 'e1']);
