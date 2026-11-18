@@ -293,7 +293,6 @@ dataset('every feature test command', [
 ]);
 
 test('a feature test command whose items never reach the buffer says so, names the internal log and fails', function (string $command, string $feature, string $type, string $line): void {
-    Config::set("ranetrace.{$feature}.enabled", true);
     Config::set("ranetrace.{$feature}.queue", false);
     featureTestHoldBufferLock($type);
 
@@ -398,7 +397,6 @@ test('on a connection that runs its jobs after the command, a feature test comma
 })->with('capturing feature test commands');
 
 test('the single-item test commands say buffered, not queued, on a connection that needs no worker', function (string $command, string $feature, string $line): void {
-    Config::set("ranetrace.{$feature}.enabled", true);
     Config::set("ranetrace.{$feature}.queue", true);
     Config::set('queue.default', 'sync');
 
