@@ -161,7 +161,8 @@ test('ranetrace:test-analytics buffers its visit at once when the analytics queu
     Bus::swap(app(Dispatcher::class));
 
     $this->artisan('ranetrace:test-analytics')
-        ->expectsOutputToContain('✅ Test page visit buffered for Ranetrace. Run php artisan ranetrace:work to send it.')
+        ->expectsOutputToContain('✅ Test page visit buffered for Ranetrace.')
+        ->expectsOutputToContain('To send it now, run: php artisan ranetrace:work')
         ->doesntExpectOutputToContain('Test page visit sent to Ranetrace')
         ->assertSuccessful();
 

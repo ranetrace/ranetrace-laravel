@@ -134,6 +134,36 @@ trait RunsFeatureTest
     }
 
     /**
+     * {@see reportCaptured()} for a test that captures a single item.
+     *
+     * @param  string  $feature  The feature's key under `ranetrace.`.
+     * @param  string  $item  What was captured, such as `test page visit`.
+     * @param  int|null  $buffered  What {@see countBuffered()} counted.
+     * @return bool False when the run counted its item and it did not arrive.
+     */
+    protected function reportCapturedOne(string $feature, string $item, ?int $buffered): bool
+    {
+        if ($buffered === 0) {
+            $this->error("❌ The {$item} was not buffered: the capture failed. ".$this->whyNotCaptured());
+
+            return false;
+        }
+
+        if ($buffered === null && BatchConfig::featureWaitsForWorker("ranetrace.{$feature}")) {
+            $this->info('✅ '.ucfirst($item).' queued for Ranetrace.');
+            $this->info('Once a queue worker runs it, it will be sent the next time the ranetrace:work command runs.');
+            $this->info('To send it immediately after that, run: php artisan ranetrace:work');
+        } else {
+            $this->info('✅ '.ucfirst($item).' buffered for Ranetrace.');
+            $this->info('To send it now, run: php artisan ranetrace:work');
+        }
+
+        $this->info('To see whether the API accepts your key, run: php artisan ranetrace:test');
+
+        return true;
+    }
+
+    /**
      * Where the reason of a failed capture is, as the closing sentence of the
      * line that reports it.
      */

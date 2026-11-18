@@ -426,8 +426,28 @@ test('the single-item test commands say buffered, not queued, on a connection th
         ->and($output)->toContain($line)
         ->and($output)->not->toContain('queue worker');
 })->with([
-    'javascript errors' => ['ranetrace:test-javascript-errors', 'javascript_errors', "✅ Test JavaScript error buffered for Ranetrace.\nTo send it now, run: php artisan ranetrace:work\n"],
-    'analytics' => ['ranetrace:test-analytics', 'website_analytics', "✅ Test page visit buffered for Ranetrace. Run php artisan ranetrace:work to send it.\n"],
+    'javascript errors' => ['ranetrace:test-javascript-errors', 'javascript_errors', "✅ Test JavaScript error buffered for Ranetrace.\nTo send it now, run: php artisan ranetrace:work\nTo see whether the API accepts your key, run: php artisan ranetrace:test\n"],
+    'analytics' => ['ranetrace:test-analytics', 'website_analytics', "✅ Test page visit buffered for Ranetrace.\nTo send it now, run: php artisan ranetrace:work\nTo see whether the API accepts your key, run: php artisan ranetrace:test\n"],
+]);
+
+test('with the queue on the single-item test commands say their item is queued, not sent, and point at ranetrace:test', function (string $command, string $feature, string $item): void {
+    Queue::fake();
+    Config::set("ranetrace.{$feature}.enabled", true);
+    Config::set("ranetrace.{$feature}.queue", true);
+
+    [$exitCode, $output] = featureTestRun($command);
+
+    expect($exitCode)->toBe(0)
+        ->and($output)->toContain(
+            "✅ {$item} queued for Ranetrace.\n"
+            ."Once a queue worker runs it, it will be sent the next time the ranetrace:work command runs.\n"
+            ."To send it immediately after that, run: php artisan ranetrace:work\n"
+            ."To see whether the API accepts your key, run: php artisan ranetrace:test\n",
+        )
+        ->and(featureTestBufferedCount())->toBe(0);
+})->with([
+    'javascript errors' => ['ranetrace:test-javascript-errors', 'javascript_errors', 'Test JavaScript error'],
+    'analytics' => ['ranetrace:test-analytics', 'website_analytics', 'Test page visit'],
 ]);
 
 test('a feature test command leaves the buffer binding as it found it', function (): void {
