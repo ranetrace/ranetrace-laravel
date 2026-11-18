@@ -41,12 +41,7 @@ test('a key that is missing or only whitespace captures nothing, so nothing is b
         ->and($buffer->count('events'))->toBe(0);
 
     Http::assertNothingSent();
-})->with([
-    'null' => [null],
-    'empty' => [''],
-    'a space' => [' '],
-    'whitespace' => ["\t\n "],
-]);
+})->with('missing ingest keys');
 
 test('a real key still captures', function (): void {
     Config::set('ranetrace.key', 'ingest-key');
