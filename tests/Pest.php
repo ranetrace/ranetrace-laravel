@@ -394,3 +394,30 @@ function spyOnInternalLog(): MockInterface
 
     return $logger;
 }
+
+/**
+ * Headers a real browser sends, which pass the middleware's bot checks, so a
+ * test can isolate a single skip rule. The Chrome 91 user agent is old enough
+ * that the middleware does not ask it for client hints.
+ *
+ * @return array<string, string>
+ */
+function humanBrowserHeaders(): array
+{
+    return [
+        'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+        'Accept' => 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Accept-Language' => 'en-US,en;q=0.9',
+    ];
+}
+
+/**
+ * The same browser headers with a caller-chosen user agent. No Sec-* header is
+ * included: the client-hint tests each add back exactly the ones they are about.
+ *
+ * @return array<string, string>
+ */
+function browserHeadersWithUserAgent(string $userAgent): array
+{
+    return array_merge(humanBrowserHeaders(), ['User-Agent' => $userAgent]);
+}

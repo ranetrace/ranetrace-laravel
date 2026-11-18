@@ -70,10 +70,7 @@ test('a visit string at its endpoint limit is sent whole and one past it is cut 
 test('a tracked visit carries only fields the endpoint declares, and every one it requires', function (): void {
     // A browser old enough that the middleware does not ask it for client
     // hints, with the headers it takes for a person's.
-    $this->withHeaders([
-        'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-        'Accept' => 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-        'Accept-Language' => 'en-US,en;q=0.9',
+    $this->withHeaders(humanBrowserHeaders() + [
         'Referer' => 'https://news.example.com/monitoring-roundup',
     ])->get('/test-page?utm_source=newsletter')->assertOk();
 

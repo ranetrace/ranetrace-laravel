@@ -9,18 +9,6 @@ use Ranetrace\Laravel\Analytics\Middleware\TrackPageVisit;
 use Ranetrace\Laravel\Jobs\HandlePageVisitJob;
 
 /**
- * Headers that make a request look like a real browser, so the middleware's
- * bot filtering lets the visit through to HandlePageVisitJob.
- *
- * @var array<string, string>
- */
-$browserHeaders = [
-    'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-    'Accept' => 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-    'Accept-Language' => 'en-US,en;q=0.9',
-];
-
-/**
  * The visit data of the single job dispatched by the request under test.
  *
  * @var Closure(): array<string, mixed>
@@ -46,8 +34,8 @@ beforeEach(function (): void {
     });
 });
 
-test('a token in the path never reaches the dispatched visit job', function () use ($browserHeaders, $visitData): void {
-    $this->withHeaders($browserHeaders)
+test('a token in the path never reaches the dispatched visit job', function () use ($visitData): void {
+    $this->withHeaders(humanBrowserHeaders())
         ->get('/invitations/live-invite-token-abc123')
         ->assertSuccessful();
 
@@ -57,8 +45,8 @@ test('a token in the path never reaches the dispatched visit job', function () u
         ->and(json_encode($data))->not->toContain('live-invite-token-abc123');
 });
 
-test('a verification hash in the path is redacted while other segments survive', function () use ($browserHeaders, $visitData): void {
-    $this->withHeaders($browserHeaders)
+test('a verification hash in the path is redacted while other segments survive', function () use ($visitData): void {
+    $this->withHeaders(humanBrowserHeaders())
         ->get('/verify/42/8f14e45fceea167a5a36dedd4bea2543')
         ->assertSuccessful();
 
@@ -67,11 +55,11 @@ test('a verification hash in the path is redacted while other segments survive',
     expect($data['path'])->toBe('/verify/42/[REDACTED]');
 });
 
-test('the stock password-reset page is tracked with its token redacted', function () use ($browserHeaders, $visitData): void {
+test('the stock password-reset page is tracked with its token redacted', function () use ($visitData): void {
     // `reset-password` is deliberately NOT in the default excluded_paths: the
     // page-view signal is kept, and the route-parameter scrub keeps the live
     // reset token out of the visit data.
-    $this->withHeaders($browserHeaders)
+    $this->withHeaders(humanBrowserHeaders())
         ->get('/reset-password/live-reset-token-xyz789')
         ->assertSuccessful();
 
@@ -81,8 +69,8 @@ test('the stock password-reset page is tracked with its token redacted', functio
         ->and(json_encode($data))->not->toContain('live-reset-token-xyz789');
 });
 
-test('non-sensitive route parameters are left untouched', function () use ($browserHeaders, $visitData): void {
-    $this->withHeaders($browserHeaders)
+test('non-sensitive route parameters are left untouched', function () use ($visitData): void {
+    $this->withHeaders(humanBrowserHeaders())
         ->get('/articles/my-first-post?utm_source=newsletter')
         ->assertSuccessful();
 
@@ -92,10 +80,10 @@ test('non-sensitive route parameters are left untouched', function () use ($brow
         ->and($data['utm_source'])->toBe('newsletter');
 });
 
-test('a custom-key binding is redacted via its binding field', function () use ($browserHeaders, $visitData): void {
+test('a custom-key binding is redacted via its binding field', function () use ($visitData): void {
     // `{invitation:token}` names the parameter `invitation`; only the binding
     // field says the segment is a token.
-    $this->withHeaders($browserHeaders)
+    $this->withHeaders(humanBrowserHeaders())
         ->get('/teams/live-team-invite-abc')
         ->assertSuccessful();
 
@@ -105,12 +93,12 @@ test('a custom-key binding is redacted via its binding field', function () use (
         ->and(json_encode($data))->not->toContain('live-team-invite-abc');
 });
 
-test('a token in the REFERRER path never reaches the dispatched visit job', function () use ($browserHeaders, $visitData): void {
+test('a token in the REFERRER path never reaches the dispatched visit job', function () use ($visitData): void {
     // The scenario the current-request scrub cannot see: the visitor was on the
     // reset page (redacted there) and clicked a link. Same-origin navigations
     // send the full previous URL by default, so the live token arrives on the
     // NEXT page view instead.
-    $this->withHeaders($browserHeaders + [
+    $this->withHeaders(humanBrowserHeaders() + [
         'Referer' => 'http://localhost/reset-password/live-reset-token-xyz789',
     ])->get('/articles/my-first-post')->assertSuccessful();
 
@@ -121,28 +109,28 @@ test('a token in the REFERRER path never reaches the dispatched visit job', func
         ->and($data['path'])->toBe('/articles/my-first-post');
 });
 
-test('a referrer with a url password still has its route token redacted', function () use ($browserHeaders, $visitData): void {
+test('a referrer with a url password still has its route token redacted', function () use ($visitData): void {
     // The route lookup has to see the referrer as sent: once its password is
     // the placeholder, `parse_url()` no longer finds the host or the path.
-    $this->withHeaders($browserHeaders + [
+    $this->withHeaders(humanBrowserHeaders() + [
         'Referer' => 'http://app:hunter2-pass@localhost/reset-password/live-reset-token-xyz789',
     ])->get('/articles/my-first-post')->assertSuccessful();
 
     expect($visitData()['referrer'])->toBe('http://app:[REDACTED]@localhost/reset-password/[REDACTED]');
 });
 
-test('a non-sensitive referrer path is preserved in full', function () use ($browserHeaders, $visitData): void {
-    $this->withHeaders($browserHeaders + [
+test('a non-sensitive referrer path is preserved in full', function () use ($visitData): void {
+    $this->withHeaders(humanBrowserHeaders() + [
         'Referer' => 'http://localhost/articles/previous-post?utm_source=mail',
     ])->get('/articles/my-first-post')->assertSuccessful();
 
     expect($visitData()['referrer'])->toBe('http://localhost/articles/previous-post?utm_source=mail');
 });
 
-test('an external referrer keeps its path and still has its query scrubbed', function () use ($browserHeaders, $visitData): void {
+test('an external referrer keeps its path and still has its query scrubbed', function () use ($visitData): void {
     // A third-party path is not described by our routes, so it is left alone,
     // but the query-string scrub still applies, as it always did.
-    $this->withHeaders($browserHeaders + [
+    $this->withHeaders(humanBrowserHeaders() + [
         'Referer' => 'https://search.example.com/results/laravel?token=theirs&q=ranetrace',
     ])->get('/articles/my-first-post')->assertSuccessful();
 
@@ -150,8 +138,8 @@ test('an external referrer keeps its path and still has its query scrubbed', fun
         ->toBe('https://search.example.com/results/laravel?token=[REDACTED]&q=ranetrace');
 });
 
-test('a secret in both the path and the query never reaches the dispatched visit job', function () use ($browserHeaders, $visitData): void {
-    $this->withHeaders($browserHeaders)
+test('a secret in both the path and the query never reaches the dispatched visit job', function () use ($visitData): void {
+    $this->withHeaders(humanBrowserHeaders())
         ->get('/invitations/dual-secret?token=dual-secret&page=2')
         ->assertSuccessful();
 
@@ -161,10 +149,10 @@ test('a secret in both the path and the query never reaches the dispatched visit
         ->and(json_encode($data))->not->toContain('dual-secret');
 });
 
-test('a prefixed token written percent-encoded is redacted in the path and the referrer of a visit', function () use ($browserHeaders, $visitData): void {
+test('a prefixed token written percent-encoded is redacted in the path and the referrer of a visit', function () use ($visitData): void {
     $encodedKey = implode('', ['sk%5Flive', '%5F51HabcDEF0123456789']);
 
-    $this->withHeaders($browserHeaders + ['Referer' => 'http://localhost/articles/first?ref='.$encodedKey])
+    $this->withHeaders(humanBrowserHeaders() + ['Referer' => 'http://localhost/articles/first?ref='.$encodedKey])
         ->get('/articles/'.$encodedKey.'?next=https%3A%2F%2Fapp.test%2Fkeys%2Fsk_live_51HabcDEF0123456789')
         ->assertSuccessful();
 

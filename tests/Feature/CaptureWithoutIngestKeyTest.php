@@ -37,20 +37,6 @@ dataset('ingest keys that cannot authenticate', [
 ]);
 
 /**
- * Headers a real browser sends, so the visit passes the bot checks.
- *
- * @return array<string, string>
- */
-function browserHeadersWithoutIngestKey(): array
-{
-    return [
-        'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-        'Accept' => 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-        'Accept-Language' => 'en-US,en;q=0.9',
-    ];
-}
-
-/**
  * @return array<string, mixed>
  */
 function javaScriptErrorWithoutIngestKey(): array
@@ -157,13 +143,13 @@ test('an app booted without an ingest key mounts no relay and renders no capture
 test('a page visit is not captured without an ingest key and the page answers unchanged', function (mixed $key): void {
     Config::set('ranetrace.website_analytics.queue', false);
 
-    $withKey = $this->withHeaders(browserHeadersWithoutIngestKey())->get('/test-page');
+    $withKey = $this->withHeaders(humanBrowserHeaders())->get('/test-page');
     expect(app(RanetraceBatchBuffer::class)->count('page_visits'))->toBe(1);
     app(RanetraceBatchBuffer::class)->clear('page_visits');
     Cache::store('array')->flush();
 
     Config::set('ranetrace.key', $key);
-    $withoutKey = $this->withHeaders(browserHeadersWithoutIngestKey())->get('/test-page');
+    $withoutKey = $this->withHeaders(humanBrowserHeaders())->get('/test-page');
 
     expect($withoutKey->status())->toBe($withKey->status())
         ->and($withoutKey->getContent())->toBe($withKey->getContent())
@@ -176,7 +162,7 @@ test('a queued page visit is not dispatched without an ingest key', function (mi
     Bus::fake();
     Config::set('ranetrace.key', $key);
 
-    $this->withHeaders(browserHeadersWithoutIngestKey())->get('/test-page')->assertOk();
+    $this->withHeaders(humanBrowserHeaders())->get('/test-page')->assertOk();
 
     Bus::assertNotDispatched(HandlePageVisitJob::class);
 })->with('ingest keys that cannot authenticate');
@@ -184,7 +170,7 @@ test('a queued page visit is not dispatched without an ingest key', function (mi
 test('a page visit is still captured with an ingest key', function (): void {
     Config::set('ranetrace.website_analytics.queue', false);
 
-    $this->withHeaders(browserHeadersWithoutIngestKey())->get('/test-page')->assertOk();
+    $this->withHeaders(humanBrowserHeaders())->get('/test-page')->assertOk();
 
     expect(app(RanetraceBatchBuffer::class)->count('page_visits'))->toBe(1);
 });
@@ -201,10 +187,10 @@ test('a page without an ingest key renders no verification beacon', function (mi
         '<html><body>@ranetraceErrorTracking</body></html>'
     ))->middleware(['web', TrackPageVisit::class]);
 
-    $withKey = $this->withHeaders(browserHeadersWithoutIngestKey())->get('/no-key-page');
+    $withKey = $this->withHeaders(humanBrowserHeaders())->get('/no-key-page');
 
     Config::set('ranetrace.key', $key);
-    $withoutKey = $this->withHeaders(browserHeadersWithoutIngestKey())->get('/no-key-page');
+    $withoutKey = $this->withHeaders(humanBrowserHeaders())->get('/no-key-page');
 
     $withoutKey->assertOk();
 
