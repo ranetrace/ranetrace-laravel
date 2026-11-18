@@ -46,6 +46,20 @@ dataset('missing ingest keys', [
 ]);
 
 /**
+ * Pause entries that do not say when the pause ends. The pause store only
+ * writes well-formed entries, so these take another writer or a damaged cache
+ * left behind.
+ */
+dataset('damaged pause entries', [
+    'a string' => ['paused'],
+    'a number' => [1_731_500_000],
+    'an array without paused_until' => [['reason' => '429']],
+    'a paused_until that is not a string' => [['paused_until' => ['2099-01-01T00:00:00+00:00'], 'reason' => '429']],
+    'a paused_until that is no date' => [['paused_until' => 'not a date', 'reason' => '429']],
+    'an empty paused_until' => [['paused_until' => '', 'reason' => '429']],
+]);
+
+/**
  * Every file under resources/boost, as sorted absolute paths. Swept
  * recursively rather than as a list of the skills that exist today, so a skill
  * added later is covered the day it lands.

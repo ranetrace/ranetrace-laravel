@@ -60,9 +60,8 @@ test('ranetrace:work reports a pause from the one read that found it active', fu
 ]);
 
 test('ranetrace:work sends past a pause entry that does not say when it ends', function (mixed $entry): void {
-    // The pause store only writes well-formed entries, so this takes one
-    // another writer or a damaged cache left behind. Read as a pause, or as a
-    // reason to stop, it would hold every run back until someone clears it.
+    // Read as a pause, or as a reason to stop, an entry that does not say when
+    // it ends would hold every run back until someone clears it.
     Bus::fake();
     Config::set('ranetrace.key', 'test-key');
     Cache::store('array')->forever('ranetrace.global.pause', $entry);
@@ -74,11 +73,7 @@ test('ranetrace:work sends past a pause entry that does not say when it ends', f
         ->assertSuccessful();
 
     Bus::assertDispatched(SendBatchToRanetraceJob::class);
-})->with([
-    'not an array' => ['paused'],
-    'an array without paused_until' => [['reason' => '429']],
-    'a paused_until that is no date' => [['paused_until' => 'not a date', 'reason' => '429']],
-]);
+})->with('damaged pause entries');
 
 test('without an ingest key ranetrace:work dispatches nothing, names what waits in the buffer and fails', function (?string $key): void {
     Bus::fake();
