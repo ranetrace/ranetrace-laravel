@@ -27,10 +27,10 @@ class RanetraceApiClient
     protected string $apiUrl;
 
     /**
-     * The key sent as the Bearer token, trimmed like the shared core trims it,
-     * so a key the `blank()` capture gates let through is sent as the key it
-     * holds. Untrimmed, a real key with leading whitespace is refused with a
-     * 401, which pauses every feature.
+     * The key sent as the Bearer token. A configured key arrives trimmed from
+     * `CoreConfig::ingestKey()`; a key passed in is trimmed here the same way,
+     * since a real key with surrounding whitespace is refused with a 401,
+     * which pauses every feature.
      */
     protected string $apiKey;
 
