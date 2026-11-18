@@ -6,6 +6,8 @@ This file starts at 1.0.0. The package was re-versioned to share a major with `r
 
 ## [Unreleased]
 
+## [1.9.1] - 2026-11-18
+
 Requires `ranetrace/ranetrace-php` 1.8.1 or later: the entry below is a change in the shared core.
 
 ### Fixed
