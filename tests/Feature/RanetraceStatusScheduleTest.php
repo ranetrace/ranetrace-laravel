@@ -445,8 +445,6 @@ test('the schedule output has no all-caps words besides acronyms', function (): 
     $missing = statusOutput();
 
     foreach ([$troubled, $missing] as $output) {
-        preg_match_all('/(?<!\w)[A-Z]{3,}(?!\w)/u', $output, $matches);
-
-        expect(array_diff($matches[0], ['API', 'JSON', 'MCP']))->toBe([]);
+        expect(allCapsWordsBesidesAcronyms($output))->toBe([]);
     }
 });

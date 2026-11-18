@@ -308,3 +308,16 @@ function contractSdkHeaders(Request $request): array
 
     return $headers;
 }
+
+/**
+ * The words of three or more capitals in $output, other than the acronyms the
+ * package's text may use.
+ *
+ * @return list<string>
+ */
+function allCapsWordsBesidesAcronyms(string $output): array
+{
+    preg_match_all('/(?<!\w)[A-Z]{3,}(?!\w)/u', $output, $matches);
+
+    return array_values(array_diff($matches[0], ['API', 'JSON', 'MCP']));
+}

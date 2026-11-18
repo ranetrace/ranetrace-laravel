@@ -237,8 +237,6 @@ test('a paused feature inside its grace prints neither the paused warning nor it
 });
 
 test('the status output has no all-caps words besides acronyms', function (): void {
-    $acronyms = ['API', 'JSON', 'MCP'];
-
     $healthy = statusOutput();
 
     Config::set('ranetrace.key', null);
@@ -256,9 +254,7 @@ test('the status output has no all-caps words besides acronyms', function (): vo
         ->and($paused)->toContain('• Paused and not sending: errors.');
 
     foreach ([$healthy, $troubled, $paused] as $output) {
-        preg_match_all('/(?<!\w)[A-Z]{3,}(?!\w)/u', $output, $matches);
-
-        expect(array_diff($matches[0], $acronyms))->toBe([]);
+        expect(allCapsWordsBesidesAcronyms($output))->toBe([]);
     }
 });
 
