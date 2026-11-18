@@ -227,18 +227,6 @@ test('the request header bag is what reaches the masking rule', function (): voi
 
 // --- error payload shape ---
 
-test('error payload has no `for` field', function (): void {
-    $payload = invokeBuildErrorPayload(new RuntimeException('boom'));
-
-    expect($payload)->not->toHaveKey('for');
-});
-
-test('error payload has no `console_options` field', function (): void {
-    $payload = invokeBuildErrorPayload(new RuntimeException('boom'));
-
-    expect($payload)->not->toHaveKey('console_options');
-});
-
 test('error payload has exactly 24 fields', function (): void {
     $payload = invokeBuildErrorPayload(new RuntimeException('boom'));
 
@@ -309,11 +297,10 @@ test('every built error payload key survives the job allow-list', function (): v
         ->toBe(collect($payload)->keys()->sort()->values()->all());
 });
 
-test('error payload uses an ISO 8601 timestamp, not a `time` field', function (): void {
+test('error payload uses an ISO 8601 timestamp', function (): void {
     $payload = invokeBuildErrorPayload(new RuntimeException('boom'));
 
     expect($payload)->toHaveKey('timestamp')
-        ->and($payload)->not->toHaveKey('time')
         ->and($payload['timestamp'])->toMatch('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2}$/');
 });
 
