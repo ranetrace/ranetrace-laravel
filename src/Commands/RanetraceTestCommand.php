@@ -23,17 +23,18 @@ class RanetraceTestCommand extends Command
     private const int LABEL_WIDTH = 9;
 
     /**
-     * The features `--feature` and `--all` test, each with its test command
-     * and its key under `ranetrace.`.
+     * The features `--feature` and `--all` test and the configuration table
+     * lists, each with its test command, its key under `ranetrace.` and its
+     * name in the table.
      *
-     * @var array<string, array{command: string, config: string}>
+     * @var array<string, array{command: string, config: string, label: string}>
      */
     private const array FEATURES = [
-        'errors' => ['command' => 'ranetrace:test-errors', 'config' => 'errors'],
-        'events' => ['command' => 'ranetrace:test-events', 'config' => 'events'],
-        'logging' => ['command' => 'ranetrace:test-logging', 'config' => 'logging'],
-        'javascript_errors' => ['command' => 'ranetrace:test-javascript-errors', 'config' => 'javascript_errors'],
-        'analytics' => ['command' => 'ranetrace:test-analytics', 'config' => 'website_analytics'],
+        'errors' => ['command' => 'ranetrace:test-errors', 'config' => 'errors', 'label' => 'Error reporting'],
+        'events' => ['command' => 'ranetrace:test-events', 'config' => 'events', 'label' => 'Event tracking'],
+        'logging' => ['command' => 'ranetrace:test-logging', 'config' => 'logging', 'label' => 'Centralized logging'],
+        'javascript_errors' => ['command' => 'ranetrace:test-javascript-errors', 'config' => 'javascript_errors', 'label' => 'JavaScript errors'],
+        'analytics' => ['command' => 'ranetrace:test-analytics', 'config' => 'website_analytics', 'label' => 'Website analytics'],
     ];
 
     public $signature = 'ranetrace:test
@@ -178,13 +179,7 @@ class RanetraceTestCommand extends Command
         $this->newLine();
 
         // Check each feature configuration
-        $features = [
-            'errors' => 'Error reporting',
-            'events' => 'Event tracking',
-            'website_analytics' => 'Website analytics',
-            'javascript_errors' => 'JavaScript errors',
-            'logging' => 'Centralized logging',
-        ];
+        $features = array_column(self::FEATURES, 'label', 'config');
 
         $this->line('📋 <fg=cyan>Feature configuration:</>');
         $rows = [];

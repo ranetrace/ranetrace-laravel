@@ -130,7 +130,7 @@ test('the queue worker check does not count an unset feature queue name as a que
  * The rows of `ranetrace:test`'s feature table with every feature enabled and
  * queued, given the queue each feature's row is expected to name.
  *
- * @param  array{errors: string, events: string, website_analytics: string, javascript_errors: string, logging: string}  $queues
+ * @param  array{errors: string, events: string, logging: string, javascript_errors: string, website_analytics: string}  $queues
  * @return list<list<string>>
  */
 function featureTableRows(array $queues): array
@@ -138,9 +138,9 @@ function featureTableRows(array $queues): array
     $names = [
         'errors' => 'Error reporting',
         'events' => 'Event tracking',
-        'website_analytics' => 'Website analytics',
-        'javascript_errors' => 'JavaScript errors',
         'logging' => 'Centralized logging',
+        'javascript_errors' => 'JavaScript errors',
+        'website_analytics' => 'Website analytics',
     ];
 
     return array_map(
