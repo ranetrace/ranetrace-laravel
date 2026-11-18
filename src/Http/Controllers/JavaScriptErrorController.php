@@ -125,6 +125,10 @@ class JavaScriptErrorController extends Controller
         $errorMessage = $request->input('message');
 
         foreach ($ignoredErrors as $pattern) {
+            if (! is_string($pattern) || $pattern === '') {
+                continue;
+            }
+
             if (mb_stripos($errorMessage, $pattern) !== false) {
                 return response()->json([
                     'success' => true,

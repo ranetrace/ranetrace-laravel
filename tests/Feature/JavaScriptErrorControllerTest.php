@@ -102,6 +102,45 @@ test('it ignores errors matching ignored patterns', function (): void {
     ]);
 });
 
+/**
+ * A published config can hold an entry that is no pattern, such as an int
+ * typed into the list or a null left by an env var that is not set.
+ */
+test('an ignored errors entry that is not a string is passed over', function (mixed $entry): void {
+    config(['ranetrace.javascript_errors.ignored_errors' => [$entry, 'ResizeObserver']]);
+
+    $this->postJson(route('ranetrace.javascript-errors.store'), [
+        'message' => 'Cannot read properties of undefined',
+        'url' => 'https://example.com/',
+    ])->assertOk()
+        ->assertExactJson(['success' => true, 'message' => 'Error received']);
+
+    $this->postJson(route('ranetrace.javascript-errors.store'), [
+        'message' => 'ResizeObserver loop limit exceeded',
+        'url' => 'https://example.com/',
+    ])->assertOk()
+        ->assertExactJson(['success' => true, 'message' => 'Error ignored based on pattern']);
+
+    Bus::assertDispatchedTimes(HandleJavaScriptErrorJob::class, 1);
+})->with([
+    'an int' => [42],
+    'null' => [null],
+    'a bool' => [true],
+    'a list' => [['ResizeObserver']],
+]);
+
+test('an empty ignored errors entry ignores no report', function (): void {
+    config(['ranetrace.javascript_errors.ignored_errors' => ['']]);
+
+    $this->postJson(route('ranetrace.javascript-errors.store'), [
+        'message' => 'Cannot read properties of undefined',
+        'url' => 'https://example.com/',
+    ])->assertOk()
+        ->assertExactJson(['success' => true, 'message' => 'Error received']);
+
+    Bus::assertDispatchedTimes(HandleJavaScriptErrorJob::class, 1);
+});
+
 test('it sanitizes breadcrumbs', function (): void {
     $response = $this->postJson(route('ranetrace.javascript-errors.store'), [
         'message' => 'Test error',
