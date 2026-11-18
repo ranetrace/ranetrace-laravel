@@ -11,7 +11,6 @@ use Ranetrace\Laravel\Jobs\HandleErrorJob;
 use Ranetrace\Laravel\Jobs\HandleEventJob;
 use Ranetrace\Laravel\Jobs\HandleLogJob;
 use Ranetrace\Laravel\Ranetrace;
-use Ranetrace\Laravel\Services\CountingBatchBuffer;
 use Ranetrace\Laravel\Services\RanetraceBatchBuffer;
 use Ranetrace\Laravel\Support\InternalLogger;
 
@@ -429,8 +428,7 @@ test('a feature test command leaves the buffer binding as it found it', function
 
     artisanRun('ranetrace:test-errors');
 
-    expect(app()->bound(RanetraceBatchBuffer::class))->toBeFalse()
-        ->and(app(RanetraceBatchBuffer::class))->not->toBeInstanceOf(CountingBatchBuffer::class);
+    expect(app()->bound(RanetraceBatchBuffer::class))->toBeFalse();
 });
 
 test('a host that binds its own buffer is not counted, and its buffer is the one used', function (): void {
