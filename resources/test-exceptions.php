@@ -4,7 +4,8 @@ declare(strict_types=1);
 
 /**
  * The exceptions `ranetrace:test-errors` reports, each behind a closure that
- * makes it.
+ * makes it. `ranetrace:test` sends the first, `simple`, whose message matches
+ * the PHP SDK's test exception.
  *
  * They are made here, outside `src/`, because `Ranetrace::report()` drops every
  * exception whose file is under `src/` as one the package threw itself, so a
