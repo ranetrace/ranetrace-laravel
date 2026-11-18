@@ -272,7 +272,7 @@ test('an error job that runs twice buffers the error with the id its capture mad
     (new Ranetrace)->report(new RuntimeException('boom'));
 
     $job = Queue::pushed(HandleErrorJob::class)->first();
-    $capturedId = (new ReflectionProperty($job, 'errorData'))->getValue($job)['id'];
+    $capturedId = ((array) $job->bufferedItem())['id'];
     $buffer = app(RanetraceBatchBuffer::class);
 
     $job->handle($buffer);
