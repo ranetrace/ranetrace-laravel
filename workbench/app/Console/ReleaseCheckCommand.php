@@ -128,7 +128,7 @@ class ReleaseCheckCommand extends Command
 
         $counters = (new ResponsePolicy)->decide($result)->counters;
 
-        if (($result['status'] ?? 0) !== 200 || $counters === null) {
+        if ($result['status'] !== 200 || $counters === null) {
             return [false, TestResult::fromResponse($result)->line($type, $client->baseUrl(), false)];
         }
 
@@ -155,12 +155,12 @@ class ReleaseCheckCommand extends Command
     private function sendHeartbeat(RanetraceApiClient $client): array
     {
         $answer = $client->sendHeartbeat(Heartbeat::forPackage(Endpoints::SDK, Endpoints::PACKAGE));
-        $status = (int) ($answer['status'] ?? 0);
+        $status = $answer['status'];
 
         return match (true) {
             $status >= 200 && $status < 300 => [true, 'accepted'],
             $status === 0 => [false, "failed: could not reach {$client->baseUrl()} (".($answer['error'] ?? 'unknown network error').')'],
-            default => [false, "refused: the API answered {$status} (".ResponsePolicy::errorMessage(is_array($answer['data'] ?? null) ? $answer['data'] : [], 'no message').')'],
+            default => [false, "refused: the API answered {$status} (".ResponsePolicy::errorMessage($answer['data'], 'no message').')'],
         };
     }
 
