@@ -303,10 +303,7 @@ test('a feature whose pause expired falls under the normal rule and counts as st
     app(RanetraceBatchBuffer::class)->addItem('events', ['event_name' => 'e1']);
 
     $this->travel(DashboardData::DRAIN_STALE_SECONDS + 1)->seconds();
-    Cache::store('array')->forever('ranetrace.feature.events.pause', [
-        'paused_until' => now()->subMinute()->toIso8601String(),
-        'reason' => '429',
-    ]);
+    storeExpiredFeaturePause('events');
     $status = app(DashboardData::class)->collectStatus();
 
     expect($status['pauses']['features']['events']['paused'])->toBeFalse()

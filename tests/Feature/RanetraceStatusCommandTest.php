@@ -153,10 +153,7 @@ test('a pause whose stored reason is not a string is shown with its guidance, no
 });
 
 test('an expired feature pause shows no guidance', function (): void {
-    Cache::store('array')->forever('ranetrace.feature.errors.pause', [
-        'paused_until' => now()->subMinute()->toIso8601String(),
-        'reason' => '429',
-    ]);
+    storeExpiredFeaturePause('errors');
 
     $output = statusOutput();
 

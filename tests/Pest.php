@@ -346,3 +346,16 @@ function allCapsWordsBesidesAcronyms(string $output): array
 
     return array_values(array_diff($matches[0], ['API', 'JSON', 'MCP']));
 }
+
+/**
+ * Write a pause for $feature into the cache that ended a minute ago. A pause
+ * set through the pause manager carries its end as its cache lifetime, so it
+ * would leave the cache when it ends rather than stay as an expired entry.
+ */
+function storeExpiredFeaturePause(string $feature, string $reason = '429'): void
+{
+    Cache::store('array')->forever("ranetrace.feature.{$feature}.pause", [
+        'paused_until' => now()->subMinute()->toIso8601String(),
+        'reason' => $reason,
+    ]);
+}

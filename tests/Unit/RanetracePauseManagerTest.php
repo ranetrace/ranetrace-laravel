@@ -32,10 +32,7 @@ test('a well-formed pause is active until it ends', function (): void {
         ->and($pauses->isFeaturePaused('errors'))->toBeTrue()
         ->and($pauses->isFeaturePaused('events'))->toBeFalse();
 
-    Cache::store('array')->forever('ranetrace.feature.logs.pause', [
-        'paused_until' => now()->subMinute()->toIso8601String(),
-        'reason' => '429',
-    ]);
+    storeExpiredFeaturePause('logs');
 
     expect($pauses->isFeaturePaused('logs'))->toBeFalse();
 });
