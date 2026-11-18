@@ -83,8 +83,7 @@ test('report still captures an exception thrown from host application code', fun
 // --- report(): failure isolation (Core Rule: never throw from the capture path) ---
 
 test('report never throws', function (): void {
-    expect(fn () => (new Ranetrace)->report(new RuntimeException('boom')))
-        ->not->toThrow(Throwable::class);
+    expectNoThrow(fn () => (new Ranetrace)->report(new RuntimeException('boom')));
 });
 
 // --- handles(): reporting is additive, never stops the host's own logging (R2-5) ---
@@ -171,8 +170,7 @@ test('trackEvent throws on an invalid event name when validation is enabled', fu
 });
 
 test('trackEvent does not throw on an invalid event name when validation is disabled', function (): void {
-    expect(fn () => (new Ranetrace)->trackEvent('Invalid Name!!', validate: false))
-        ->not->toThrow(Throwable::class);
+    expectNoThrow(fn () => (new Ranetrace)->trackEvent('Invalid Name!!', validate: false));
 });
 
 test('trackEvent throws on an invalid event name while capture is off', function (string $setting, mixed $value): void {
@@ -194,8 +192,7 @@ test('trackEvent throws on an invalid event name while capture is off', function
 test('trackEvent with validation disabled stays a silent no-op while capture is off', function (): void {
     Config::set('ranetrace.key', null);
 
-    expect(fn () => (new Ranetrace)->trackEvent('Invalid Name!!', validate: false))
-        ->not->toThrow(Throwable::class);
+    expectNoThrow(fn () => (new Ranetrace)->trackEvent('Invalid Name!!', validate: false));
 
     Queue::assertNothingPushed();
 });

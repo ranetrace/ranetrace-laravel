@@ -36,6 +36,5 @@ test('the handler never throws into the host when capture fails', function (): v
 
     // The host's Log::error() call must return normally. If write()'s
     // try/catch were removed, this exception would escape and fail the test.
-    expect(fn () => Log::channel('ranetrace')->error('trigger a capture failure'))
-        ->not->toThrow(Throwable::class);
+    expectNoThrow(fn () => Log::channel('ranetrace')->error('trigger a capture failure'));
 });

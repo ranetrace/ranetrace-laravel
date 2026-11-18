@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Log;
 use Mockery\MockInterface;
 use Pest\Plugins\Tia\Recorder;
 use Pest\Support\Container;
+use PHPUnit\Framework\Assert;
 use Psr\Log\LoggerInterface;
 use Ranetrace\Laravel\Dashboard\DashboardData;
 use Ranetrace\Laravel\Jobs\SendBatchToRanetraceJob;
@@ -129,6 +130,27 @@ function commentsIn(string $rendered): array
     }
 
     return $found;
+}
+
+/**
+ * Run $run once and fail the test with the class and message of whatever it
+ * throws, or count one assertion when it throws nothing.
+ *
+ * Pest's `not->toThrow()` reads an interface name such as `Throwable` as a
+ * message to look for rather than a type, so `not->toThrow(Throwable::class)`
+ * passes whether the closure throws or not. One `not->toThrow()` per concrete
+ * class would run the closure once per class, and callers count what a single
+ * run captured.
+ */
+function expectNoThrow(Closure $run): void
+{
+    try {
+        $run();
+    } catch (Throwable $thrown) {
+        Assert::fail(sprintf('Expected no exception, but %s was thrown: %s', $thrown::class, $thrown->getMessage()));
+    }
+
+    Assert::assertTrue(true);
 }
 
 /**

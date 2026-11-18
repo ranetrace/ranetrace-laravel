@@ -31,6 +31,5 @@ test('trackEvent swallows a capture-body failure and never throws', function ():
 
     // A VALID event name: validation is intentionally loud and outside the
     // isolation; the failure here is in the capture body and must be swallowed.
-    expect(fn () => (new Ranetrace)->trackEvent('checkout_completed', ['k' => 'v']))
-        ->not->toThrow(Throwable::class);
+    expectNoThrow(fn () => (new Ranetrace)->trackEvent('checkout_completed', ['k' => 'v']));
 });

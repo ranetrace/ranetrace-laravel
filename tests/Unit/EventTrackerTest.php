@@ -311,7 +311,7 @@ test('an event the limits drop is not queued and does not throw', function (): v
         }
     };
 
-    expect(fn () => $ranetrace->trackEvent('search_performed'))->not->toThrow(Throwable::class);
+    expectNoThrow(fn () => $ranetrace->trackEvent('search_performed'));
 
     Queue::assertNothingPushed();
 });

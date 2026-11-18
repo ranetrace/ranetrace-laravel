@@ -57,8 +57,9 @@ test('a log is not captured without an ingest key, and logging still does not th
     Config::set('ranetrace.key', $key);
     Config::set('ranetrace.logging.queue', false);
 
-    expect(fn () => Log::channel('ranetrace')->error('Test error message'))->not->toThrow(Throwable::class)
-        ->and(app(RanetraceBatchBuffer::class)->count('logs'))->toBe(0);
+    expectNoThrow(fn () => Log::channel('ranetrace')->error('Test error message'));
+
+    expect(app(RanetraceBatchBuffer::class)->count('logs'))->toBe(0);
 
     Http::assertNothingSent();
 })->with('ingest keys that cannot authenticate');
