@@ -371,10 +371,7 @@ test('the text output says no heartbeat was sent until one is, and then how long
 });
 
 test('the heartbeat section sits between the schedule and the failed jobs', function (): void {
-    $output = statusOutput();
-
-    expect(mb_strpos($output, 'Schedule'))->toBeLessThan(mb_strpos($output, 'Heartbeat'))
-        ->and(mb_strpos($output, 'Heartbeat'))->toBeLessThan(mb_strpos($output, 'Failed jobs (last 24h)'));
+    expect(statusOutput())->toMatch('/^Schedule\n.*^Heartbeat\n.*^Failed jobs \(last 24h\)\n/ms');
 });
 
 test('a heartbeat stamped now or in the future reads as just now', function (int $offset): void {
