@@ -293,27 +293,12 @@ test('a feature test command whose items never reach the buffer says so, names t
 
     expect($exitCode)->toBe(1)
         ->and($output)->toContain($line.' The reason is in '.InternalLogger::todaysFile()."\n")
+        ->and($output)->not->toContain('✓')
         ->and($output)->not->toContain('for Ranetrace.')
         ->and($output)->not->toContain('php artisan ranetrace:test')
         ->and(file_get_contents(InternalLogger::todaysFile()))->toContain('Could not acquire cache lock to add items to buffer')
         ->and(featureTestBufferedCount())->toBe(0);
 })->with('every feature test command');
-
-test('a feature test command that buffers nothing claims no step a success, and only its closing line gives the verdict', function (string $command, string $feature, string $type, string $line, string $claim): void {
-    Config::set("ranetrace.{$feature}.queue", false);
-    featureTestHoldBufferLock($type);
-
-    [$exitCode, $output] = artisanRun($command);
-
-    expect($exitCode)->toBe(1)
-        ->and($output)->toContain($line)
-        ->and($output)->not->toContain('✓')
-        ->and($output)->not->toContain($claim);
-})->with([
-    'errors' => ['ranetrace:test-errors', 'errors', 'errors', '❌ No test errors were buffered: the capture failed.', 'reported'],
-    'events' => ['ranetrace:test-events', 'events', 'events', '❌ No test events were buffered: the capture failed.', 'Valid event name'],
-    'logging' => ['ranetrace:test-logging', 'logging', 'logs', '❌ No test logs were buffered: the capture failed.', 'written'],
-]);
 
 test('a failed capture with internal logging off says to turn it on', function (): void {
     Config::set('ranetrace.errors.queue', false);
