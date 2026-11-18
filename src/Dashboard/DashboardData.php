@@ -24,6 +24,7 @@ use Ranetrace\Laravel\Services\RanetraceBatchBuffer;
 use Ranetrace\Laravel\Services\RanetracePauseManager;
 use Ranetrace\Laravel\Support\BatchConfig;
 use Ranetrace\Laravel\Support\CoreConfig;
+use Ranetrace\Laravel\Support\Endpoints;
 use Ranetrace\Laravel\Support\InternalLogger;
 use Ranetrace\Php\Http\ResponsePolicy;
 use Throwable;
@@ -438,7 +439,7 @@ class DashboardData
     protected function packageVersion(): ?string
     {
         try {
-            return InstalledVersions::getPrettyVersion('ranetrace/ranetrace-laravel');
+            return InstalledVersions::getPrettyVersion(Endpoints::PACKAGE);
         } catch (Throwable) {
             return null;
         }

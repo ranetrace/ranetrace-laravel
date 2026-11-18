@@ -24,6 +24,12 @@ final class Endpoints
      */
     public const string SDK = 'Laravel';
 
+    /**
+     * The Composer package whose installed version the heartbeat and the
+     * dashboard name.
+     */
+    public const string PACKAGE = 'ranetrace/ranetrace-laravel';
+
     public static function table(): EndpointTable
     {
         return EndpointTable::contract()->with(new Endpoint(

@@ -154,7 +154,7 @@ class ReleaseCheckCommand extends Command
      */
     private function sendHeartbeat(RanetraceApiClient $client): array
     {
-        $answer = $client->sendHeartbeat(Heartbeat::forPackage(Endpoints::SDK, SendHeartbeatToRanetraceJob::PACKAGE));
+        $answer = $client->sendHeartbeat(Heartbeat::forPackage(Endpoints::SDK, Endpoints::PACKAGE));
         $status = (int) ($answer['status'] ?? 0);
 
         return match (true) {

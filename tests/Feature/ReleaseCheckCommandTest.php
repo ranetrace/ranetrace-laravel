@@ -6,7 +6,6 @@ use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Http;
-use Ranetrace\Laravel\Jobs\SendHeartbeatToRanetraceJob;
 use Ranetrace\Laravel\Support\Endpoints;
 use Ranetrace\Php\Http\Heartbeat;
 use Workbench\App\Console\ReleaseCheckCommand;
@@ -65,7 +64,7 @@ test('it sends items of all five types and the heartbeat, and exits 0 when the a
 test('it sends the heartbeat the queued job sends, with the release check key', function (): void {
     releaseCheckRun();
 
-    $heartbeat = Heartbeat::forPackage(Endpoints::SDK, SendHeartbeatToRanetraceJob::PACKAGE);
+    $heartbeat = Heartbeat::forPackage(Endpoints::SDK, Endpoints::PACKAGE);
 
     Http::assertSentCount(6);
     Http::assertSent(fn (Request $request): bool => str_ends_with($request->url(), '/heartbeat')

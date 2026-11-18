@@ -37,11 +37,6 @@ class SendHeartbeatToRanetraceJob implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     /**
-     * The Composer package whose installed version the heartbeat names.
-     */
-    public const string PACKAGE = 'ranetrace/ranetrace-laravel';
-
-    /**
      * Held by `ranetrace:work` for one interval after it dispatches a
      * heartbeat, so overlapping runs, and runs per `--type`, dispatch one.
      */
@@ -93,7 +88,7 @@ class SendHeartbeatToRanetraceJob implements ShouldQueue
                 return;
             }
 
-            $result = $client->sendHeartbeat(Heartbeat::forPackage(Endpoints::SDK, self::PACKAGE));
+            $result = $client->sendHeartbeat(Heartbeat::forPackage(Endpoints::SDK, Endpoints::PACKAGE));
 
             $status = is_int($result['status'] ?? null) ? $result['status'] : 0;
 
