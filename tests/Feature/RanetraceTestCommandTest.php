@@ -5,7 +5,6 @@ declare(strict_types=1);
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Arr;
-use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Http;
@@ -21,18 +20,6 @@ beforeEach(function (): void {
     Config::set('ranetrace.batch.cache_driver', 'array');
     Cache::store('array')->flush();
 });
-
-/**
- * Run the bare `ranetrace:test` and return its exit code and its output.
- *
- * @return array{0: int, 1: string}
- */
-function roundTripRun(): array
-{
-    $exitCode = Artisan::call('ranetrace:test');
-
-    return [$exitCode, Artisan::output()];
-}
 
 /**
  * The items each request carried, keyed by the wrapper key they were sent
@@ -82,7 +69,7 @@ test('a test error and a test event are sent straight to the api, beside the buf
     Config::set('ranetrace.events.queue', $queue);
     fakeAcceptingApi();
 
-    [$exitCode, $output] = roundTripRun();
+    [$exitCode, $output] = artisanRun('ranetrace:test');
 
     expect($exitCode)->toBe(0)
         ->and($output)->toContain("  errors   accepted\n  events   accepted\n");
@@ -120,7 +107,7 @@ test('a test error and a test event are sent straight to the api, beside the buf
 
 test('the test items carry the keys the real capture path buffers, and only fields the endpoints declare', function (): void {
     fakeAcceptingApi();
-    roundTripRun();
+    artisanRun('ranetrace:test');
     $sent = roundTripSentItems();
 
     Config::set('ranetrace.errors.queue', false);
@@ -159,7 +146,7 @@ test('the test items carry the keys the real capture path buffers, and only fiel
 test('a 401 on the error stops the event from being sent, sets no pause and fails', function (): void {
     Http::fake(['*' => Http::response(['error' => ['message' => 'Invalid API key']], 401)]);
 
-    [$exitCode, $output] = roundTripRun();
+    [$exitCode, $output] = artisanRun('ranetrace:test');
 
     expect($exitCode)->toBe(1)
         ->and($output)->toContain(
@@ -175,7 +162,7 @@ test('a 401 on the error stops the event from being sent, sets no pause and fail
 test('each answer that accepts nothing gets the shared line, sets no pause and fails', function (Closure $answer, string $line): void {
     Http::fake(['*' => $answer]);
 
-    [$exitCode, $output] = roundTripRun();
+    [$exitCode, $output] = artisanRun('ranetrace:test');
 
     expect($exitCode)->toBe(1)
         ->and($output)->toContain("  errors   {$line}\n  events   {$line}\n\nNothing was accepted.\n")
@@ -222,7 +209,7 @@ test('each answer that accepts nothing gets the shared line, sets no pause and f
 test('an item the api ignored on purpose counts as accepted', function (): void {
     Http::fake(['*' => roundTripCounted('ignored')]);
 
-    [$exitCode, $output] = roundTripRun();
+    [$exitCode, $output] = artisanRun('ranetrace:test');
 
     expect($exitCode)->toBe(0)
         ->and($output)->toContain(
@@ -237,7 +224,7 @@ test('one type accepted and the other refused passes', function (): void {
         '*/events/store' => roundTripCounted(),
     ]);
 
-    [$exitCode, $output] = roundTripRun();
+    [$exitCode, $output] = artisanRun('ranetrace:test');
 
     expect($exitCode)->toBe(0)
         ->and($output)->toContain("  events   accepted\n\nOpen your website in Ranetrace to see what was accepted.\n");
@@ -247,7 +234,7 @@ test('a type whose feature is off is skipped and not sent, and the other still i
     Config::set("ranetrace.{$off}.enabled", false);
     fakeAcceptingApi();
 
-    [$exitCode, $output] = roundTripRun();
+    [$exitCode, $output] = artisanRun('ranetrace:test');
 
     expect($exitCode)->toBe(0)
         ->and($output)->toContain("  {$off}   skipped: {$variable} is false\n")
@@ -261,7 +248,7 @@ test('a type whose feature is off says so rather than not sent after a 401', fun
     Config::set('ranetrace.events.enabled', false);
     Http::fake(['*' => Http::response([], 401)]);
 
-    [, $output] = roundTripRun();
+    [, $output] = artisanRun('ranetrace:test');
 
     expect($output)->toContain("  events   skipped: RANETRACE_EVENTS_ENABLED is false\n");
 });
@@ -271,7 +258,7 @@ test('both features off sends nothing and fails', function (): void {
     Config::set('ranetrace.events.enabled', false);
     fakeAcceptingApi();
 
-    [$exitCode, $output] = roundTripRun();
+    [$exitCode, $output] = artisanRun('ranetrace:test');
 
     expect($exitCode)->toBe(1)
         ->and($output)->toContain(
@@ -287,7 +274,7 @@ test('with the master switch off nothing is sent and the test fails', function (
     Config::set('ranetrace.enabled', false);
     fakeAcceptingApi();
 
-    [$exitCode, $output] = roundTripRun();
+    [$exitCode, $output] = artisanRun('ranetrace:test');
 
     expect($exitCode)->toBe(1)
         ->and($output)->toContain("RANETRACE_ENABLED is false, so nothing is captured or sent.\nNothing was accepted.\n")
@@ -300,7 +287,7 @@ test('an accepted test lifts the global pause a 401 left and says so', function 
     app(RanetracePauseManager::class)->setGlobalPause(900, '401');
     fakeAcceptingApi();
 
-    [$exitCode, $output] = roundTripRun();
+    [$exitCode, $output] = artisanRun('ranetrace:test');
 
     expect($exitCode)->toBe(0)
         ->and(app(RanetracePauseManager::class)->isGloballyPaused())->toBeFalse()
@@ -316,7 +303,7 @@ test('an accepted test lifts the feature pause it disproves on a type it sent', 
     app(RanetracePauseManager::class)->setFeaturePause('errors', 900, $reason);
     fakeAcceptingApi();
 
-    [, $output] = roundTripRun();
+    [, $output] = artisanRun('ranetrace:test');
 
     expect(app(RanetracePauseManager::class)->isFeaturePaused('errors'))->toBeFalse()
         ->and($output)->toContain("  Lifted   the pause on errors (after {$wording}): the errors endpoint answered 200 just now\n");
@@ -330,7 +317,7 @@ test('every lifted pause gets its own line, aligned under the first', function (
     app(RanetracePauseManager::class)->setFeaturePause('events', 900, 'network');
     fakeAcceptingApi();
 
-    [, $output] = roundTripRun();
+    [, $output] = artisanRun('ranetrace:test');
 
     expect($output)->toContain(
         "  Lifted   the pause on everything (after a 401): the key is accepted now\n"
@@ -342,7 +329,7 @@ test('an accepted test keeps a feature pause one accepted item says nothing abou
     app(RanetracePauseManager::class)->setFeaturePause('errors', 900, $reason);
     fakeAcceptingApi();
 
-    [$exitCode, $output] = roundTripRun();
+    [$exitCode, $output] = artisanRun('ranetrace:test');
 
     expect($exitCode)->toBe(0)
         ->and(app(RanetracePauseManager::class)->getFeaturePause('errors')['reason'] ?? null)->toBe($reason)
@@ -353,7 +340,7 @@ test('an accepted test leaves the pause on a type it does not send alone', funct
     app(RanetracePauseManager::class)->setFeaturePause('logs', 900, 'network');
     fakeAcceptingApi();
 
-    [, $output] = roundTripRun();
+    [, $output] = artisanRun('ranetrace:test');
 
     expect(app(RanetracePauseManager::class)->isFeaturePaused('logs'))->toBeTrue()
         ->and($output)->not->toContain('Lifted');
@@ -364,7 +351,7 @@ test('a 200 that counts nothing lifts nothing', function (): void {
     app(RanetracePauseManager::class)->setFeaturePause('errors', 900, '403');
     Http::fake(['*' => Http::response(['success' => true])]);
 
-    [, $output] = roundTripRun();
+    [, $output] = artisanRun('ranetrace:test');
 
     expect(app(RanetracePauseManager::class)->isGloballyPaused())->toBeTrue()
         ->and(app(RanetracePauseManager::class)->isFeaturePaused('errors'))->toBeTrue()
@@ -374,7 +361,7 @@ test('a 200 that counts nothing lifts nothing', function (): void {
 test('the configuration is printed before the round trip, with no verdict of its own', function (): void {
     fakeAcceptingApi();
 
-    [, $output] = roundTripRun();
+    [, $output] = artisanRun('ranetrace:test');
 
     expect($output)
         ->toContain('🔍 Testing Ranetrace configuration...')
@@ -405,7 +392,7 @@ test('an item that cannot be built is not captured, names the internal log that 
     });
     fakeAcceptingApi();
 
-    [$exitCode, $output] = roundTripRun();
+    [$exitCode, $output] = artisanRun('ranetrace:test');
 
     $logFile = dirname((string) config('logging.channels.ranetrace_internal.path')).'/ranetrace-internal-'.date('Y-m-d').'.log';
 
@@ -427,7 +414,7 @@ test('an item that cannot be built while internal logging is off says to turn it
     });
     fakeAcceptingApi();
 
-    [, $output] = roundTripRun();
+    [, $output] = artisanRun('ranetrace:test');
 
     expect($output)->toContain("  events   not captured: the SDK could not build the test item. Turn internal logging on to see why\n");
 });
@@ -436,7 +423,7 @@ test('a pause store that cannot be read costs the lifting, never the answer or t
     Config::set('ranetrace.batch.cache_driver', 'store-that-does-not-exist');
     fakeAcceptingApi();
 
-    [$exitCode, $output] = roundTripRun();
+    [$exitCode, $output] = artisanRun('ranetrace:test');
 
     expect($exitCode)->toBe(0)
         ->and($output)->toContain("  errors   accepted\n  events   accepted\n\n")
@@ -447,7 +434,7 @@ test('the test sends to a configured base url and names it in its lines', functi
     Config::set('ranetrace.base_url', 'https://ranetrace.test/v1/');
     Http::fake(['*' => Http::response(['success' => true])]);
 
-    [, $output] = roundTripRun();
+    [, $output] = artisanRun('ranetrace:test');
 
     expect(Http::recorded()->map(fn (array $pair): string => $pair[0]->url())->all())
         ->toBe(['https://ranetrace.test/v1/errors/store', 'https://ranetrace.test/v1/events/store'])
@@ -458,7 +445,7 @@ test('an auth guard that throws costs the test event its user, not the event', f
     useThrowingAuthGuard('Session store is down');
     fakeAcceptingApi();
 
-    [$exitCode, $output] = roundTripRun();
+    [$exitCode, $output] = artisanRun('ranetrace:test');
 
     expect($exitCode)->toBe(0)
         ->and($output)->toContain("  errors   accepted\n  events   accepted\n")
@@ -468,7 +455,7 @@ test('an auth guard that throws costs the test event its user, not the event', f
 test('a failure the run did not turn into a line becomes one, and the command fails without throwing', function (): void {
     app()->bind(RanetraceApiClient::class, static fn (): never => throw new RuntimeException('Client broke'));
 
-    [$exitCode, $output] = roundTripRun();
+    [$exitCode, $output] = artisanRun('ranetrace:test');
 
     expect($exitCode)->toBe(1)
         ->and($output)->toContain("The test could not run: Client broke\n\nNothing was accepted.\n");
@@ -477,7 +464,7 @@ test('a failure the run did not turn into a line becomes one, and the command fa
 test('what the api answered is printed as text, never read as console markup', function (): void {
     Http::fake(['*' => Http::response(['error' => ['message' => 'see <info>the docs</info>']], 500)]);
 
-    [, $output] = roundTripRun();
+    [, $output] = artisanRun('ranetrace:test');
 
     expect($output)->toContain('  errors   failed: the API answered 500 (see <info>the docs</info>)');
 });
@@ -498,7 +485,7 @@ test('the configuration table reads a flag the host config leaves out as capture
     Config::set('ranetrace.logging.enabled', true);
     roundTripLeaveOut('logging', 'queue');
 
-    [, $output] = roundTripRun();
+    [, $output] = artisanRun('ranetrace:test');
 
     expect($output)
         ->toMatch('/\|\s*Error reporting\s*\|\s*✅ Enabled\s*\|\s*✅ Queued\s*\|/u')
@@ -517,7 +504,7 @@ test('the configuration table does not call every feature disabled while one is 
         Config::set("ranetrace.{$feature}.enabled", false);
     }
 
-    [, $output] = roundTripRun();
+    [, $output] = artisanRun('ranetrace:test');
 
     expect($output)->not->toContain('All features are currently disabled');
 });
@@ -528,7 +515,7 @@ test('the configuration table reads a flag the host config sets as it is set, wa
     Config::set('ranetrace.errors.queue', false);
     Config::set('ranetrace.events.enabled', false);
 
-    [, $output] = roundTripRun();
+    [, $output] = artisanRun('ranetrace:test');
 
     expect($output)
         ->toMatch('/\|\s*Error reporting\s*\|\s*✅ Enabled\s*\|\s*⚡ Sync\s*\|/u')

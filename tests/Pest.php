@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\File;
@@ -156,4 +157,17 @@ function registerWithPublishedConfig(array $published): void
     Config::set('ranetrace', $published);
 
     (new RanetraceServiceProvider(app()))->register();
+}
+
+/**
+ * Run a command and return its exit code and its output.
+ *
+ * @param  array<string, mixed>  $parameters
+ * @return array{0: int, 1: string}
+ */
+function artisanRun(string $command, array $parameters = []): array
+{
+    $exitCode = Artisan::call($command, $parameters);
+
+    return [$exitCode, Artisan::output()];
 }

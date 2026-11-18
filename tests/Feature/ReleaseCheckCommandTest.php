@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Http\Client\Request;
-use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Http;
 use Ranetrace\Laravel\Support\Endpoints;
 use Ranetrace\Php\Http\Heartbeat;
@@ -40,9 +39,7 @@ function releaseCheckRun(string $refuses = '', ?string $keyFile = null, int $hea
 
     app(Kernel::class)->registerCommand(new ReleaseCheckCommand);
 
-    $exitCode = Artisan::call('release:check', ['key-file' => $keyFile]);
-
-    return [$exitCode, Artisan::output()];
+    return artisanRun('release:check', ['key-file' => $keyFile]);
 }
 
 test('it sends items of all five types and the heartbeat, and exits 0 when the api takes every one', function (): void {
