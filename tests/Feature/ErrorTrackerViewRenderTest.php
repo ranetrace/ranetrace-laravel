@@ -368,12 +368,11 @@ test('the directive renders the beacon into a host page', function (): void {
  * explaining them are written for whoever maintains them, and Blade comments keep
  * those notes in the source and out of the output.
  *
- * The shared capture script is the one these guards can only half speak for. It
- * is a JavaScript file in `ranetrace/ranetrace-php`, not a Blade template, so
- * whatever comments it carries survive into whatever host inlines it. The second
- * test below pins that this wrapper adds none of its own around it, which holds
- * whatever that package ships; the third pins that it brings none either, which
- * only holds from the release that ships the script minified.
+ * The shared capture script is a JavaScript file in `ranetrace/ranetrace-php`,
+ * not a Blade template, so whatever comments it carries survive into whatever
+ * host inlines it. `CaptureScript` serves it minified, without them, so the
+ * guards below hold the directive's whole output to no comments, the shared
+ * script included.
  */
 
 test('the beacon ships no comments to the browser', function (): void {
@@ -388,25 +387,11 @@ test('the beacon ships no comments to the browser', function (): void {
         ->and(commentsIn($html))->toBe([]);
 });
 
-test('the error tracker view adds no comments of its own around the shared script', function (): void {
-    config([
-        'ranetrace.javascript_errors.enabled' => true,
-        'ranetrace.website_analytics.beacon.enabled' => true,
-    ]);
-
-    $html = renderWithViewToken('3f1b0c7e-1f4a-4a2b-9a2f-0d7f1a4b8c9d');
-
-    // Every comment line the page carries has to be one the shared capture script
-    // brought with it. Its config values never appear in a comment, so the same
-    // script configured any other way yields the same list.
-    expect(commentsIn($html))->toBe(commentsIn(CaptureScript::withConfig(['enabled' => true])));
-});
-
 /**
- * The stronger form of the guard above: with the shared script minified, the
- * directive ships no comment at all, from either view. Shipped, the notes
- * explaining the capture script would be some 9 KB downloaded by every visitor of
- * every site that installs the package.
+ * The directive ships no comment, from either view or from the shared script
+ * the error tracker view inlines. Shipped, the notes explaining the capture
+ * script would be some 9 KB downloaded by every visitor of every site that
+ * installs the package.
  */
 test('the directive ships no comments at all', function (): void {
     config([
