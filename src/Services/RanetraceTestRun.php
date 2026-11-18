@@ -140,9 +140,8 @@ class RanetraceTestRun
     }
 
     /**
-     * Made outside `src/`, because `Ranetrace::report()` drops an exception
-     * thrown there as one of the package's own. The PHP SDK's test sends the
-     * same message.
+     * The first exception `ranetrace:test-errors` reports, so both commands
+     * send the same error. The PHP SDK's test sends the same message.
      */
     protected function testException(): Exception
     {
