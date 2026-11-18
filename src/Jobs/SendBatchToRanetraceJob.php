@@ -34,6 +34,12 @@ class SendBatchToRanetraceJob implements ShouldBeUnique, ShouldQueue
     public const string LAST_BATCH_PREFIX = 'ranetrace:last_batch:';
 
     /**
+     * The most items one batch request carries, the envelope contract's
+     * `max_items_per_batch`.
+     */
+    public const int MAX_BATCH_ITEMS = 1000;
+
+    /**
      * Soft byte budget for one batch request. The API hard-limits requests to
      * 5MB; we trim to ~4.5MB and return the rest to the buffer, leaving
      * headroom for the JSON envelope so an oversize 413 (whole-batch discard +
@@ -366,7 +372,7 @@ class SendBatchToRanetraceJob implements ShouldBeUnique, ShouldQueue
      */
     protected function getMaxBatchSize(): int
     {
-        return 1000; // Per API spec
+        return self::MAX_BATCH_ITEMS;
     }
 
     /**

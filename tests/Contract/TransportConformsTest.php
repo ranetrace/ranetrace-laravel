@@ -152,10 +152,7 @@ test('a batch travels with exactly the five contracted headers', function (strin
 test('the batch budgets equal the envelope contract', function (): void {
     $envelope = WireContract::envelope();
 
-    $maxItems = (new ReflectionMethod(SendBatchToRanetraceJob::class, 'getMaxBatchSize'))
-        ->invoke(new SendBatchToRanetraceJob('errors'));
-
-    expect($maxItems)->toBe($envelope['max_items_per_batch'])
+    expect(SendBatchToRanetraceJob::MAX_BATCH_ITEMS)->toBe($envelope['max_items_per_batch'])
         ->and(contractBatchJobConstant('MAX_BATCH_BYTES'))->toBe($envelope['client_trim_bytes'])
         ->and($envelope['client_trim_bytes'])->toBeLessThan($envelope['server_max_body_bytes']);
 });

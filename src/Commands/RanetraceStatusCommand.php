@@ -7,6 +7,7 @@ namespace Ranetrace\Laravel\Commands;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Route;
 use Ranetrace\Laravel\Dashboard\DashboardData;
+use Ranetrace\Laravel\Jobs\SendBatchToRanetraceJob;
 use Ranetrace\Laravel\Support\BatchConfig;
 use Ranetrace\Laravel\Support\WorkerSchedule;
 use Throwable;
@@ -436,10 +437,10 @@ class RanetraceStatusCommand extends Command
         );
 
         if (! $runsEveryMinute) {
-            return 'ranetrace:work is scheduled, but not every minute. A run sends at most 1000 items per feature, so schedule it every minute';
+            return 'ranetrace:work is scheduled, but not every minute. A run sends at most '.SendBatchToRanetraceJob::MAX_BATCH_ITEMS.' items per feature, so schedule it every minute';
         }
 
-        return 'ranetrace:work is scheduled every minute. Check for a paused feature above, and that a queue worker processes the batch jobs: a run sends at most 1000 items per feature';
+        return 'ranetrace:work is scheduled every minute. Check for a paused feature above, and that a queue worker processes the batch jobs: a run sends at most '.SendBatchToRanetraceJob::MAX_BATCH_ITEMS.' items per feature';
     }
 
     /**
