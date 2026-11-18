@@ -182,7 +182,7 @@ test('a worker missing from the schedule with no recent batch is warned about, w
         ]);
 })->with([
     'never sent a batch' => [null],
-    'last batch past the stalled-drain window' => [601],
+    'last batch past the stalled-drain window' => [DashboardData::DRAIN_STALE_SECONDS + 1],
 ]);
 
 test('a worker missing from the schedule that sent a batch recently runs some other way and gets no warning', function (): void {

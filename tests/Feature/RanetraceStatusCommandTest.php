@@ -38,8 +38,7 @@ test('status warns about a stalled drain when buffered items wait past the drain
     $buffer = app(RanetraceBatchBuffer::class);
     $buffer->addItem('events', ['event_name' => 'e1']);
 
-    // Age the item past the 600s DRAIN_STALE_SECONDS window so it is overdue.
-    $this->travel(601)->seconds();
+    $this->travel(DashboardData::DRAIN_STALE_SECONDS + 1)->seconds();
 
     $this->artisan('ranetrace:status')
         ->expectsOutputToContain('No recent batch drain')

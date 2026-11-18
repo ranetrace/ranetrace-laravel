@@ -79,7 +79,7 @@ test('a batch sent with an unset batch cache driver drains the buffer the dashbo
 
     $buffer = new RanetraceBatchBuffer;
     $buffer->addItem('events', ['event_name' => 'signup']);
-    $this->travel(601)->seconds();
+    $this->travel(DashboardData::DRAIN_STALE_SECONDS + 1)->seconds();
 
     (new SendBatchToRanetraceJob('events', 10))->handle(app(RanetraceApiClient::class), $buffer, new RanetracePauseManager);
 

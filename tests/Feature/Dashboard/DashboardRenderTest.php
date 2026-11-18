@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Illuminate\Support\Facades\Config;
+use Ranetrace\Laravel\Dashboard\DashboardData;
 use Ranetrace\Laravel\Services\RanetraceBatchBuffer;
 use Ranetrace\Laravel\Services\RanetracePauseManager;
 
@@ -53,7 +54,7 @@ test('the dashboard surfaces live state: a pause and a stalled buffer', function
     app(RanetraceBatchBuffer::class)->addItem('events', ['event_name' => 'e1']);
 
     // Age the buffered item past the drain window so it reads as stalled.
-    $this->travel(601)->seconds();
+    $this->travel(DashboardData::DRAIN_STALE_SECONDS + 1)->seconds();
 
     $response = $this->get('/ranetrace');
 
@@ -66,7 +67,7 @@ test('the dashboard surfaces live state: a pause and a stalled buffer', function
 test('a feature paused and not sending gets the paused note, without the hint about the worker', function (): void {
     $this->freezeTime();
     app(RanetraceBatchBuffer::class)->addItem('events', ['event_name' => 'e1']);
-    $this->travel(601)->seconds();
+    $this->travel(DashboardData::DRAIN_STALE_SECONDS + 1)->seconds();
     app(RanetracePauseManager::class)->setFeaturePause('events', 900, 'network');
 
     $html = $this->get('/ranetrace')->assertOk()->getContent();
@@ -84,7 +85,7 @@ test('a stalled feature beside a paused one keeps the worker hint and each its o
     $this->freezeTime();
     app(RanetraceBatchBuffer::class)->addItem('events', ['event_name' => 'e1']);
     app(RanetraceBatchBuffer::class)->addItem('errors', ['message' => 'a']);
-    $this->travel(601)->seconds();
+    $this->travel(DashboardData::DRAIN_STALE_SECONDS + 1)->seconds();
     app(RanetracePauseManager::class)->setFeaturePause('events', 900, 'network');
 
     $html = $this->get('/ranetrace')->assertOk()->getContent();
@@ -99,7 +100,7 @@ test('a stalled feature beside a paused one keeps the worker hint and each its o
 test('the health badge reads Issues detected while a drain is stalled', function (): void {
     app(RanetraceBatchBuffer::class)->addItem('events', ['event_name' => 'e1']);
 
-    $this->travel(601)->seconds();
+    $this->travel(DashboardData::DRAIN_STALE_SECONDS + 1)->seconds();
 
     expect($this->get('/ranetrace')->getContent())
         ->toContain('rt-badge rt-badge--bad')
@@ -115,7 +116,7 @@ test('the page speaks its warnings and its log panel with no em-dash anywhere', 
     app(RanetraceBatchBuffer::class)->addItem('events', ['event_name' => 'e1']);
 
     // Age the buffered item past the drain window so it reads as stalled.
-    $this->travel(601)->seconds();
+    $this->travel(DashboardData::DRAIN_STALE_SECONDS + 1)->seconds();
 
     // No log fixture: this test's storage directory (see TestCase) starts
     // empty, so the log panel renders its empty state and no line an earlier
