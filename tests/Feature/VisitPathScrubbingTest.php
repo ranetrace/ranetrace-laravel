@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use Illuminate\Support\Facades\Bus;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Route;
 use Ranetrace\Laravel\Analytics\Middleware\TrackPageVisit;
 use Ranetrace\Laravel\Jobs\HandlePageVisitJob;
@@ -23,7 +22,6 @@ $visitData = function (): array {
 
 beforeEach(function (): void {
     Bus::fake();
-    Cache::flush();
 
     Route::middleware(['web', TrackPageVisit::class])->group(function (): void {
         Route::get('/invitations/{token}', fn () => response('Invitation'));
