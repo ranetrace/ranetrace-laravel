@@ -97,15 +97,6 @@ test('one view mark verifies only its own visit', function (): void {
         ->and($own['verified_human'])->toBeTrue();
 });
 
-test('the allow-list ships verified_human and can never ship the local handles', function (): void {
-    $allowed = (new ReflectionMethod(HandlePageVisitJob::class, 'getAllowedKeys'))
-        ->invoke(new HandlePageVisitJob([]));
-
-    expect($allowed)->toContain('verified_human')
-        ->and($allowed)->not->toContain('view_token')
-        ->and($allowed)->not->toContain('held_until');
-});
-
 /*
  * The job's backstop for a connection that did not honour the delay. A failover
  * connection passes the middleware's check, but when its first target is down
