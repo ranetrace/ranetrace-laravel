@@ -7,7 +7,6 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Psr\Log\LoggerInterface;
 use Ranetrace\Laravel\Jobs\SendBatchToRanetraceJob;
 use Ranetrace\Laravel\Services\RanetraceApiClient;
 use Ranetrace\Laravel\Services\RanetraceBatchBuffer;
@@ -78,8 +77,7 @@ test('a log record with INF in its context is sent in one request beside a valid
 });
 
 test('an unencodable item already in the buffer is dropped at send while the good items in its batch are delivered', function (): void {
-    $logger = Mockery::spy(LoggerInterface::class);
-    Log::shouldReceive('channel')->with('ranetrace_internal')->andReturn($logger);
+    $logger = spyOnInternalLog();
 
     $buffer = app(RanetraceBatchBuffer::class);
 

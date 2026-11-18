@@ -7,9 +7,7 @@ use Illuminate\Routing\Route;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\File;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Queue;
-use Psr\Log\LoggerInterface;
 use Ranetrace\Laravel\Events\EventTracker;
 use Ranetrace\Laravel\Jobs\HandleErrorJob;
 use Ranetrace\Laravel\Jobs\HandleEventJob;
@@ -383,8 +381,7 @@ test('user payload uses getAuthIdentifier() and is null-safe for missing email',
 });
 
 test('an auth guard that throws costs the error its user, never the report', function (): void {
-    $logger = Mockery::spy(LoggerInterface::class);
-    Log::shouldReceive('channel')->with('ranetrace_internal')->andReturn($logger);
+    $logger = spyOnInternalLog();
     useThrowingAuthGuard('Session store unreachable');
 
     $payload = invokeBuildErrorPayload(new RuntimeException('boom'));

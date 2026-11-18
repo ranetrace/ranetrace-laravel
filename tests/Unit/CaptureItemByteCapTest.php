@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Config;
-use Illuminate\Support\Facades\Log;
-use Psr\Log\LoggerInterface;
 use Ranetrace\Laravel\Jobs\BaseRanetraceJob;
 use Ranetrace\Laravel\Jobs\HandleErrorJob;
 use Ranetrace\Laravel\Jobs\HandleLogJob;
@@ -117,8 +115,7 @@ test('a dropped item never leaves a _truncated marker in the buffered output', f
 });
 
 test('the drop is recorded on the internal channel, distinctly from a shrink', function (): void {
-    $logger = Mockery::spy(LoggerInterface::class);
-    Log::shouldReceive('channel')->with('ranetrace_internal')->andReturn($logger);
+    $logger = spyOnInternalLog();
 
     (new HandleErrorJob(irreduciblyOversizeErrorData()))->handle(new RanetraceBatchBuffer);
 
@@ -148,8 +145,7 @@ test('an item JSON cannot encode counts as over budget, so its unencodable array
 });
 
 test('an item still unencodable after the shrink pass is dropped and logged, never measured as zero bytes', function (): void {
-    $logger = Mockery::spy(LoggerInterface::class);
-    Log::shouldReceive('channel')->with('ranetrace_internal')->andReturn($logger);
+    $logger = spyOnInternalLog();
 
     (new HandleErrorJob(['message' => 'boom', 'line' => NAN]))->handle(new RanetraceBatchBuffer);
 

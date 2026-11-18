@@ -5,9 +5,7 @@ declare(strict_types=1);
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Config;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Queue;
-use Psr\Log\LoggerInterface;
 use Ranetrace\Laravel\Events\EventTracker;
 use Ranetrace\Laravel\Facades\Ranetrace;
 use Ranetrace\Laravel\Jobs\HandleEventJob;
@@ -237,8 +235,7 @@ test('it allows explicit user id override', function (): void {
 
 test('an auth guard that throws costs the event its user, never the event', function (): void {
     Queue::fake();
-    $logger = Mockery::spy(LoggerInterface::class);
-    Log::shouldReceive('channel')->with('ranetrace_internal')->andReturn($logger);
+    $logger = spyOnInternalLog();
     useThrowingAuthGuard('Session store unreachable');
 
     Ranetrace::trackEvent('test_event', ['plan' => 'pro']);
@@ -261,8 +258,7 @@ test('an auth guard that throws costs the event its user, never the event', func
  */
 test('an event over the endpoint limits is queued cut, and the cut is logged to the internal channel once', function (): void {
     Queue::fake();
-    $logger = Mockery::spy(LoggerInterface::class);
-    Log::shouldReceive('channel')->with('ranetrace_internal')->andReturn($logger);
+    $logger = spyOnInternalLog();
 
     Ranetrace::trackEvent('checkout_started', [
         'note' => str_repeat('p', 100_000),

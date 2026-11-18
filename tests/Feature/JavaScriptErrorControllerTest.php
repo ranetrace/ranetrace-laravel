@@ -4,9 +4,7 @@ declare(strict_types=1);
 
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Support\Facades\Bus;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
-use Psr\Log\LoggerInterface;
 use Ranetrace\Laravel\Jobs\HandleJavaScriptErrorJob;
 
 beforeEach(function (): void {
@@ -505,8 +503,7 @@ test('it scrubs sensitive query params inside URL-valued breadcrumb and context 
 });
 
 test('an auth guard that throws costs the browser error its user id, never the error', function (): void {
-    $logger = Mockery::spy(LoggerInterface::class);
-    Log::shouldReceive('channel')->with('ranetrace_internal')->andReturn($logger);
+    $logger = spyOnInternalLog();
     useThrowingAuthGuard('Session store unreachable');
 
     $this->postJson(route('ranetrace.javascript-errors.store'), [

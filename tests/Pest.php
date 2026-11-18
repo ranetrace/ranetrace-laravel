@@ -10,8 +10,11 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
+use Mockery\MockInterface;
 use Pest\Plugins\Tia\Recorder;
 use Pest\Support\Container;
+use Psr\Log\LoggerInterface;
 use Ranetrace\Laravel\Dashboard\DashboardData;
 use Ranetrace\Laravel\Jobs\SendBatchToRanetraceJob;
 use Ranetrace\Laravel\RanetraceServiceProvider;
@@ -373,4 +376,16 @@ function onlyBufferedItem(string $type): array
     expect($items)->toHaveCount(1);
 
     return $items[0]['data'];
+}
+
+/**
+ * Route the internal log channel to a spy and return it, so a test can check
+ * afterwards what the package logged there.
+ */
+function spyOnInternalLog(): MockInterface
+{
+    $logger = Mockery::spy(LoggerInterface::class);
+    Log::shouldReceive('channel')->with('ranetrace_internal')->andReturn($logger);
+
+    return $logger;
 }
