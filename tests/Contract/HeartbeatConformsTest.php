@@ -42,27 +42,6 @@ function contractSentHeartbeatRequest(): Request
     return $sent;
 }
 
-/**
- * The headers this SDK set on the heartbeat, without the `Host` and
- * `Content-Length` Guzzle adds itself.
- *
- * @return array<string, string>
- */
-function contractHeartbeatHeaders(Request $request): array
-{
-    $headers = [];
-
-    foreach ($request->headers() as $name => $values) {
-        if (in_array($name, ['Host', 'Content-Length'], true)) {
-            continue;
-        }
-
-        $headers[$name] = (string) ($values[0] ?? '');
-    }
-
-    return $headers;
-}
-
 test('a heartbeat goes to the path the contract names', function (): void {
     $contract = WireContract::heartbeat();
 
@@ -83,7 +62,7 @@ test('a heartbeat body holds exactly the contracted fields with values the contr
 
 test('a heartbeat travels with exactly the five contracted headers', function (): void {
     $contract = WireContract::headers();
-    $sent = contractHeartbeatHeaders(contractSentHeartbeatRequest());
+    $sent = contractSdkHeaders(contractSentHeartbeatRequest());
 
     $userAgent = str_replace(
         ['{SDK}', '{Feature}', '{version}'],

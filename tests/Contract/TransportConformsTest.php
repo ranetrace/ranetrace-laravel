@@ -32,15 +32,6 @@ beforeEach(function (): void {
 });
 
 /**
- * Headers Guzzle itself puts on the wire. They are transport bookkeeping rather
- * than anything this SDK chose, so the contract does not name them and the
- * header assertions below subtract them before comparing.
- *
- * @var list<string>
- */
-const CONTRACT_TRANSPORT_HEADERS = ['Host', 'Content-Length'];
-
-/**
  * The `{Feature}` segment of the User-Agent, per item type.
  *
  * headers.json describes the format and names the five features in prose
@@ -86,26 +77,6 @@ function contractSentBatchRequest(string $type): Request
     });
 
     return $sent;
-}
-
-/**
- * The headers this SDK set on a request, with Guzzle's own removed.
- *
- * @return array<string, string>
- */
-function contractSdkHeaders(Request $request): array
-{
-    $headers = [];
-
-    foreach ($request->headers() as $name => $values) {
-        if (in_array($name, CONTRACT_TRANSPORT_HEADERS, true)) {
-            continue;
-        }
-
-        $headers[$name] = (string) ($values[0] ?? '');
-    }
-
-    return $headers;
 }
 
 function contractBatchJobConstant(string $name): mixed

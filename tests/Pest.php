@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Illuminate\Cache\ArrayStore;
+use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
@@ -23,6 +24,15 @@ uses(TestCase::class)->in('Browser', 'Contract', 'Feature', 'Unit');
 const QUEUE_ROUTES_SKIP_REASON = 'Queue routes arrived in Laravel 13, so on Laravel 12 no host can route a job away from the default connection.';
 
 const QUEUE_FORWARDS_SKIP_REASON = 'This Laravel version has no queue forwards.';
+
+/**
+ * Headers Guzzle itself puts on the wire. They are transport bookkeeping rather
+ * than anything this SDK chose, so the contract does not name them and the
+ * contract header assertions subtract them before comparing.
+ *
+ * @var list<string>
+ */
+const CONTRACT_TRANSPORT_HEADERS = ['Host', 'Content-Length'];
 
 /**
  * Every file under resources/boost, as sorted absolute paths. Swept
@@ -277,4 +287,24 @@ function pauseFeaturesWithItemsWaiting(array $features, string $reason = '403', 
     foreach ($features as $feature) {
         app(RanetracePauseManager::class)->setFeaturePause($feature, 900, $reason);
     }
+}
+
+/**
+ * The headers this SDK set on a request, with Guzzle's own removed.
+ *
+ * @return array<string, string>
+ */
+function contractSdkHeaders(Request $request): array
+{
+    $headers = [];
+
+    foreach ($request->headers() as $name => $values) {
+        if (in_array($name, CONTRACT_TRANSPORT_HEADERS, true)) {
+            continue;
+        }
+
+        $headers[$name] = (string) ($values[0] ?? '');
+    }
+
+    return $headers;
 }
