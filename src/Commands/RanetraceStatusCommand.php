@@ -11,6 +11,10 @@ use Ranetrace\Laravel\Support\BatchConfig;
 use Ranetrace\Laravel\Support\WorkerSchedule;
 use Throwable;
 
+/**
+ * @phpstan-import-type ScheduleEntry from WorkerSchedule
+ * @phpstan-import-type ScheduleAnswer from WorkerSchedule
+ */
 class RanetraceStatusCommand extends Command
 {
     protected $signature = 'ranetrace:status
@@ -260,7 +264,7 @@ class RanetraceStatusCommand extends Command
      * The Schedule section: one line per scheduled ranetrace:work, followed by
      * what each warning on it costs and the fix.
      *
-     * @param  array<string, mixed>  $schedule
+     * @param  ScheduleAnswer  $schedule
      */
     protected function displaySchedule(array $schedule): void
     {
@@ -336,7 +340,7 @@ class RanetraceStatusCommand extends Command
      * How an entry runs, such as "runs every minute, overlap lock expires
      * after 5 minutes".
      *
-     * @param  array<string, mixed>  $entry
+     * @param  ScheduleEntry  $entry
      */
     protected function describeEntry(array $entry): string
     {
@@ -358,7 +362,7 @@ class RanetraceStatusCommand extends Command
      * cause. Only an unread schedule leaves the question of whether the worker
      * is scheduled open.
      *
-     * @param  array<string, mixed>|null  $schedule
+     * @param  ScheduleAnswer|null  $schedule
      */
     protected function stalledDrainCause(?array $schedule): string
     {
@@ -381,7 +385,7 @@ class RanetraceStatusCommand extends Command
      * The Recommendations line under a stalled drain, or null when a schedule
      * warning already says what to do.
      *
-     * @param  array<string, mixed>|null  $schedule
+     * @param  ScheduleAnswer|null  $schedule
      */
     protected function stalledDrainAdvice(?array $schedule): ?string
     {
@@ -408,7 +412,7 @@ class RanetraceStatusCommand extends Command
      * paused-and-not-sending line when it covers every buffer near capacity,
      * or the recommendation of a schedule warning.
      *
-     * @param  array<string, mixed>|null  $schedule
+     * @param  ScheduleAnswer|null  $schedule
      */
     protected function nearCapacityAdvice(?array $schedule, bool $isAnsweredByDrainLine): ?string
     {
@@ -442,7 +446,7 @@ class RanetraceStatusCommand extends Command
      * One Recommendations line per schedule warning, naming the entry it is
      * about.
      *
-     * @param  array<string, mixed>|null  $schedule
+     * @param  ScheduleAnswer|null  $schedule
      * @return list<string>
      */
     protected function scheduleRecommendations(?array $schedule): array

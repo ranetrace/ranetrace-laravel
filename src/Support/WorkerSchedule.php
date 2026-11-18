@@ -24,6 +24,20 @@ use Throwable;
  * Like the rest of the status surface it never throws: a schedule that cannot
  * be read is reported as null, and a lock that cannot be read costs that one
  * answer.
+ *
+ * @phpstan-type ScheduleEntry array{
+ *     command: string,
+ *     expression: string,
+ *     without_overlapping: bool,
+ *     lock_expires_after_minutes: ?int,
+ *     lock_held: ?bool,
+ *     warnings: list<string>,
+ * }
+ * @phpstan-type ScheduleAnswer array{
+ *     scheduled: bool,
+ *     entries: list<ScheduleEntry>,
+ *     warnings: list<string>,
+ * }
  */
 class WorkerSchedule
 {
@@ -78,18 +92,7 @@ class WorkerSchedule
      *   some other way, and `scheduled` is false without a warning.
      *
      * @param  array<string, mixed>  $status
-     * @return array{
-     *     scheduled: bool,
-     *     entries: list<array{
-     *         command: string,
-     *         expression: string,
-     *         without_overlapping: bool,
-     *         lock_expires_after_minutes: ?int,
-     *         lock_held: ?bool,
-     *         warnings: list<string>,
-     *     }>,
-     *     warnings: list<string>,
-     * }|null
+     * @return ScheduleAnswer|null
      */
     public function inspect(array $status): ?array
     {
@@ -102,18 +105,7 @@ class WorkerSchedule
 
     /**
      * @param  array<string, mixed>  $status
-     * @return array{
-     *     scheduled: bool,
-     *     entries: list<array{
-     *         command: string,
-     *         expression: string,
-     *         without_overlapping: bool,
-     *         lock_expires_after_minutes: ?int,
-     *         lock_held: ?bool,
-     *         warnings: list<string>,
-     *     }>,
-     *     warnings: list<string>,
-     * }
+     * @return ScheduleAnswer
      */
     protected function inspectSchedule(Schedule $schedule, array $status): array
     {
@@ -169,14 +161,7 @@ class WorkerSchedule
     }
 
     /**
-     * @return array{
-     *     command: string,
-     *     expression: string,
-     *     without_overlapping: bool,
-     *     lock_expires_after_minutes: ?int,
-     *     lock_held: ?bool,
-     *     warnings: list<string>,
-     * }
+     * @return ScheduleEntry
      */
     protected function describe(Event $event, string $command, bool $isDrainStalled): array
     {
