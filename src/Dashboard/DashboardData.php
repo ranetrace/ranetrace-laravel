@@ -346,9 +346,6 @@ class DashboardData
      *
      * The directory and basename come from that channel's own configured path
      * ({@see InternalLogger::channelPath()}), so the reader follows the writer.
-     * Both calling storage_path() would make them agree only by coincidence:
-     * point the channel elsewhere and this panel would keep reading the old
-     * directory.
      *
      * @return array<int, array{time: string, level: string, message: string}>
      */
