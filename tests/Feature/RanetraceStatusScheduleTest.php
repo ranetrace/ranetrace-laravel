@@ -26,6 +26,16 @@ function scheduleStatusJson(): ?array
     return $status['schedule'];
 }
 
+/**
+ * Schedule ranetrace:work every minute with an overlap lock that expires after
+ * the given minutes, and hold that lock as a run in progress would.
+ */
+function scheduleTheWorkerWithItsLockHeld(int $lockExpiresAfterMinutes = 5): void
+{
+    $event = app(Schedule::class)->command('ranetrace:work')->everyMinute()->withoutOverlapping($lockExpiresAfterMinutes);
+    $event->mutex->create($event);
+}
+
 test('a worker scheduled with a five minute lock gets one healthy line and no warning', function (): void {
     app(Schedule::class)->command('ranetrace:work')->everyMinute()->withoutOverlapping(5)->runInBackground();
 
@@ -90,8 +100,7 @@ test('a worker scheduled without an overlap lock gets no warning', function (): 
 test('a held lock while the drain is stalled is reported as stuck with the command that releases it', function (): void {
     stallTheEventsDrain();
 
-    $event = app(Schedule::class)->command('ranetrace:work')->everyMinute()->withoutOverlapping(5);
-    $event->mutex->create($event);
+    scheduleTheWorkerWithItsLockHeld();
 
     $output = statusOutput();
     $json = scheduleStatusJson();
@@ -109,8 +118,7 @@ test('a held lock while the drain is stalled is reported as stuck with the comma
 });
 
 test('a held lock with nothing stalled is a run in progress and says nothing', function (): void {
-    $event = app(Schedule::class)->command('ranetrace:work')->everyMinute()->withoutOverlapping(5);
-    $event->mutex->create($event);
+    scheduleTheWorkerWithItsLockHeld();
 
     $json = scheduleStatusJson();
 
@@ -124,8 +132,7 @@ test('a held lock while only a paused feature waits too long is not called stuck
     // A paused feature is not dispatched, so the lock cannot be what holds it up.
     pauseFeaturesWithItemsWaiting(['events']);
 
-    $event = app(Schedule::class)->command('ranetrace:work')->everyMinute()->withoutOverlapping(5);
-    $event->mutex->create($event);
+    scheduleTheWorkerWithItsLockHeld();
 
     $json = scheduleStatusJson();
 
@@ -150,8 +157,7 @@ test('a stalled drain with no held lock points past the schedule at the cron ent
 test('a killed run under the default lock gets both the stuck lock and the expiry warning', function (): void {
     stallTheEventsDrain();
 
-    $event = app(Schedule::class)->command('ranetrace:work')->everyMinute()->withoutOverlapping();
-    $event->mutex->create($event);
+    scheduleTheWorkerWithItsLockHeld(1440);
 
     $output = statusOutput();
 
@@ -431,8 +437,7 @@ test('a scheduled command that is not valid UTF-8 still gives valid JSON', funct
 test('the schedule output has no all-caps words besides acronyms', function (): void {
     stallTheEventsDrain();
 
-    $event = app(Schedule::class)->command('ranetrace:work')->everyMinute()->withoutOverlapping();
-    $event->mutex->create($event);
+    scheduleTheWorkerWithItsLockHeld(1440);
     $troubled = statusOutput();
 
     app()->instance(Schedule::class, new Schedule);
