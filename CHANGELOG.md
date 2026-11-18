@@ -6,8 +6,10 @@ This file starts at 1.0.0. The package was re-versioned to share a major with `r
 
 ## [Unreleased]
 
+Requires `ranetrace/ranetrace-php` 1.8.1 or later: the entry below is a change in the shared core.
+
 ### Fixed
-- **A secret in the address of the script a JavaScript error came from no longer leaves the host.** The `filename` of a browser error was sent as the browser reported it, while the message, the stack and the page URL were scrubbed. A script loaded from `https://cdn.example.com/app.js?token=...` arrived with its token readable. So did the page's own address for an error in an inline script, which the browser reports as the file: a password reset page's `{token}` segment was redacted in `url` and readable in `filename`. The filename is now scrubbed as the page URL is, its query string and the route parameters that hold a secret. The change is in the shared item builder of `ranetrace/ranetrace-php` and arrives with the next core release this package requires. Nothing to do on upgrade
+- **A secret in the address of the script a JavaScript error came from no longer leaves the host.** The `filename` of a browser error was sent as the browser reported it, while the message, the stack and the page URL were scrubbed. A script loaded from `https://cdn.example.com/app.js?token=...` arrived with its token readable. So did the page's own address for an error in an inline script, which the browser reports as the file: a password reset page's `{token}` segment was redacted in `url` and readable in `filename`. The filename is now scrubbed as the page URL is, its query string and the route parameters that hold a secret. The change is in the shared item builder of `ranetrace/ranetrace-php` 1.8.1. Nothing to do on upgrade
 
 ## [1.9.0] - 2026-11-18
 
