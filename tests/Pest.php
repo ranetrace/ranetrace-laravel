@@ -4,12 +4,16 @@ declare(strict_types=1);
 
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
 use Pest\Plugins\Tia\Recorder;
 use Pest\Support\Container;
+use Ranetrace\Laravel\Dashboard\DashboardData;
+use Ranetrace\Laravel\Jobs\SendBatchToRanetraceJob;
 use Ranetrace\Laravel\RanetraceServiceProvider;
+use Ranetrace\Laravel\Services\RanetraceBatchBuffer;
 use Ranetrace\Laravel\Tests\TestCase;
 
 uses(TestCase::class)->in('Browser', 'Contract', 'Feature', 'Unit');
@@ -194,4 +198,38 @@ function statusOutput(array $options = []): string
 function statusJson(): array
 {
     return json_decode(mb_trim(statusOutput(['--json' => true])), true, flags: JSON_THROW_ON_ERROR);
+}
+
+/**
+ * Leave an events item in the buffer past the stalled-drain window, with no
+ * batch sent.
+ */
+function stallTheEventsDrain(): void
+{
+    app(RanetraceBatchBuffer::class)->addItem('events', ['event_name' => 'e1']);
+
+    test()->travel(DashboardData::DRAIN_STALE_SECONDS + 1)->seconds();
+}
+
+/**
+ * Fill the events buffer to 80 percent of its capacity, where status counts
+ * it as near capacity.
+ */
+function fillTheEventsBufferNearCapacity(): void
+{
+    Config::set('ranetrace.batch.max_buffer_size', 10);
+
+    $buffer = app(RanetraceBatchBuffer::class);
+
+    for ($i = 0; $i < 8; $i++) {
+        $buffer->addItem('events', ['event_name' => "e{$i}"]);
+    }
+}
+
+/**
+ * Record a successful events batch this many seconds ago.
+ */
+function recordEventsBatchSecondsAgo(int $seconds): void
+{
+    Cache::store('array')->forever(SendBatchToRanetraceJob::LAST_BATCH_PREFIX.'events', now()->subSeconds($seconds)->timestamp);
 }

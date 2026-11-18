@@ -34,40 +34,6 @@ function scheduleStatusJson(): ?array
     return $status['schedule'];
 }
 
-/**
- * Leave an events item in the buffer past the stalled-drain window, with no
- * batch sent.
- */
-function stallTheEventsDrain(): void
-{
-    app(RanetraceBatchBuffer::class)->addItem('events', ['event_name' => 'e1']);
-
-    test()->travel(DashboardData::DRAIN_STALE_SECONDS + 1)->seconds();
-}
-
-/**
- * Fill the events buffer to 80 percent of its capacity, where status counts
- * it as near capacity.
- */
-function fillTheEventsBufferNearCapacity(): void
-{
-    Config::set('ranetrace.batch.max_buffer_size', 10);
-
-    $buffer = app(RanetraceBatchBuffer::class);
-
-    for ($i = 0; $i < 8; $i++) {
-        $buffer->addItem('events', ['event_name' => "e{$i}"]);
-    }
-}
-
-/**
- * Record a successful events batch this many seconds ago.
- */
-function recordEventsBatchSecondsAgo(int $seconds): void
-{
-    Cache::store('array')->forever(SendBatchToRanetraceJob::LAST_BATCH_PREFIX.'events', now()->subSeconds($seconds)->timestamp);
-}
-
 test('a worker scheduled with a five minute lock gets one healthy line and no warning', function (): void {
     app(Schedule::class)->command('ranetrace:work')->everyMinute()->withoutOverlapping(5)->runInBackground();
 

@@ -203,7 +203,7 @@ function pauseEventsWithItemWaiting(string $reason, int $seconds, ?int $lastBatc
     app(RanetracePauseManager::class)->setFeaturePause('events', 900, $reason);
 
     if ($lastBatchSecondsAgo !== null) {
-        Cache::store('array')->forever(SendBatchToRanetraceJob::LAST_BATCH_PREFIX.'events', now()->subSeconds($lastBatchSecondsAgo)->timestamp);
+        recordEventsBatchSecondsAgo($lastBatchSecondsAgo);
     }
 }
 
@@ -365,7 +365,7 @@ test('overdue items with a batch sent inside the drain window leave the installa
     app(RanetraceBatchBuffer::class)->addItem('events', ['event_name' => 'e1']);
 
     $this->travel(DashboardData::DRAIN_STALE_SECONDS + 1)->seconds();
-    Cache::store('array')->forever(SendBatchToRanetraceJob::LAST_BATCH_PREFIX.'events', now()->subSeconds(DashboardData::DRAIN_STALE_SECONDS)->timestamp);
+    recordEventsBatchSecondsAgo(DashboardData::DRAIN_STALE_SECONDS);
 
     expect(app(DashboardData::class)->collectStatus()['healthy'])->toBeTrue();
 });

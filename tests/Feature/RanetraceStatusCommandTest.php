@@ -30,12 +30,7 @@ test('status reports healthy with empty buffers', function (): void {
 });
 
 test('status reports unhealthy when a buffer is near its own capacity', function (): void {
-    Config::set('ranetrace.batch.max_buffer_size', 10);
-
-    $buffer = app(RanetraceBatchBuffer::class);
-    for ($i = 0; $i < 8; $i++) {
-        $buffer->addItem('events', ['event_name' => "e{$i}"]);
-    }
+    fillTheEventsBufferNearCapacity();
 
     $this->artisan('ranetrace:status')
         ->expectsOutputToContain('✗ Overall status: issues detected')
@@ -65,9 +60,7 @@ test('status still warns about a stalled drain after hours with no drain and no 
 });
 
 test('a stalled drain is reported as unhealthy, in the text and in --json', function (): void {
-    app(RanetraceBatchBuffer::class)->addItem('events', ['event_name' => 'e1']);
-
-    $this->travel(601)->seconds();
+    stallTheEventsDrain();
 
     expect(statusOutput())->toContain('✗ Overall status: issues detected')
         ->not->toContain('✓ Overall status: healthy')
@@ -120,12 +113,7 @@ test('a feature paused alone shows the guidance for its reason under its row', f
 ]);
 
 test('the pause guidance prints once when Recommendations also prints', function (): void {
-    Config::set('ranetrace.batch.max_buffer_size', 10);
-
-    $buffer = app(RanetraceBatchBuffer::class);
-    for ($i = 0; $i < 8; $i++) {
-        $buffer->addItem('events', ['event_name' => "e{$i}"]);
-    }
+    fillTheEventsBufferNearCapacity();
 
     app(RanetracePauseManager::class)->setFeaturePause('errors', 900, '429');
 
@@ -282,11 +270,7 @@ test('the status output has no all-caps words besides acronyms', function (): vo
     $healthy = statusOutput();
 
     Config::set('ranetrace.key', null);
-    Config::set('ranetrace.batch.max_buffer_size', 10);
-    $buffer = app(RanetraceBatchBuffer::class);
-    for ($i = 0; $i < 8; $i++) {
-        $buffer->addItem('events', ['event_name' => "e{$i}"]);
-    }
+    fillTheEventsBufferNearCapacity();
     $pauseManager = app(RanetracePauseManager::class);
     $pauseManager->setGlobalPause(900, '401');
     $pauseManager->setFeaturePause('errors', 900, '429');
