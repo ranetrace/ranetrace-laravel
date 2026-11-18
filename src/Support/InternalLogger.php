@@ -87,7 +87,16 @@ class InternalLogger
 
         return is_string($configured) && $configured !== ''
             ? $configured
-            : storage_path('logs/ranetrace-internal.log');
+            : self::defaultChannelPath();
+    }
+
+    /**
+     * The path the service provider configures the `ranetrace_internal`
+     * channel with.
+     */
+    public static function defaultChannelPath(): string
+    {
+        return storage_path('logs/ranetrace-internal.log');
     }
 
     /**

@@ -25,6 +25,7 @@ use Ranetrace\Laravel\Http\Controllers\AssetController;
 use Ranetrace\Laravel\Http\Controllers\JavaScriptErrorController;
 use Ranetrace\Laravel\Http\Middleware\Authorize;
 use Ranetrace\Laravel\Logging\RanetraceLogDriver;
+use Ranetrace\Laravel\Support\InternalLogger;
 use Ranetrace\Laravel\Support\RouteRateLimit;
 
 class RanetraceServiceProvider extends ServiceProvider
@@ -208,7 +209,7 @@ class RanetraceServiceProvider extends ServiceProvider
     {
         $this->app['config']->set('logging.channels.ranetrace_internal', [
             'driver' => 'daily',
-            'path' => storage_path('logs/ranetrace-internal.log'),
+            'path' => InternalLogger::defaultChannelPath(),
             'level' => config('ranetrace.internal_logging.level', 'debug'),
             'days' => config('ranetrace.internal_logging.days', 14),
         ]);
