@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Exceptions\Handler;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Ranetrace\Laravel\Facades\Ranetrace;
 
@@ -18,7 +17,6 @@ use Ranetrace\Laravel\Facades\Ranetrace;
  */
 beforeEach(function (): void {
     config([
-        'ranetrace.batch.cache_driver' => 'array',
         'ranetrace.errors.queue' => false,
         'ranetrace.logging.enabled' => true,
         'ranetrace.logging.queue' => false,
@@ -27,8 +25,6 @@ beforeEach(function (): void {
             'level' => 'debug',
         ],
     ]);
-
-    Cache::store('array')->flush();
 });
 
 /**

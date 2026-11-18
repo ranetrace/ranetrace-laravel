@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
 use Ranetrace\Laravel\Analytics\VisitDataCollector;
 use Ranetrace\Laravel\Jobs\HandlePageVisitJob;
 use Ranetrace\Laravel\Services\RanetraceBatchBuffer;
@@ -19,13 +18,10 @@ use Ranetrace\Php\Contract\WireContract;
  */
 beforeEach(function (): void {
     config([
-        'ranetrace.batch.cache_driver' => 'array',
         // Capture synchronously, so the visit is in the buffer by the time
         // the assertion reads it.
         'ranetrace.website_analytics.queue' => false,
     ]);
-
-    Cache::store('array')->flush();
 });
 
 /**

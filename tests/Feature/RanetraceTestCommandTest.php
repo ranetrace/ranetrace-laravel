@@ -5,7 +5,6 @@ declare(strict_types=1);
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Arr;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
@@ -15,11 +14,6 @@ use Ranetrace\Laravel\Services\RanetraceBatchBuffer;
 use Ranetrace\Laravel\Services\RanetracePauseManager;
 use Ranetrace\Laravel\Tests\Contract\ContractFields;
 use Ranetrace\Php\Contract\WireContract;
-
-beforeEach(function (): void {
-    Config::set('ranetrace.batch.cache_driver', 'array');
-    Cache::store('array')->flush();
-});
 
 /**
  * The items each request carried, keyed by the wrapper key they were sent

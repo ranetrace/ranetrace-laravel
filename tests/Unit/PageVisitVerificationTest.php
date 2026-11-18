@@ -14,11 +14,6 @@ use Ranetrace\Laravel\Support\VisitVerificationMark;
  * beacon endpoint left for its view token. These tests run the job directly and
  * inspect what actually reached the buffer, which is what will reach the wire.
  */
-beforeEach(function (): void {
-    Config::set('ranetrace.batch.cache_driver', 'array');
-    Cache::store('array')->flush();
-});
-
 /**
  * Run the job and return the single payload it buffered.
  *

@@ -2,17 +2,11 @@
 
 declare(strict_types=1);
 
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Config;
 
 use function Orchestra\Testbench\default_skeleton_path;
 
 use Ranetrace\Laravel\Dashboard\DashboardData;
-
-beforeEach(function (): void {
-    Config::set('ranetrace.batch.cache_driver', 'array');
-    Cache::store('array')->flush();
-});
 
 test('registered surfaces report the wired-up installation truth', function (): void {
     $surfaces = collect(app(DashboardData::class)->registeredSurfaces())->keyBy('label');

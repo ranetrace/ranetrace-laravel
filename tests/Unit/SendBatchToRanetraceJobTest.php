@@ -17,8 +17,6 @@ use Ranetrace\Laravel\Services\RanetracePauseManager;
 
 beforeEach(function (): void {
     Config::set('ranetrace.key', 'test-api-key');
-    Config::set('ranetrace.batch.cache_driver', 'array');
-    Cache::store('array')->flush();
 });
 
 test('the job is configured for 4 total attempts (1 initial + 3 retries)', function (): void {

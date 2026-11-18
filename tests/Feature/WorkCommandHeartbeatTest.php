@@ -5,7 +5,6 @@ declare(strict_types=1);
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Bus;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
@@ -15,11 +14,6 @@ use Ranetrace\Laravel\Services\RanetraceBatchBuffer;
 use Ranetrace\Laravel\Services\RanetracePauseManager;
 use Ranetrace\Laravel\Support\InternalLogger;
 use Ranetrace\Php\Http\Heartbeat;
-
-beforeEach(function (): void {
-    Config::set('ranetrace.batch.cache_driver', 'array');
-    Cache::store('array')->flush();
-});
 
 test('a run with empty buffers dispatches one heartbeat on the batch queue', function (): void {
     Bus::fake();

@@ -30,7 +30,6 @@ dataset('unset batch values', [
 ]);
 
 beforeEach(function (): void {
-    Cache::store('array')->flush();
     // The dashboard's default gate allows the local environment.
     $this->app['env'] = 'local';
 });

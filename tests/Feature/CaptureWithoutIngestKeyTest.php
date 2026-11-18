@@ -24,8 +24,6 @@ use Ranetrace\Laravel\Services\RanetraceBatchBuffer;
  * key is set.
  */
 beforeEach(function (): void {
-    Config::set('ranetrace.batch.cache_driver', 'array');
-    Cache::store('array')->flush();
     Http::fake();
     Config::set('logging.channels.ranetrace', ['driver' => 'ranetrace', 'level' => 'debug']);
 });

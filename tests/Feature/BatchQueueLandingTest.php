@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use Illuminate\Support\Facades\Artisan;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Queue;
 use Ranetrace\Laravel\Dashboard\DashboardData;
@@ -11,8 +10,6 @@ use Ranetrace\Laravel\Jobs\HandleEventJob;
 use Ranetrace\Laravel\Jobs\SendBatchToRanetraceJob;
 
 beforeEach(function (): void {
-    Config::set('ranetrace.batch.cache_driver', 'array');
-    Cache::store('array')->flush();
     useTwoQueueConnections();
     Config::set('ranetrace.batch.queue_name', null);
     // The dashboard's default gate allows the local environment.

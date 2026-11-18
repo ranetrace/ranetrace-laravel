@@ -17,9 +17,6 @@ use Ranetrace\Laravel\Services\RanetracePauseManager;
  * in the tests of every other section. RanetraceStatusScheduleTest covers it.
  */
 beforeEach(function (): void {
-    Config::set('ranetrace.batch.cache_driver', 'array');
-    Cache::store('array')->flush();
-
     app(Schedule::class)->command('ranetrace:work')->everyMinute()->withoutOverlapping(5)->runInBackground();
 });
 

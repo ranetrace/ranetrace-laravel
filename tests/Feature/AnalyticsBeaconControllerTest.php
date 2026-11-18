@@ -21,10 +21,7 @@ beforeEach(function (): void {
     config([
         'ranetrace.website_analytics.enabled' => true,
         'ranetrace.website_analytics.beacon.enabled' => true,
-        'ranetrace.batch.cache_driver' => 'array',
     ]);
-
-    Cache::store('array')->flush();
 });
 
 /**

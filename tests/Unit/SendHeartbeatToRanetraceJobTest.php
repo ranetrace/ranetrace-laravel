@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Request;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Http;
 use Ranetrace\Laravel\Jobs\SendHeartbeatToRanetraceJob;
@@ -17,8 +16,6 @@ use Ranetrace\Php\Http\Heartbeat;
 
 beforeEach(function (): void {
     Config::set('ranetrace.key', 'test-api-key');
-    Config::set('ranetrace.batch.cache_driver', 'array');
-    Cache::store('array')->flush();
 });
 
 function handleHeartbeatJob(): void

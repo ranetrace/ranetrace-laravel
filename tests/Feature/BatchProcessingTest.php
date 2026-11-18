@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
@@ -14,10 +13,8 @@ use Ranetrace\Laravel\Services\RanetracePauseManager;
 
 beforeEach(function (): void {
     Config::set('ranetrace.key', 'test-api-key');
-    Config::set('ranetrace.batch.cache_driver', 'array');
     Config::set('ranetrace.batch.size', 100);
 
-    Cache::store('array')->flush();
     Queue::fake();
     Http::fake();
 });
@@ -36,7 +33,6 @@ test('events are added to buffer', function (): void {
 
 test('events are added to buffer without auto-dispatch', function (): void {
     Config::set('ranetrace.batch.events.size', 2);
-    Cache::store('array')->flush();
 
     $buffer = app(RanetraceBatchBuffer::class);
 

@@ -9,11 +9,6 @@ use Ranetrace\Laravel\Jobs\SendBatchToRanetraceJob;
 use Ranetrace\Laravel\Services\RanetraceBatchBuffer;
 use Ranetrace\Laravel\Services\RanetracePauseManager;
 
-beforeEach(function (): void {
-    Config::set('ranetrace.batch.cache_driver', 'array');
-    Cache::store('array')->flush();
-});
-
 test('collectStatus returns the canonical status structure', function (): void {
     $status = app(DashboardData::class)->collectStatus();
 

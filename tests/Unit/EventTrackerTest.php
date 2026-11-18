@@ -3,8 +3,6 @@
 declare(strict_types=1);
 
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Queue;
 use Ranetrace\Laravel\Events\EventTracker;
 use Ranetrace\Laravel\Facades\Ranetrace;
@@ -149,8 +147,6 @@ test('two events tracked alike in every field each carry their own uuid', functi
 });
 
 test('an event job that runs twice buffers the event with one id both times', function (): void {
-    Config::set('ranetrace.batch.cache_driver', 'array');
-    Cache::store('array')->flush();
     Queue::fake();
 
     Ranetrace::trackEvent('order_shipped');
@@ -284,8 +280,6 @@ test('an event over the endpoint limits is queued cut, and the cut is logged to 
 });
 
 test('an event the job buffers is the cut one, and the per-item budget leaves it alone', function (): void {
-    Config::set('ranetrace.batch.cache_driver', 'array');
-    Cache::store('array')->flush();
     Queue::fake();
 
     Ranetrace::trackEvent('checkout_started', ['cart' => range(1, 2_000)]);

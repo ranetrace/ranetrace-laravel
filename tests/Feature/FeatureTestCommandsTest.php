@@ -15,11 +15,6 @@ use Ranetrace\Laravel\Services\CountingBatchBuffer;
 use Ranetrace\Laravel\Services\RanetraceBatchBuffer;
 use Ranetrace\Laravel\Support\InternalLogger;
 
-beforeEach(function (): void {
-    Config::set('ranetrace.batch.cache_driver', 'array');
-    Cache::store('array')->flush();
-});
-
 /**
  * Every buffered item, of every type.
  */

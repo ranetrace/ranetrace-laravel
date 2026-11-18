@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Ranetrace\Laravel\Facades\Ranetrace;
 
@@ -20,7 +19,6 @@ use Ranetrace\Laravel\Facades\Ranetrace;
  */
 beforeEach(function (): void {
     config([
-        'ranetrace.batch.cache_driver' => 'array',
         'ranetrace.errors.queue' => false,
         'ranetrace.logging.queue' => false,
         'ranetrace.javascript_errors.queue' => false,
@@ -33,8 +31,6 @@ beforeEach(function (): void {
             'level' => 'debug',
         ],
     ]);
-
-    Cache::store('array')->flush();
 });
 
 test('an error whose scrub fails is buffered with its message redacted and its type and place intact', function (): void {

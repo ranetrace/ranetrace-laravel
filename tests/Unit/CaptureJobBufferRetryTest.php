@@ -15,9 +15,7 @@ use Ranetrace\Laravel\Services\RanetraceBatchBuffer;
  * real sleep.
  */
 beforeEach(function (): void {
-    Config::set('ranetrace.batch.cache_driver', 'array');
     Config::set('ranetrace.batch.lock_wait', 0);
-    Cache::store('array')->flush();
 });
 
 test('a contended buffer add re-queues the capture job instead of dropping it', function (): void {

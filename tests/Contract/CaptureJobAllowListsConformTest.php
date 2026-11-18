@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Config;
 use Ranetrace\Laravel\Jobs\HandleErrorJob;
 use Ranetrace\Laravel\Jobs\HandleEventJob;
 use Ranetrace\Laravel\Jobs\HandleJavaScriptErrorJob;
@@ -25,11 +24,6 @@ use Ranetrace\Php\Contract\WireContract;
  * which both SDKs and the backend read, so this suite compares against one
  * description of the wire rather than a second transcription of it.
  */
-beforeEach(function (): void {
-    Config::set('ranetrace.batch.cache_driver', 'array');
-    Cache::store('array')->flush();
-});
-
 /**
  * The buffer type string a capture job writes under, discovered by running it
  * rather than transcribed from the class.

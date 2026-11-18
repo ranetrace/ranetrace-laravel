@@ -3,13 +3,7 @@
 declare(strict_types=1);
 
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Config;
 use Ranetrace\Laravel\Services\RanetracePauseManager;
-
-beforeEach(function (): void {
-    Config::set('ranetrace.batch.cache_driver', 'array');
-    Cache::store('array')->flush();
-});
 
 test('a pause entry that does not say when it ends reads as no pause', function (mixed $entry): void {
     Cache::store('array')->forever('ranetrace.global.pause', $entry);

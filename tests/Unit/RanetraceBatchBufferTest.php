@@ -10,11 +10,7 @@ use Psr\Log\LoggerInterface;
 use Ranetrace\Laravel\Services\RanetraceBatchBuffer;
 
 beforeEach(function (): void {
-    Config::set('ranetrace.batch.cache_driver', 'array');
     Config::set('ranetrace.batch.max_buffer_size', 1000);
-
-    // Clear cache before each test
-    Cache::store('array')->flush();
 });
 
 test('it can add items to the buffer', function (): void {

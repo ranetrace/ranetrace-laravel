@@ -27,8 +27,6 @@ use Ranetrace\Php\Contract\WireContract;
  */
 beforeEach(function (): void {
     Config::set('ranetrace.key', 'test-api-key-12345');
-    Config::set('ranetrace.batch.cache_driver', 'array');
-    Cache::store('array')->flush();
 });
 
 /**

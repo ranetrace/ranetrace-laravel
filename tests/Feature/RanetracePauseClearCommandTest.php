@@ -2,14 +2,7 @@
 
 declare(strict_types=1);
 
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Config;
 use Ranetrace\Laravel\Services\RanetracePauseManager;
-
-beforeEach(function (): void {
-    Config::set('ranetrace.batch.cache_driver', 'array');
-    Cache::store('array')->flush();
-});
 
 test('it fails when no option is provided', function (): void {
     $this->artisan('ranetrace:pause-clear')

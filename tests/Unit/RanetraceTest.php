@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 use Illuminate\Http\Request;
 use Illuminate\Routing\Route;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Queue;
@@ -269,8 +268,6 @@ test('two errors reported alike in every field each carry their own uuid', funct
 });
 
 test('an error job that runs twice buffers the error with the id its capture made both times', function (): void {
-    Config::set('ranetrace.batch.cache_driver', 'array');
-    Cache::store('array')->flush();
 
     (new Ranetrace)->report(new RuntimeException('boom'));
 

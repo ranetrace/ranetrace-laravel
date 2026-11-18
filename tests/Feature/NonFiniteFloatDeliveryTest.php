@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use Illuminate\Http\Client\Request;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -24,12 +23,9 @@ use Ranetrace\Laravel\Services\RanetracePauseManager;
 
 beforeEach(function (): void {
     Config::set('ranetrace.key', 'test-api-key');
-    Config::set('ranetrace.batch.cache_driver', 'array');
     Config::set('ranetrace.logging.enabled', true);
     Config::set('ranetrace.logging.queue', false);
     Config::set('logging.channels.ranetrace', ['driver' => 'ranetrace', 'level' => 'debug']);
-
-    Cache::store('array')->flush();
 
     Http::fake(['*' => Http::response(['success' => true], 200)]);
 });

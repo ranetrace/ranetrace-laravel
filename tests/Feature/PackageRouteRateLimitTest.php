@@ -5,7 +5,6 @@ declare(strict_types=1);
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Support\Facades\Bus;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
@@ -22,10 +21,7 @@ beforeEach(function (): void {
 
     config([
         'ranetrace.website_analytics.beacon.enabled' => true,
-        'ranetrace.batch.cache_driver' => 'array',
     ]);
-
-    Cache::store('array')->flush();
 });
 
 dataset('package routes', [

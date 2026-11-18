@@ -7,7 +7,6 @@ use Illuminate\Filesystem\Filesystem;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Exceptions\Handler;
 use Illuminate\Support\Facades\Blade;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\View\ViewException;
 use Ranetrace\Laravel\Facades\Ranetrace;
 use Ranetrace\Laravel\Services\RanetraceBatchBuffer;
@@ -23,11 +22,8 @@ use Ranetrace\Php\Errors\FrameLocation;
  */
 beforeEach(function (): void {
     config([
-        'ranetrace.batch.cache_driver' => 'array',
         'ranetrace.errors.queue' => false,
     ]);
-
-    Cache::store('array')->flush();
 
     $this->viewDirectory = 'resources/views/ranetrace-'.str_replace('.', '', uniqid('', true));
     $this->writtenFiles = [];

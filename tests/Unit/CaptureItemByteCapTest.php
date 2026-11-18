@@ -3,24 +3,18 @@
 declare(strict_types=1);
 
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Config;
 use Ranetrace\Laravel\Jobs\BaseRanetraceJob;
 use Ranetrace\Laravel\Jobs\HandleErrorJob;
 use Ranetrace\Laravel\Jobs\HandleLogJob;
 use Ranetrace\Laravel\Services\RanetraceBatchBuffer;
 use Ranetrace\Php\Support\PayloadSizer;
 
-/**
+/*
  * Every capture path validates its own input, but a missing rule on any one of
  * them must not be able to buffer an item so large it draws a 413 and takes the
  * whole batch (up to 1000 items) down with it. The budget is therefore enforced
  * in the job layer too, not only by each caller's validation.
  */
-beforeEach(function (): void {
-    Config::set('ranetrace.batch.cache_driver', 'array');
-    Cache::store('array')->flush();
-});
-
 function bufferedLogItem(RanetraceBatchBuffer $buffer): array
 {
     return Cache::store('array')->get('ranetrace:buffer:logs')[0]['data'];

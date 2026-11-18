@@ -4,16 +4,12 @@ declare(strict_types=1);
 
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Exceptions\Handler;
-use Illuminate\Support\Facades\Cache;
 use Ranetrace\Laravel\Facades\Ranetrace;
 
 beforeEach(function (): void {
     config([
-        'ranetrace.batch.cache_driver' => 'array',
         'ranetrace.errors.queue' => false,
     ]);
-
-    Cache::store('array')->flush();
 });
 
 function exceptionWithContext(): RuntimeException

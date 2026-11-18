@@ -20,7 +20,6 @@ use Ranetrace\Php\Contract\WireContract;
  */
 beforeEach(function (): void {
     config([
-        'ranetrace.batch.cache_driver' => 'array',
         // Capture synchronously so the job runs and the buffer holds the item
         // by the time the assertion reads it, without a queue in between.
         'ranetrace.errors.queue' => false,
@@ -29,8 +28,6 @@ beforeEach(function (): void {
         'ranetrace.javascript_errors.queue' => false,
         'logging.channels.ranetrace' => ['driver' => 'ranetrace', 'level' => 'debug'],
     ]);
-
-    Cache::store('array')->flush();
 });
 
 /**
