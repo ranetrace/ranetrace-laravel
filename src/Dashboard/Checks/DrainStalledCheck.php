@@ -4,14 +4,13 @@ declare(strict_types=1);
 
 namespace Ranetrace\Laravel\Dashboard\Checks;
 
+use Ranetrace\Laravel\Support\WorkerSchedule;
+
 /**
  * Buffers holding items with no recent successful batch send. For a feature
- * that is not paused this almost always means the worker isn't running, and
- * why is for `ranetrace:status` to say: the schedule exists only in a console
- * process, so this page cannot read it. For a paused feature whose pause no
- * longer explains the wait, the cause is the pause, whose reason the Pauses
- * panel shows. When both kinds wait, the stalled ones lead and the paused ones
- * follow in the detail.
+ * that is not paused the detail points at `ranetrace:status`, which can read
+ * the schedule (see {@see WorkerSchedule}); for a paused one, at the Pauses
+ * panel, which shows the pause's reason.
  */
 class DrainStalledCheck implements Check
 {

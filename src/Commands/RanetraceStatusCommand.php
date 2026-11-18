@@ -19,10 +19,8 @@ class RanetraceStatusCommand extends Command
     protected $description = 'Display Ranetrace health status including pauses, buffers, and recent activity';
 
     /**
-     * The status is `DashboardData::collectStatus()` with a `schedule` key
-     * added, the shape `WorkerSchedule::inspect()` documents. It is added
-     * here rather than in the shared status because only a console process
-     * has a schedule to read.
+     * The status is `DashboardData::collectStatus()` plus a `schedule` key,
+     * see {@see WorkerSchedule::inspect()}.
      */
     public function handle(DashboardData $data, WorkerSchedule $workerSchedule): int
     {
