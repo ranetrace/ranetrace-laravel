@@ -95,7 +95,7 @@ test('the Ranetrace log channel surface reports wired even when logging is disab
         ->and($surface['note'])->toBeNull();
 });
 
-test('ranetrace:status --json output is unchanged after the DashboardData extraction', function (): void {
+test('ranetrace:status --json is collectStatus() with the schedule added', function (): void {
     // Populate state across panels (a pause, a buffered item) so parity is
     // checked against a populated structure, not just an empty baseline.
     app(RanetracePauseManager::class)->setFeaturePause('errors', 900, '429');

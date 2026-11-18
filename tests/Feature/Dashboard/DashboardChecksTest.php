@@ -157,7 +157,7 @@ test('drain stalled check keeps its stalled detail alone when no paused feature 
     expect($result->remediation)->toBe('Buffered items are not being sent. Run `php artisan ranetrace:status` to see why: it reads your schedule, which this page cannot.');
 });
 
-test('drain stalled check passes when neither list holds a feature, and on a status from before the paused list', function (array $drain): void {
+test('drain stalled check passes when neither list holds a feature, or the status has no paused list', function (array $drain): void {
     expect((new DrainStalledCheck)->run(['drain' => $drain])->level)->toBe(CheckLevel::Pass);
 })->with([
     'both lists empty' => [['stalled' => [], 'paused_stalled' => []]],
