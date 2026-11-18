@@ -20,6 +20,9 @@ use Ranetrace\Php\Http\PauseScope;
 use Ranetrace\Php\Http\ResponsePolicy;
 use Throwable;
 
+/**
+ * @phpstan-import-type ApiResult from RanetraceApiClient
+ */
 class SendBatchToRanetraceJob implements ShouldBeUnique, ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
@@ -169,6 +172,8 @@ class SendBatchToRanetraceJob implements ShouldBeUnique, ShouldQueue
      * here, so the 60/300/900s backoff is spent BEFORE the contracted pause is
      * taken. The file-based worker has no queue and pauses on the spot. Both
      * land on the same pause, which is the part the contract fixes.
+     *
+     * @param  ApiResult  $result
      */
     protected function handleResponse(array $result, RanetraceBatchBuffer $buffer, RanetracePauseManager $pauseManager): void
     {
@@ -211,12 +216,10 @@ class SendBatchToRanetraceJob implements ShouldBeUnique, ShouldQueue
     }
 
     /**
-     * @param  array<string, mixed>  $result
+     * @param  ApiResult  $result
      */
     protected function logOutcome(array $result, BatchOutcome $outcome): void
     {
-        $data = is_array($result['data'] ?? null) ? $result['data'] : [];
-
         match ($outcome->status) {
             0 => $this->logError('Network error during batch send', [
                 'type' => $this->type,
@@ -226,26 +229,26 @@ class SendBatchToRanetraceJob implements ShouldBeUnique, ShouldQueue
             200 => $this->logSuccess($outcome),
             401 => $this->logError('API authentication failed - invalid or revoked API key', [
                 'type' => $this->type,
-                'message' => ResponsePolicy::errorMessage($data, 'Unauthorized'),
+                'message' => ResponsePolicy::errorMessage($result['data'], 'Unauthorized'),
             ]),
             403 => $this->logError('API request forbidden', [
                 'type' => $this->type,
-                'message' => ResponsePolicy::errorMessage($data, 'Forbidden'),
+                'message' => ResponsePolicy::errorMessage($result['data'], 'Forbidden'),
             ]),
             413 => $this->logCritical('Payload too large - indicates client bug', [
                 'type' => $this->type,
                 'items_count' => count($this->items),
-                'message' => ResponsePolicy::errorMessage($data, 'Payload Too Large'),
+                'message' => ResponsePolicy::errorMessage($result['data'], 'Payload Too Large'),
             ]),
             422 => $this->logError('Request body rejected as malformed, indicates a client bug', [
                 'type' => $this->type,
                 'items_count' => count($this->items),
-                'message' => ResponsePolicy::errorMessage($data, 'Unprocessable Entity'),
+                'message' => ResponsePolicy::errorMessage($result['data'], 'Unprocessable Entity'),
             ]),
             429 => $this->logWarning('Rate limit exceeded', [
                 'type' => $this->type,
                 'retry_after' => $outcome->pauseSeconds,
-                'message' => ResponsePolicy::errorMessage($data, 'Too Many Requests'),
+                'message' => ResponsePolicy::errorMessage($result['data'], 'Too Many Requests'),
             ]),
             500 => $this->logError('Server error during batch processing', [
                 'type' => $this->type,

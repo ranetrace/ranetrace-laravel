@@ -90,7 +90,7 @@ class SendHeartbeatToRanetraceJob implements ShouldQueue
 
             $result = $client->sendHeartbeat(Heartbeat::forPackage(Endpoints::SDK, Endpoints::PACKAGE));
 
-            $status = is_int($result['status'] ?? null) ? $result['status'] : 0;
+            $status = $result['status'];
 
             if ($status >= 200 && $status < 300) {
                 BatchConfig::cacheStore()->put(self::LAST_SENT_KEY, now()->timestamp, now()->addWeek());
@@ -100,11 +100,9 @@ class SendHeartbeatToRanetraceJob implements ShouldQueue
                 return;
             }
 
-            $data = is_array($result['data'] ?? null) ? $result['data'] : [];
-
             InternalLogger::warning('Heartbeat was not accepted', [
                 'status' => $status,
-                'message' => $result['error'] ?? ResponsePolicy::errorMessage($data, 'No message'),
+                'message' => $result['error'] ?? ResponsePolicy::errorMessage($result['data'], 'No message'),
             ]);
         } catch (Throwable $e) {
             InternalLogger::error('Heartbeat failed', ['exception' => $e->getMessage()]);

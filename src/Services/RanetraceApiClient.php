@@ -12,6 +12,19 @@ use Ranetrace\Php\Http\Endpoint;
 use Ranetrace\Php\Http\Heartbeat;
 use Throwable;
 
+/**
+ * Every send answers in one shape. A request that got no answer, or was never
+ * sent, has `status` 0 and an `error` that says why; otherwise `error` is set
+ * only for a 2xx whose body is not JSON.
+ *
+ * @phpstan-type ApiResult array{
+ *     status: int,
+ *     success: bool,
+ *     data: array<string, mixed>,
+ *     headers: array{retry-after?: string},
+ *     error?: string,
+ * }
+ */
 class RanetraceApiClient
 {
     /**
@@ -68,7 +81,7 @@ class RanetraceApiClient
      * endpoint differently from `ranetrace/ranetrace-php`.
      *
      * @param  array<int, array>  $items
-     * @return array<string, mixed>
+     * @return ApiResult
      *
      * @throws InvalidArgumentException When no endpoint is registered for the type.
      */
@@ -81,7 +94,7 @@ class RanetraceApiClient
      * Send a batch of errors to Ranetrace.
      *
      * @param  array<int, array>  $errors
-     * @return array<string, mixed>
+     * @return ApiResult
      */
     public function sendErrorBatch(array $errors): array
     {
@@ -92,7 +105,7 @@ class RanetraceApiClient
      * Send a batch of JavaScript errors to Ranetrace.
      *
      * @param  array<int, array>  $errors
-     * @return array<string, mixed>
+     * @return ApiResult
      */
     public function sendJavaScriptErrorBatch(array $errors): array
     {
@@ -103,7 +116,7 @@ class RanetraceApiClient
      * Send a batch of events to Ranetrace.
      *
      * @param  array<int, array>  $events
-     * @return array<string, mixed>
+     * @return ApiResult
      */
     public function sendEventBatch(array $events): array
     {
@@ -114,7 +127,7 @@ class RanetraceApiClient
      * Send a batch of logs to Ranetrace.
      *
      * @param  array<int, array>  $logs
-     * @return array<string, mixed>
+     * @return ApiResult
      */
     public function sendLogBatch(array $logs): array
     {
@@ -125,7 +138,7 @@ class RanetraceApiClient
      * Send a batch of page visits to Ranetrace.
      *
      * @param  array<int, array>  $visits
-     * @return array<string, mixed>
+     * @return ApiResult
      */
     public function sendPageVisitBatch(array $visits): array
     {
@@ -136,7 +149,7 @@ class RanetraceApiClient
      * Tell the API this application's worker ran. The answer comes back in the
      * same shape as a batch's, and the caller decides what it means.
      *
-     * @return array<string, mixed>
+     * @return ApiResult
      */
     public function sendHeartbeat(Heartbeat $heartbeat): array
     {
@@ -152,7 +165,7 @@ class RanetraceApiClient
      * batch methods, which differ only in the endpoint they name.
      *
      * @param  array<int, array>  $items
-     * @return array<string, mixed>
+     * @return ApiResult
      */
     protected function sendBatch(Endpoint $endpoint, array $items): array
     {
@@ -181,7 +194,7 @@ class RanetraceApiClient
      * The result's own `error` key is this client's word for a request that
      * got no usable answer, and is never set from a body.
      *
-     * @return array<string, mixed>
+     * @return ApiResult
      */
     protected function formatResponse($response): array
     {
@@ -207,7 +220,7 @@ class RanetraceApiClient
     /**
      * Format error response for network/exception errors.
      *
-     * @return array<string, mixed>
+     * @return ApiResult
      */
     protected function formatErrorResponse(string $message): array
     {
@@ -225,7 +238,7 @@ class RanetraceApiClient
      * gets no answer comes back as status 0 rather than throwing.
      *
      * @param  array<string, mixed>  $body
-     * @return array<string, mixed>
+     * @return ApiResult
      */
     private function post(string $path, string $userAgent, int $timeout, array $body): array
     {
