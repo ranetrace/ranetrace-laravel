@@ -99,11 +99,7 @@ test('it excludes a path whose first segment arrives percent-encoded', function 
 
     config(['ranetrace.website_analytics.excluded_paths' => ['admin']]);
 
-    $headers = [
-        'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-        'Accept' => 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-        'Accept-Language' => 'en-US,en;q=0.9',
-    ];
+    $headers = humanBrowserHeaders();
 
     // Routes to the same excluded handler; $request->path() would still read
     // `%61dmin/dashboard` and miss the exclusion list.
@@ -167,11 +163,7 @@ test('it throttles duplicate visits', function (): void {
     Bus::fake();
     Cache::flush();
 
-    $headers = [
-        'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-        'Accept' => 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-        'Accept-Language' => 'en-US,en;q=0.9',
-    ];
+    $headers = humanBrowserHeaders();
 
     // First request
     $this->withHeaders($headers)->get('/test-page');
@@ -215,11 +207,7 @@ test('it throttles encoded variants of one path into a single bucket', function 
     Bus::fake();
     Cache::flush();
 
-    $headers = [
-        'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-        'Accept' => 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-        'Accept-Language' => 'en-US,en;q=0.9',
-    ];
+    $headers = humanBrowserHeaders();
 
     $this->withHeaders($headers)->get('/test-page')->assertStatus(200);
     Bus::assertDispatchedTimes(HandlePageVisitJob::class, 1);
@@ -239,11 +227,7 @@ test('it keeps throttling across a minute boundary within the throttle window', 
     Cache::flush();
     config(['ranetrace.website_analytics.throttle_seconds' => 120]);
 
-    $headers = [
-        'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-        'Accept' => 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-        'Accept-Language' => 'en-US,en;q=0.9',
-    ];
+    $headers = humanBrowserHeaders();
 
     // Pin to 10 seconds before a minute boundary.
     $this->travelTo(Carbon::create(2026, 1, 1, 10, 0, 50));
@@ -326,12 +310,7 @@ test('it tracks requests with proper browser headers', function (): void {
     Bus::fake();
     Cache::flush();
 
-    $this->withHeaders([
-        'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-        'Accept' => 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-        'Accept-Language' => 'en-US,en;q=0.9',
-        'Accept-Encoding' => 'gzip, deflate, br',
-    ])->get('/');
+    $this->withHeaders(humanBrowserHeaders() + ['Accept-Encoding' => 'gzip, deflate, br'])->get('/');
 
     Bus::assertDispatched(HandlePageVisitJob::class);
 });
@@ -343,11 +322,7 @@ test('it ignores a misconfigured request_filter that does not implement RequestF
     // A class that exists but does NOT implement the RequestFilter contract.
     config(['ranetrace.website_analytics.request_filter' => stdClass::class]);
 
-    $this->withHeaders([
-        'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-        'Accept' => 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-        'Accept-Language' => 'en-US,en;q=0.9',
-    ])->get('/test-page')->assertStatus(200);
+    $this->withHeaders(humanBrowserHeaders())->get('/test-page')->assertStatus(200);
 
     // The bad filter is skipped (not invoked), so capture proceeds normally.
     // Before the instanceof guard this threw and the visit was never dispatched.
