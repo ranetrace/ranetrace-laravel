@@ -5,11 +5,11 @@ declare(strict_types=1);
 namespace Ranetrace\Laravel\Commands;
 
 use Illuminate\Console\Command;
-use Ranetrace\Laravel\Commands\Concerns\RunsFeatureTest;
 use Ranetrace\Laravel\Jobs\HandleJavaScriptErrorJob;
 use Ranetrace\Laravel\Support\BatchConfig;
 use Ranetrace\Laravel\Support\Core;
 use Ranetrace\Laravel\Support\CoreConfig;
+use Ranetrace\Laravel\Support\RunsFeatureTest;
 use Ranetrace\Php\JavaScript\ErrorItemBuilder;
 
 class RanetraceJavaScriptErrorTestCommand extends Command

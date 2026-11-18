@@ -7,9 +7,9 @@ namespace Ranetrace\Laravel\Commands;
 use Closure;
 use Exception;
 use Illuminate\Console\Command;
-use Ranetrace\Laravel\Commands\Concerns\RunsFeatureTest;
 use Ranetrace\Laravel\Facades\Ranetrace;
 use Ranetrace\Laravel\Support\BatchConfig;
+use Ranetrace\Laravel\Support\RunsFeatureTest;
 
 class RanetraceErrorTestCommand extends Command
 {

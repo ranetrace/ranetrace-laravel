@@ -8,9 +8,9 @@ use Illuminate\Console\Command;
 use Illuminate\Http\Request;
 use Ranetrace\Laravel\Analytics\HumanProbabilityScorer;
 use Ranetrace\Laravel\Analytics\Middleware\TrackPageVisit;
-use Ranetrace\Laravel\Commands\Concerns\RunsFeatureTest;
 use Ranetrace\Laravel\Jobs\HandlePageVisitJob;
 use Ranetrace\Laravel\Support\BatchConfig;
+use Ranetrace\Laravel\Support\RunsFeatureTest;
 
 class RanetraceAnalyticsTestCommand extends Command
 {

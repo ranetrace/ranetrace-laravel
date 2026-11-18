@@ -6,11 +6,11 @@ namespace Ranetrace\Laravel\Commands;
 
 use Illuminate\Console\Command;
 use InvalidArgumentException;
-use Ranetrace\Laravel\Commands\Concerns\RunsFeatureTest;
 use Ranetrace\Laravel\Events\EventTracker;
 use Ranetrace\Laravel\Facades\Ranetrace;
 use Ranetrace\Laravel\Facades\RanetraceEvents;
 use Ranetrace\Laravel\Support\BatchConfig;
+use Ranetrace\Laravel\Support\RunsFeatureTest;
 
 class RanetraceEventTestCommand extends Command
 {
