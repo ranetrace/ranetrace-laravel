@@ -92,7 +92,7 @@ class SendHeartbeatToRanetraceJob implements ShouldQueue
 
             $status = $result['status'];
 
-            if ($status >= 200 && $status < 300) {
+            if (Heartbeat::accepted($result)) {
                 BatchConfig::cacheStore()->put(self::LAST_SENT_KEY, now()->timestamp, now()->addWeek());
 
                 InternalLogger::debug('Heartbeat sent', ['status' => $status]);

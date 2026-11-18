@@ -155,13 +155,8 @@ class ReleaseCheckCommand extends Command
     private function sendHeartbeat(RanetraceApiClient $client): array
     {
         $answer = $client->sendHeartbeat(Heartbeat::forPackage(Endpoints::SDK, Endpoints::PACKAGE));
-        $status = $answer['status'];
 
-        return match (true) {
-            $status >= 200 && $status < 300 => [true, 'accepted'],
-            $status === 0 => [false, "failed: could not reach {$client->baseUrl()} (".($answer['error'] ?? 'unknown network error').')'],
-            default => [false, "refused: the API answered {$status} (".ResponsePolicy::errorMessage($answer['data'], 'no message').')'],
-        };
+        return [Heartbeat::accepted($answer), Heartbeat::answerLine($answer, $client->baseUrl())];
     }
 
     /**
