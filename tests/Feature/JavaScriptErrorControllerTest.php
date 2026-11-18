@@ -315,6 +315,20 @@ test('it scrubs a sensitive segment from the reported url PATH', function (): vo
     });
 });
 
+test('it scrubs a sensitive segment from the script address, which is the page itself for an inline script', function (): void {
+    Route::get('/reset-password/{token}', fn (): string => 'reset');
+
+    $this->postJson(route('ranetrace.javascript-errors.store'), [
+        'message' => 'Test error',
+        'url' => 'http://localhost/reset-password/live-reset-token-xyz789',
+        'filename' => 'http://localhost/reset-password/live-reset-token-xyz789',
+    ])->assertStatus(200);
+
+    Bus::assertDispatched(HandleJavaScriptErrorJob::class, function ($job): bool {
+        return $job->getErrorData()['filename'] === 'http://localhost/reset-password/[REDACTED]';
+    });
+});
+
 test('it scrubs a sensitive segment from a url that came in via the Referer fallback', function (): void {
     Route::get('/reset-password/{token}', fn (): string => 'reset');
 
