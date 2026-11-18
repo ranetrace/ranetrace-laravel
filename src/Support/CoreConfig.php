@@ -6,7 +6,7 @@ namespace Ranetrace\Laravel\Support;
 
 use Illuminate\Support\Facades\Auth;
 use Ranetrace\Php\Config;
-use Throwable;
+use Ranetrace\Php\Support\UserResolver;
 
 /**
  * This application's Ranetrace configuration, as the shared core reads it.
@@ -70,23 +70,14 @@ final class CoreConfig
      * The authenticated user's id as an event or a browser error ships it: an
      * int or a string, else null.
      *
-     * The lookup is host code, and an auth guard whose session store or user
-     * provider is down throws from it. That throw costs the item its user and
-     * leaves one warning in the internal log, the same warning the shared core
-     * writes when {@see resolveUser()} throws on the error path, and the item is
-     * still captured.
+     * Asked through the shared core's {@see UserResolver}, as on the error
+     * path, so an auth guard that throws costs the item its user and leaves
+     * one warning in the internal log.
      */
     public static function authenticatedUserId(): int|string|null
     {
-        try {
-            $id = Auth::user()?->getAuthIdentifier();
-        } catch (Throwable $e) {
-            InternalLogger::warning('Ranetrace user resolver failed', [
-                'exception' => $e->getMessage(),
-            ]);
-
-            return null;
-        }
+        $user = UserResolver::resolve(self::make(), new CoreDiagnostics);
+        $id = is_array($user) ? ($user['id'] ?? null) : null;
 
         return is_int($id) || is_string($id) ? $id : null;
     }
