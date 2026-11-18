@@ -211,7 +211,7 @@ test('a command that prints a feature flag on a line of its own says where it go
     'the summary, with every feature off' => ['ranetrace:test', ['errors', 'events', 'logging', 'website_analytics', 'javascript_errors'], "💡 Enable features in the environment that reports to Ranetrace (on a server, in its .env):\n   RANETRACE_ERRORS_ENABLED=true\n"],
 ]);
 
-test('the summary shows a switched-off feature as skipped and does not fail on it', function (string $off, string $feature, string $row): void {
+test('the summary shows a switched-off feature as skipped and does not fail on it', function (string $off, string $row): void {
     Queue::fake();
     Config::set("ranetrace.{$off}.enabled", false);
 
@@ -221,11 +221,11 @@ test('the summary shows a switched-off feature as skipped and does not fail on i
         ->and(featureTestSummaryResult($output, $row))->toBe('○ Skipped: disabled')
         ->and(featureTestSummaryResult($output, $row === 'Errors' ? 'Events' : 'Errors'))->toBe('✓ Passed');
 })->with([
-    'errors' => ['errors', 'errors', 'Errors'],
-    'events' => ['events', 'events', 'Events'],
-    'logging' => ['logging', 'logging', 'Logging'],
-    'javascript errors' => ['javascript_errors', 'javascript_errors', 'Javascript errors'],
-    'analytics' => ['website_analytics', 'analytics', 'Analytics'],
+    'errors' => ['errors', 'Errors'],
+    'events' => ['events', 'Events'],
+    'logging' => ['logging', 'Logging'],
+    'javascript errors' => ['javascript_errors', 'Javascript errors'],
+    'analytics' => ['website_analytics', 'Analytics'],
 ]);
 
 test('the summary fails every enabled feature on a blank key', function (): void {
