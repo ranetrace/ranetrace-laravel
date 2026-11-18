@@ -6,6 +6,10 @@ This file starts at 1.0.0. The package was re-versioned to share a major with `r
 
 ## [Unreleased]
 
+## [1.9.0] - 2026-11-18
+
+Requires `ranetrace/ranetrace-php` 1.8.0 or later: the heartbeat job and the release check read the API's answer through that release's `Http\Heartbeat`, and the entries below about the environment name and the application's path are changes in the shared core.
+
 ### Changed
 - **`ranetrace:test-analytics` and `ranetrace:test-javascript-errors` close with the lines the other test commands use.** Both now say where the test item is, queued or buffered, and how to send it, in the same words, and end with "To see whether the API accepts your key, run: php artisan ranetrace:test". The analytics command said it in a sentence of its own, and neither named `ranetrace:test`. Printed text only
 - **The configuration tables of the test commands lose the rows that could only say "Yes".** "API key set" in `ranetrace:test-errors`, `ranetrace:test-events` and `ranetrace:test-logging`, "Events enabled" and "Logging enabled" were printed after the command had checked the key and the feature and would have stopped without them. Printed text only
