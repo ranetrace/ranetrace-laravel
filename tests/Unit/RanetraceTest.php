@@ -541,16 +541,13 @@ function makeAuthenticatableWithEmail(int $id, ?string $email): Illuminate\Contr
 }
 
 /**
- * Helper: invoke the private buildErrorPayload via reflection.
+ * The error payload a new Ranetrace builds for $exception.
  *
  * @return array<string, mixed>
  */
 function invokeBuildErrorPayload(Throwable $exception): array
 {
-    $ranetrace = new Ranetrace;
-    $method = new ReflectionMethod($ranetrace, 'buildErrorPayload');
-
-    return $method->invoke($ranetrace, $exception);
+    return (new Ranetrace)->buildErrorPayload($exception);
 }
 
 /**
