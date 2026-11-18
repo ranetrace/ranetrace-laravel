@@ -8,6 +8,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Validator;
+use Ranetrace\Laravel\Ranetrace;
 use Ranetrace\Laravel\Support\InternalLogger;
 use Ranetrace\Laravel\Support\VisitVerificationMark;
 use Throwable;
@@ -55,7 +56,7 @@ class AnalyticsBeaconController extends Controller
 
     private function process(Request $request): JsonResponse
     {
-        if (! config('ranetrace.enabled', true) || ! config('ranetrace.website_analytics.enabled', false)) {
+        if (! Ranetrace::isSwitchedOn('website_analytics')) {
             return response()->json([
                 'success' => false,
                 'message' => 'Website analytics is not enabled',

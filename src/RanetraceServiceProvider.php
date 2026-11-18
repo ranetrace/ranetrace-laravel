@@ -77,7 +77,7 @@ class RanetraceServiceProvider extends ServiceProvider
         $this->loadViewsFrom(__DIR__.'/../resources/views', 'ranetrace');
 
         // Add middleware to web group
-        if (config('ranetrace.enabled', true) && config('ranetrace.website_analytics.enabled')) {
+        if (Ranetrace::isSwitchedOn('website_analytics')) {
             $this->app['router']->pushMiddlewareToGroup('web', TrackPageVisit::class);
             $this->registerAnalyticsBeaconRoute();
         }

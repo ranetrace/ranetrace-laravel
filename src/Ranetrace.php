@@ -58,7 +58,7 @@ class Ranetrace
      * Whether the package and the feature are both switched on, whatever the
      * key: the half of {@see isCaptureEnabled()} a setting decides.
      *
-     * @internal Shared with the test commands, so a test skips a feature for the reason capture would.
+     * @internal Shared with the test commands, so a test skips a feature for the reason capture would, and with the analytics mount and the beacon endpoint, which ask for no key.
      */
     public static function isSwitchedOn(string $feature): bool
     {
