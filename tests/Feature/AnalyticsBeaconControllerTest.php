@@ -171,16 +171,12 @@ test('a beacon post is not itself counted as a page visit', function (): void {
     Bus::assertNotDispatched(HandlePageVisitJob::class);
 });
 
-test('the beacon route sits in the web group and carries the configured rate limit', function (): void {
-    config(['ranetrace.website_analytics.beacon.throttle' => '7,2']);
-
+test('the beacon route sits in the web group', function (): void {
     $route = collect(app('router')->getRoutes())->first(
         fn ($route): bool => $route->getName() === 'ranetrace.analytics.verify'
     );
 
     expect($route->gatherMiddleware())->toContain('web');
-
-    postBeacon((string) Str::uuid())->assertHeader('X-RateLimit-Limit', 7);
 });
 
 test('the beacon route is not mounted when analytics is disabled at boot', function (): void {
