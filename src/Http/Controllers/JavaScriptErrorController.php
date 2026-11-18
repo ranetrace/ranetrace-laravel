@@ -145,8 +145,6 @@ class JavaScriptErrorController extends Controller
             ], 200);
         }
 
-        $reportedUrl = (string) $request->input('url');
-
         $errorData = (new ErrorItemBuilder(CoreConfig::make(), Core::scrubber()))->build(
             payload: $request->all(),
             userAgent: $request->userAgent(),
