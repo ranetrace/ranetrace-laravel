@@ -60,7 +60,7 @@ test('a feature test command with a blank key says so, captures nothing and fail
     'whitespace' => ['   '],
 ]);
 
-test('every feature test command stops without capturing while the master switch is off', function (string $command): void {
+test('every feature test command stops without capturing while the master switch is off', function (string $command, string $feature, string $type, string $line): void {
     Queue::fake();
     Config::set('ranetrace.enabled', false);
 
@@ -71,13 +71,7 @@ test('every feature test command stops without capturing while the master switch
         ->and(featureTestBufferedCount())->toBe(0);
 
     Queue::assertNothingPushed();
-})->with([
-    'errors' => ['ranetrace:test-errors'],
-    'events' => ['ranetrace:test-events'],
-    'logging' => ['ranetrace:test-logging'],
-    'javascript errors' => ['ranetrace:test-javascript-errors'],
-    'analytics' => ['ranetrace:test-analytics'],
-]);
+})->with('every feature test command');
 
 test('a feature test command whose feature is off says so and captures nothing', function (string $command, string $feature, string $type, string $job, string $items, ?int $count): void {
     Queue::fake();
