@@ -6,6 +6,19 @@ This file starts at 1.0.0. The package was re-versioned to share a major with `r
 
 ## [Unreleased]
 
+### Changed
+- **`ranetrace:test-analytics` and `ranetrace:test-javascript-errors` close with the lines the other test commands use.** Both now say where the test item is, queued or buffered, and how to send it, in the same words, and end with "To see whether the API accepts your key, run: php artisan ranetrace:test". The analytics command said it in a sentence of its own, and neither named `ranetrace:test`. Printed text only
+- **The configuration tables of the test commands lose the rows that could only say "Yes".** "API key set" in `ranetrace:test-errors`, `ranetrace:test-events` and `ranetrace:test-logging`, "Events enabled" and "Logging enabled" were printed after the command had checked the key and the feature and would have stopped without them. Printed text only
+- **The feature table of `ranetrace:test` lists the features in the order `--all` runs them.** Centralized logging moves to third place. Printed text only
+- **The buffers panel of the diagnostics dashboard points at `ranetrace:status` for a stalled drain.** It told the reader to make sure `ranetrace:work` is scheduled every minute, which the page cannot check. The check beside it already said to run `php artisan ranetrace:status`, which reads the schedule, and the panel now says the same
+- **With `errors.capture_user_email` on, an event and a JavaScript error read the user's email too.** The user of an event and of a browser error is now resolved through the shared core, as an error's is. Only the id is sent, as before. An email accessor that throws costs the item its user and writes one warning to the `ranetrace_internal` log. Nothing to do on upgrade
+
+### Fixed
+- **An entry in `javascript_errors.ignored_errors` that is not a string no longer stops every JavaScript error at the relay.** A number, `null`, `true` or a nested list in the published list made the relay answer 500 to every report from the browser, so no JavaScript error was captured. The relay now passes over such an entry, as the relay of `ranetrace/ranetrace-php` does. It passes over an empty string as well, where an empty string ignored every report. Nothing to do on upgrade
+- **`ranetrace:work` no longer fails on a pause that ends while it is being read.** The command asked whether a pause was active and then read its data, two reads of the cache. A pause that ended between them left nothing to print, and the run stopped with "failed to read buffer/pause state or dispatch" and exit code 1. Each pause is now read once, in `ranetrace:work`, `ranetrace:status` and the dashboard. Nothing to do on upgrade
+- **`ranetrace:status` no longer prints two schedule lines when it cannot read the schedule.** With a schedule that could not be read, a buffer near capacity whose drain was also stalled got "Check if ranetrace:work command is running on schedule" beside the stalled drain's own advice, and a buffer that waited because its feature was paused was pointed at the schedule and not at the pause. The near-capacity line now stays away when another line already answers. Printed text only
+- **The test commands' configuration tables show a setting the config leaves out as capture reads it.** A published config section without a feature's `enabled` or `queue` key showed "Disabled" or "Sync" while the same run captured and queued, and `ranetrace:test` warned that all features were disabled. The tables now read a left-out `enabled` as capture does, on for errors and events, and a left-out `queue` as on. Printed text only
+
 ## [1.8.0] - 2026-11-17
 
 Requires `ranetrace/ranetrace-php` 1.7.0 or later: the heartbeat below is built from that release's `Http\Heartbeat`, and the contract tests read its heartbeat fixture.
