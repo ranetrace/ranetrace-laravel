@@ -481,3 +481,57 @@ test('what the api answered is printed as text, never read as console markup', f
 
     expect($output)->toContain('  errors   failed: the API answered 500 (see <info>the docs</info>)');
 });
+
+/**
+ * A host config section published before a key was added leaves that key out;
+ * the merge with the package's config fills only whole sections.
+ */
+function roundTripLeaveOut(string $feature, string ...$keys): void
+{
+    Config::set("ranetrace.{$feature}", Arr::except(config("ranetrace.{$feature}"), $keys));
+}
+
+test('the configuration table reads a flag the host config leaves out as capture does', function (): void {
+    fakeAcceptingApi();
+    roundTripLeaveOut('errors', 'enabled', 'queue');
+    roundTripLeaveOut('events', 'enabled', 'queue');
+    Config::set('ranetrace.logging.enabled', true);
+    roundTripLeaveOut('logging', 'queue');
+
+    [, $output] = roundTripRun();
+
+    expect($output)
+        ->toMatch('/\|\s*Error reporting\s*\|\s*✅ Enabled\s*\|\s*✅ Queued\s*\|/u')
+        ->toMatch('/\|\s*Event tracking\s*\|\s*✅ Enabled\s*\|\s*✅ Queued\s*\|/u')
+        ->toMatch('/\|\s*Centralized logging\s*\|\s*✅ Enabled\s*\|\s*✅ Queued\s*\|/u')
+        ->not->toContain("'enabled' should be boolean")
+        ->not->toContain("'queue' should be boolean");
+});
+
+test('the configuration table does not call every feature disabled while one is on by its shipped default', function (): void {
+    fakeAcceptingApi();
+    roundTripLeaveOut('errors', 'enabled');
+    roundTripLeaveOut('events', 'enabled');
+
+    foreach (['logging', 'javascript_errors', 'website_analytics'] as $feature) {
+        Config::set("ranetrace.{$feature}.enabled", false);
+    }
+
+    [, $output] = roundTripRun();
+
+    expect($output)->not->toContain('All features are currently disabled');
+});
+
+test('the configuration table reads a flag the host config sets as it is set, warning on one that is not boolean', function (): void {
+    fakeAcceptingApi();
+    Config::set('ranetrace.errors.enabled', 'yes');
+    Config::set('ranetrace.errors.queue', false);
+    Config::set('ranetrace.events.enabled', false);
+
+    [, $output] = roundTripRun();
+
+    expect($output)
+        ->toMatch('/\|\s*Error reporting\s*\|\s*✅ Enabled\s*\|\s*⚡ Sync\s*\|/u')
+        ->toMatch('/\|\s*Event tracking\s*\|\s*❌ Disabled\s*\|/u')
+        ->toContain("⚠️  Error reporting: 'enabled' should be boolean, got string");
+});

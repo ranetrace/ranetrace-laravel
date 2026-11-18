@@ -191,9 +191,8 @@ class RanetraceTestCommand extends Command
                 continue;
             }
 
-            $feature = $config[$key];
-            $enabled = $feature['enabled'] ?? false;
-            $queue = $feature['queue'] ?? false;
+            $enabled = self::enabledFlag($key);
+            $queue = config("ranetrace.{$key}.queue", true);
 
             $rows[] = [
                 $name,
@@ -216,9 +215,7 @@ class RanetraceTestCommand extends Command
         $this->newLine();
 
         // Show warnings if features are disabled
-        $enabledFeatures = collect($features)->filter(function ($name, $key) use ($config) {
-            return $config[$key]['enabled'] ?? false;
-        });
+        $enabledFeatures = collect($features)->filter(fn (string $name, string $key): bool => (bool) self::enabledFlag($key));
 
         if ($enabledFeatures->isEmpty()) {
             $this->warn('⚠️  All features are currently disabled.');
@@ -327,6 +324,15 @@ class RanetraceTestCommand extends Command
         $this->newLine();
 
         return $accepted;
+    }
+
+    /**
+     * A feature's `enabled` flag as it is set, or, where the host's config
+     * leaves it out, the answer capture gives ({@see Ranetrace::isSwitchedOn()}).
+     */
+    private static function enabledFlag(string $key): mixed
+    {
+        return config("ranetrace.{$key}.enabled", Ranetrace::isSwitchedOn($key));
     }
 
     /**

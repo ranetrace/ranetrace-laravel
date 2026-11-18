@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Config;
@@ -471,3 +472,20 @@ test('a host that binds its own buffer is not counted, and its buffer is the one
         ->and(app(RanetraceBatchBuffer::class))->toBe($own)
         ->and($own->count('errors'))->toBe(4);
 });
+
+test('a feature test command reads a queue flag the host config leaves out as capture does', function (string $command, string $feature): void {
+    Queue::fake();
+    Config::set("ranetrace.{$feature}.enabled", true);
+    Config::set("ranetrace.{$feature}", Arr::except(config("ranetrace.{$feature}"), 'queue'));
+
+    [$exitCode, $output] = featureTestRun($command);
+
+    expect($exitCode)->toBe(0)
+        ->and($output)->toContain('queued for Ranetrace.')
+        ->and($output)->toMatch('/\|\s*Queue enabled\s*\|\s*(✅ )?Yes\s*\|/u');
+})->with([
+    'events' => ['ranetrace:test-events', 'events'],
+    'logging' => ['ranetrace:test-logging', 'logging'],
+    'javascript errors' => ['ranetrace:test-javascript-errors', 'javascript_errors'],
+    'analytics' => ['ranetrace:test-analytics', 'website_analytics'],
+]);

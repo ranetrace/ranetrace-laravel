@@ -167,7 +167,7 @@ class RanetraceEventTestCommand extends Command
         $this->table(
             ['Setting', 'Value'],
             [
-                ['Queue enabled', config('ranetrace.events.queue') ? 'Yes' : 'No'],
+                ['Queue enabled', config('ranetrace.events.queue', true) ? 'Yes' : 'No'],
                 ['Queue name', BatchConfig::describeFeatureQueue('ranetrace.events')],
             ]
         );

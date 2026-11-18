@@ -110,7 +110,7 @@ class RanetraceLogTestCommand extends Command
         $this->table(
             ['Setting', 'Value'],
             [
-                ['Queue enabled', config('ranetrace.logging.queue') ? 'Yes' : 'No'],
+                ['Queue enabled', config('ranetrace.logging.queue', true) ? 'Yes' : 'No'],
                 ['Queue name', BatchConfig::describeFeatureQueue('ranetrace.logging')],
                 ['Minimum level', config('ranetrace.logging.level', 'notice')],
                 ['Excluded channels', implode(', ', config('ranetrace.logging.excluded_channels', [])) ?: '(none)'],

@@ -38,7 +38,7 @@ class RanetraceJavaScriptErrorTestCommand extends Command
             [
                 ['Enabled', config('ranetrace.javascript_errors.enabled') ? '✅ Yes' : '❌ No'],
                 ['Sample rate', config('ranetrace.javascript_errors.sample_rate', 1.0) * 100 .'%'],
-                ['Queue enabled', config('ranetrace.javascript_errors.queue') ? '✅ Yes' : '❌ No'],
+                ['Queue enabled', config('ranetrace.javascript_errors.queue', true) ? '✅ Yes' : '❌ No'],
                 ['Queue name', BatchConfig::describeFeatureQueue('ranetrace.javascript_errors')],
                 ['Max breadcrumbs', config('ranetrace.javascript_errors.max_breadcrumbs', 20)],
                 ['Capture console errors', config('ranetrace.javascript_errors.capture_console_errors') ? '✅ Yes' : '❌ No'],
