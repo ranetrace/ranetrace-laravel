@@ -162,7 +162,7 @@ class DashboardData
             }
             $buffers[$feature] = $count;
             $totalBuffered += $count;
-            $lastBatch[$feature] = $this->getLastBatchTimestamp($feature);
+            $lastBatch[$feature] = $this->readTimestamp(SendBatchToRanetraceJob::LAST_BATCH_PREFIX.$feature);
             $oldestItem[$feature] = $this->getOldestBufferedTimestamp($feature);
         }
 
@@ -251,7 +251,7 @@ class DashboardData
                 'paused_stalled' => $pausedStalledFeatures,
             ],
             'heartbeat' => [
-                'last_sent' => $this->getLastHeartbeatTimestamp(),
+                'last_sent' => $this->readTimestamp(SendHeartbeatToRanetraceJob::LAST_SENT_KEY),
             ],
             'failed_jobs_last_24h' => $failedJobsCount,
             'config' => [
@@ -483,7 +483,8 @@ class DashboardData
     }
 
     /**
-     * Get the timestamp of the last successful batch send for a feature.
+     * A Unix timestamp stored in the batch cache store under $key, or null
+     * when none is stored or the store cannot be read.
      *
      * Numeric strings are accepted as well as ints: the Redis and Memcached
      * cache stores keep bare numbers un-serialized (to support atomic
@@ -492,25 +493,10 @@ class DashboardData
      * the buffer as never drained, the root cause of false "drain stalled"
      * alarms on a Redis-backed cache.
      */
-    protected function getLastBatchTimestamp(string $feature): ?int
+    protected function readTimestamp(string $key): ?int
     {
         try {
-            $value = BatchConfig::cacheStore()->get(SendBatchToRanetraceJob::LAST_BATCH_PREFIX.$feature);
-
-            return is_numeric($value) ? (int) $value : null;
-        } catch (Throwable) {
-            return null;
-        }
-    }
-
-    /**
-     * When the API last accepted a heartbeat, read the way
-     * {@see getLastBatchTimestamp()} reads a batch's.
-     */
-    protected function getLastHeartbeatTimestamp(): ?int
-    {
-        try {
-            $value = BatchConfig::cacheStore()->get(SendHeartbeatToRanetraceJob::LAST_SENT_KEY);
+            $value = BatchConfig::cacheStore()->get($key);
 
             return is_numeric($value) ? (int) $value : null;
         } catch (Throwable) {
