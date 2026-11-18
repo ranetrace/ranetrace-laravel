@@ -64,7 +64,7 @@ test('a report is queued with an id made on the server, never the one the browse
         $id = $job->getErrorData()['id'] ?? null;
 
         return is_string($id)
-            && preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/D', $id) === 1
+            && preg_match(UUID_V4_PATTERN, $id) === 1
             && $id !== $claimed;
     });
 });

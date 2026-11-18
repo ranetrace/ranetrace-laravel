@@ -143,8 +143,8 @@ test('two events tracked alike in every field each carry their own uuid', functi
         ->all();
 
     expect($ids)->toHaveCount(2)
-        ->and($ids[0])->toMatch('/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/D')
-        ->and($ids[1])->toMatch('/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/D')
+        ->and($ids[0])->toMatch(UUID_V4_PATTERN)
+        ->and($ids[1])->toMatch(UUID_V4_PATTERN)
         ->and($ids[1])->not->toBe($ids[0]);
 });
 

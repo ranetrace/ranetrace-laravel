@@ -29,6 +29,11 @@ const QUEUE_ROUTES_SKIP_REASON = 'Queue routes arrived in Laravel 13, so on Lara
 const QUEUE_FORWARDS_SKIP_REASON = 'This Laravel version has no queue forwards.';
 
 /**
+ * A version 4 UUID in its lowercase canonical form, and nothing else.
+ */
+const UUID_V4_PATTERN = '/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/D';
+
+/**
  * Headers Guzzle itself puts on the wire. They are transport bookkeeping rather
  * than anything this SDK chose, so the contract does not name them and the
  * contract header assertions subtract them before comparing.
