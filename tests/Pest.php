@@ -35,6 +35,17 @@ const QUEUE_FORWARDS_SKIP_REASON = 'This Laravel version has no queue forwards.'
 const CONTRACT_TRANSPORT_HEADERS = ['Host', 'Content-Length'];
 
 /**
+ * An unset `RANETRACE_KEY` arrives as null and `RANETRACE_KEY=` as an empty
+ * string. A key of nothing but whitespace cannot authenticate either.
+ */
+dataset('missing ingest keys', [
+    'null' => [null],
+    'empty' => [''],
+    'a space' => [' '],
+    'whitespace' => ["\t\n "],
+]);
+
+/**
  * Every file under resources/boost, as sorted absolute paths. Swept
  * recursively rather than as a list of the skills that exist today, so a skill
  * added later is covered the day it lands.

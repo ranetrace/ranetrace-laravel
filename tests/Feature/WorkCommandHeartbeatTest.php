@@ -89,11 +89,7 @@ test('without an ingest key no heartbeat is dispatched', function (?string $key)
     $this->artisan('ranetrace:work')->assertSuccessful();
 
     Bus::assertNotDispatched(SendHeartbeatToRanetraceJob::class);
-})->with([
-    'null' => [null],
-    'empty' => [''],
-    'whitespace' => ["\t\n "],
-]);
+})->with('missing ingest keys');
 
 test('under a global pause no heartbeat is dispatched', function (): void {
     Bus::fake();

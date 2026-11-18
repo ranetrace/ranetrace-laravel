@@ -134,11 +134,7 @@ test('without an ingest key the heartbeat sends nothing and throws nothing', fun
 
     Http::assertNothingSent();
     expect(BatchConfig::cacheStore()->get(SendHeartbeatToRanetraceJob::LAST_SENT_KEY))->toBeNull();
-})->with([
-    'null' => [null],
-    'empty' => [''],
-    'whitespace' => ["\t\n "],
-]);
+})->with('missing ingest keys');
 
 test('a heartbeat whose cache store cannot be written sends nothing, throws nothing and logs the failure', function (): void {
     Http::fake();

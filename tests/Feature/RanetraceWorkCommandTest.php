@@ -96,11 +96,7 @@ test('without an ingest key ranetrace:work dispatches nothing, names what waits 
 
     expect($buffer->count('errors'))->toBe(3)
         ->and($buffer->count('events'))->toBe(1);
-})->with([
-    'null' => [null],
-    'empty' => [''],
-    'whitespace' => ["\t\n "],
-]);
+})->with('missing ingest keys');
 
 test('without an ingest key and with nothing buffered ranetrace:work stays quiet and succeeds', function (): void {
     Bus::fake();

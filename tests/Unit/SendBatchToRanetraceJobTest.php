@@ -164,11 +164,7 @@ test('without an ingest key the job takes nothing from the buffer, sends nothing
         ->and($pauseManager->getFeaturePause('events'))->toBeNull()
         ->and($pauseManager->getGlobalPause())->toBeNull()
         ->and(Cache::store('array')->get(SendBatchToRanetraceJob::LAST_BATCH_PREFIX.'events'))->toBeNull();
-})->with([
-    'null' => [null],
-    'empty' => [''],
-    'whitespace' => ["\t\n "],
-]);
+})->with('missing ingest keys');
 
 test('without an ingest key the job leaves an existing pause as it was', function (): void {
     Http::fake();

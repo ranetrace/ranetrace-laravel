@@ -20,17 +20,6 @@ beforeEach(function (): void {
     Queue::fake();
 });
 
-/**
- * An unset `RANETRACE_KEY` arrives as null and `RANETRACE_KEY=` as an empty
- * string. A key of nothing but whitespace cannot authenticate either.
- */
-dataset('missing ingest keys', [
-    'null' => [null],
-    'empty' => [''],
-    'a space' => [' '],
-    'whitespace' => ["\t\n "],
-]);
-
 // --- report(): capture gating ---
 
 test('report does nothing when the package is disabled', function (): void {
