@@ -64,7 +64,7 @@ test('it sends the heartbeat the queued job sends, with the release check key', 
     $heartbeat = Heartbeat::forPackage(Endpoints::SDK, Endpoints::PACKAGE);
 
     Http::assertSentCount(6);
-    Http::assertSent(fn (Request $request): bool => str_ends_with($request->url(), '/heartbeat')
+    Http::assertSent(fn (Request $request): bool => str_ends_with($request->url(), Heartbeat::PATH)
         && $request->data() === $heartbeat->body()
         && $request->hasHeader('User-Agent', $heartbeat->userAgent())
         && $request->hasHeader('Authorization', 'Bearer release-check-key-12345'));
