@@ -67,9 +67,10 @@ class RouteRateLimit
     /**
      * Who the request is counted against: the signed-in user, or the IP.
      *
-     * A guard that throws counts the request by IP. Nothing is logged here:
-     * the relay asks the guard again for the item's user and reports the
-     * failure there, once.
+     * A guard that throws counts the request by IP. Nothing is logged here.
+     * On the JavaScript errors route the relay asks the guard again for the
+     * item's user and reports the failure there, once. The analytics beacon
+     * never asks for a user, so on that route the failure is logged nowhere.
      */
     protected static function key(Request $request): string
     {
