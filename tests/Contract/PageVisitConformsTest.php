@@ -59,8 +59,7 @@ test('a visit string at its endpoint limit is sent whole and one past it is cut 
     $pastLimit = contractVisitCollectedWith($field, contractVisitValueOfLength($field, $max + 1))[$field];
 
     expect(contractVisitCollectedWith($field, $atLimit)[$field])->toBe($atLimit)
-        ->and(mb_strlen($pastLimit))->toBe($max)
-        ->and($pastLimit)->toBe(mb_substr($atLimit, 0, $max));
+        ->and($pastLimit)->toBe($atLimit);
 })->with(['path', 'referrer', 'utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term']);
 
 test('a tracked visit carries only fields the endpoint declares, and every one it requires', function (): void {
