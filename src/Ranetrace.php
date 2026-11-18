@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Ranetrace\Laravel;
 
-use Illuminate\Http\Request as HttpRequest;
+use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Ranetrace\Laravel\Events\EventTracker;
 use Ranetrace\Laravel\Jobs\HandleErrorJob;
@@ -199,7 +199,7 @@ class Ranetrace
      *
      * @return array{0: string|null, 1: string|null, 2: string|null, 3: (callable(string): (array<int, string>|null))|null}
      */
-    private function eventRequestContext(HttpRequest $request, bool $isConsole): array
+    private function eventRequestContext(Request $request, bool $isConsole): array
     {
         if ($isConsole) {
             return [null, null, null, null];
@@ -256,7 +256,7 @@ class Ranetrace
     /**
      * What this request lets Laravel say about the error, before any shaping.
      */
-    private function errorContext(HttpRequest $request, bool $isConsole): ErrorContext
+    private function errorContext(Request $request, bool $isConsole): ErrorContext
     {
         return ErrorContext::provided(
             isConsole: $isConsole,
@@ -292,7 +292,7 @@ class Ranetrace
      *
      * @return array<int, mixed>
      */
-    private function consoleArgv(HttpRequest $request): array
+    private function consoleArgv(Request $request): array
     {
         $argv = $request->server('argv');
 
