@@ -180,7 +180,7 @@ class DashboardData
 
             $pause = $featurePauses[$feature];
             $isPaused = $pause['paused'] ?? false;
-            $window = $isPaused && in_array((string) $pause['reason'], self::API_REQUESTED_PAUSE_REASONS, true)
+            $window = $isPaused && in_array($pause['reason'], self::API_REQUESTED_PAUSE_REASONS, true)
                 ? self::PAUSED_DRAIN_GRACE_SECONDS
                 : self::DRAIN_STALE_SECONDS;
 
