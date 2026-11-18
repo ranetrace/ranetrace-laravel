@@ -10,8 +10,6 @@ use Illuminate\Support\Facades\Config;
 use Ranetrace\Laravel\Commands\RanetraceWorkCommand;
 use Ranetrace\Laravel\Dashboard\DashboardData;
 use Ranetrace\Laravel\Jobs\SendBatchToRanetraceJob;
-use Ranetrace\Laravel\Services\RanetraceBatchBuffer;
-use Ranetrace\Laravel\Services\RanetracePauseManager;
 use Ranetrace\Laravel\Support\WorkerSchedule;
 
 beforeEach(function (): void {
@@ -130,10 +128,7 @@ test('a held lock with nothing stalled is a run in progress and says nothing', f
 
 test('a held lock while only a paused feature waits too long is not called stuck', function (): void {
     // A paused feature is not dispatched, so the lock cannot be what holds it up.
-    $this->freezeTime();
-    app(RanetraceBatchBuffer::class)->addItem('events', ['event_name' => 'e1']);
-    $this->travel(DashboardData::PAUSED_DRAIN_GRACE_SECONDS + 1)->seconds();
-    app(RanetracePauseManager::class)->setFeaturePause('events', 900, '403');
+    pauseFeaturesWithItemsWaiting(['events']);
 
     $event = app(Schedule::class)->command('ranetrace:work')->everyMinute()->withoutOverlapping(5);
     $event->mutex->create($event);
@@ -362,10 +357,8 @@ test('a buffer near capacity whose drain is also stalled gets the stalled advice
 });
 
 test('a buffer near capacity whose feature is paused and not sending leaves the advice to the paused line', function (): void {
-    $this->freezeTime();
     fillTheEventsBufferNearCapacity();
-    $this->travel(DashboardData::PAUSED_DRAIN_GRACE_SECONDS + 1)->seconds();
-    app(RanetracePauseManager::class)->setFeaturePause('events', 900, '403');
+    pauseFeaturesWithItemsWaiting(['events']);
     app(Schedule::class)->command('ranetrace:work')->everyMinute()->withoutOverlapping(5);
 
     $output = statusOutput();
@@ -378,10 +371,7 @@ test('a buffer near capacity whose feature is paused and not sending leaves the 
 });
 
 test('a buffer near capacity keeps its advice while only another feature is paused and not sending', function (): void {
-    $this->freezeTime();
-    app(RanetraceBatchBuffer::class)->addItem('errors', ['message' => 'a']);
-    $this->travel(DashboardData::PAUSED_DRAIN_GRACE_SECONDS + 1)->seconds();
-    app(RanetracePauseManager::class)->setFeaturePause('errors', 900, '403');
+    pauseFeaturesWithItemsWaiting(['errors']);
     fillTheEventsBufferNearCapacity();
     app(Schedule::class)->command('ranetrace:work')->everyMinute()->withoutOverlapping(5);
 
@@ -412,10 +402,8 @@ test('a buffer near capacity whose drain is stalled under a schedule that cannot
 });
 
 test('a buffer near capacity whose feature is paused and not sending under a schedule that cannot be read leaves the advice to the paused line', function (): void {
-    $this->freezeTime();
     fillTheEventsBufferNearCapacity();
-    $this->travel(DashboardData::PAUSED_DRAIN_GRACE_SECONDS + 1)->seconds();
-    app(RanetracePauseManager::class)->setFeaturePause('events', 900, '403');
+    pauseFeaturesWithItemsWaiting(['events']);
     app()->bind(Schedule::class, fn (): never => throw new RuntimeException('No schedule here'));
 
     $output = statusOutput();

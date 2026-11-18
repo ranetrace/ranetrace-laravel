@@ -188,25 +188,6 @@ test('a feature the API paused holding items past the drain window but inside tw
         ->and($status['healthy'])->toBeTrue();
 });
 
-/**
- * Buffer one events item, let $seconds pass, then pause events for $reason, so
- * the pause is in force when the status is read, as it is when the API sets it
- * again on every attempt. With $lastBatchSecondsAgo, a successful events batch
- * is recorded that long before the read.
- */
-function pauseEventsWithItemWaiting(string $reason, int $seconds, ?int $lastBatchSecondsAgo = null): void
-{
-    test()->freezeTime();
-    app(RanetraceBatchBuffer::class)->addItem('events', ['event_name' => 'e1']);
-
-    test()->travel($seconds)->seconds();
-    app(RanetracePauseManager::class)->setFeaturePause('events', 900, $reason);
-
-    if ($lastBatchSecondsAgo !== null) {
-        recordEventsBatchSecondsAgo($lastBatchSecondsAgo);
-    }
-}
-
 dataset('pause reasons the API asks for', ['403', '413', '422', '429']);
 
 dataset('pause reasons that follow the retries', [
@@ -217,7 +198,7 @@ dataset('pause reasons that follow the retries', [
 ]);
 
 test('a pause the API asked for excuses its buffer until the oldest item is older than two pauses', function (string $reason): void {
-    pauseEventsWithItemWaiting($reason, DashboardData::PAUSED_DRAIN_GRACE_SECONDS);
+    pauseFeaturesWithItemsWaiting(['events'], $reason, DashboardData::PAUSED_DRAIN_GRACE_SECONDS);
 
     $status = app(DashboardData::class)->collectStatus();
 
@@ -227,7 +208,8 @@ test('a pause the API asked for excuses its buffer until the oldest item is olde
 })->with('pause reasons the API asks for');
 
 test('a pause the API asked for no longer excuses a buffer whose oldest item is older than two pauses with no batch in that time', function (string $reason): void {
-    pauseEventsWithItemWaiting($reason, DashboardData::PAUSED_DRAIN_GRACE_SECONDS + 1, lastBatchSecondsAgo: DashboardData::PAUSED_DRAIN_GRACE_SECONDS + 1);
+    pauseFeaturesWithItemsWaiting(['events'], $reason, DashboardData::PAUSED_DRAIN_GRACE_SECONDS + 1);
+    recordEventsBatchSecondsAgo(DashboardData::PAUSED_DRAIN_GRACE_SECONDS + 1);
 
     $status = app(DashboardData::class)->collectStatus();
 
@@ -237,7 +219,8 @@ test('a pause the API asked for no longer excuses a buffer whose oldest item is 
 })->with('pause reasons the API asks for');
 
 test('a pause the API asked for still excuses old items while a batch was sent inside two pauses', function (string $reason): void {
-    pauseEventsWithItemWaiting($reason, DashboardData::PAUSED_DRAIN_GRACE_SECONDS + 1, lastBatchSecondsAgo: DashboardData::PAUSED_DRAIN_GRACE_SECONDS);
+    pauseFeaturesWithItemsWaiting(['events'], $reason, DashboardData::PAUSED_DRAIN_GRACE_SECONDS + 1);
+    recordEventsBatchSecondsAgo(DashboardData::PAUSED_DRAIN_GRACE_SECONDS);
 
     $status = app(DashboardData::class)->collectStatus();
 
@@ -246,7 +229,7 @@ test('a pause the API asked for still excuses old items while a batch was sent i
 })->with('pause reasons the API asks for');
 
 test('a pause that follows the retries excuses nothing past the drain window', function (string $reason): void {
-    pauseEventsWithItemWaiting($reason, DashboardData::DRAIN_STALE_SECONDS + 1);
+    pauseFeaturesWithItemsWaiting(['events'], $reason, DashboardData::DRAIN_STALE_SECONDS + 1);
 
     $status = app(DashboardData::class)->collectStatus();
 
@@ -257,7 +240,7 @@ test('a pause that follows the retries excuses nothing past the drain window', f
 })->with('pause reasons that follow the retries');
 
 test('a pause that follows the retries leaves the installation healthy inside the drain window', function (string $reason): void {
-    pauseEventsWithItemWaiting($reason, DashboardData::DRAIN_STALE_SECONDS);
+    pauseFeaturesWithItemsWaiting(['events'], $reason, DashboardData::DRAIN_STALE_SECONDS);
 
     $status = app(DashboardData::class)->collectStatus();
 
@@ -266,7 +249,8 @@ test('a pause that follows the retries leaves the installation healthy inside th
 })->with('pause reasons that follow the retries');
 
 test('a pause that follows the retries leaves old items healthy while a batch was sent inside the drain window', function (string $reason): void {
-    pauseEventsWithItemWaiting($reason, DashboardData::DRAIN_STALE_SECONDS + 1, lastBatchSecondsAgo: DashboardData::DRAIN_STALE_SECONDS);
+    pauseFeaturesWithItemsWaiting(['events'], $reason, DashboardData::DRAIN_STALE_SECONDS + 1);
+    recordEventsBatchSecondsAgo(DashboardData::DRAIN_STALE_SECONDS);
 
     $status = app(DashboardData::class)->collectStatus();
 
@@ -306,7 +290,7 @@ test('under a global pause no feature is reported as stalled, paused or not, and
 
 test('a paused feature its pause no longer excuses makes a disabled installation unhealthy too', function (string $reason): void {
     Config::set('ranetrace.enabled', false);
-    pauseEventsWithItemWaiting($reason, DashboardData::PAUSED_DRAIN_GRACE_SECONDS + 1);
+    pauseFeaturesWithItemsWaiting(['events'], $reason, DashboardData::PAUSED_DRAIN_GRACE_SECONDS + 1);
 
     $status = app(DashboardData::class)->collectStatus();
 

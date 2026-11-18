@@ -184,30 +184,8 @@ test('the --json output carries the feature pause without the guidance, healthy 
         ->and($output)->not->toContain('Rate limited');
 });
 
-/**
- * Buffer an item for each of $features, let the grace of a pause the API asked
- * for pass, then pause each of them for $reason.
- *
- * @param  list<string>  $features
- */
-function pauseFeaturesPastTheirGrace(array $features, string $reason = '403'): void
-{
-    test()->freezeTime();
-    $buffer = app(RanetraceBatchBuffer::class);
-
-    foreach ($features as $feature) {
-        $buffer->addItem($feature, ['message' => 'a']);
-    }
-
-    test()->travel(DashboardData::PAUSED_DRAIN_GRACE_SECONDS + 1)->seconds();
-
-    foreach ($features as $feature) {
-        app(RanetracePauseManager::class)->setFeaturePause($feature, 900, $reason);
-    }
-}
-
 test('the --json output lists a paused feature its pause no longer excuses and is unhealthy', function (): void {
-    pauseFeaturesPastTheirGrace(['errors']);
+    pauseFeaturesWithItemsWaiting(['errors']);
 
     $status = statusJson();
 
@@ -217,14 +195,8 @@ test('the --json output lists a paused feature its pause no longer excuses and i
 });
 
 test('a paused feature its pause no longer excuses gets its own warning block after the drain warning', function (): void {
-    $this->freezeTime();
-    $buffer = app(RanetraceBatchBuffer::class);
-    $buffer->addItem('errors', ['message' => 'a']);
-    $buffer->addItem('events', ['event_name' => 'e1']);
-    $buffer->addItem('logs', ['message' => 'a']);
-    $this->travel(DashboardData::PAUSED_DRAIN_GRACE_SECONDS + 1)->seconds();
-    app(RanetracePauseManager::class)->setFeaturePause('errors', 900, '403');
-    app(RanetracePauseManager::class)->setFeaturePause('logs', 900, '403');
+    app(RanetraceBatchBuffer::class)->addItem('events', ['event_name' => 'e1']);
+    pauseFeaturesWithItemsWaiting(['errors', 'logs']);
 
     $lines = explode("\n", statusOutput());
     $drainIndex = array_search('! No recent batch drain for: events', $lines, true);
@@ -240,7 +212,7 @@ test('a paused feature its pause no longer excuses gets its own warning block af
 });
 
 test('a paused feature its pause no longer excuses is unhealthy and gets one recommendation, with each feature\'s guidance printed once', function (): void {
-    pauseFeaturesPastTheirGrace(['errors', 'logs']);
+    pauseFeaturesWithItemsWaiting(['errors', 'logs']);
 
     $output = statusOutput();
 
@@ -277,7 +249,7 @@ test('the status output has no all-caps words besides acronyms', function (): vo
     $troubled = statusOutput();
 
     Cache::store('array')->flush();
-    pauseFeaturesPastTheirGrace(['errors']);
+    pauseFeaturesWithItemsWaiting(['errors']);
     $paused = statusOutput();
 
     expect($troubled)->toContain('Recommendations')

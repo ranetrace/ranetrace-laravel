@@ -14,6 +14,7 @@ use Ranetrace\Laravel\Dashboard\DashboardData;
 use Ranetrace\Laravel\Jobs\SendBatchToRanetraceJob;
 use Ranetrace\Laravel\RanetraceServiceProvider;
 use Ranetrace\Laravel\Services\RanetraceBatchBuffer;
+use Ranetrace\Laravel\Services\RanetracePauseManager;
 use Ranetrace\Laravel\Tests\TestCase;
 
 uses(TestCase::class)->in('Browser', 'Contract', 'Feature', 'Unit');
@@ -232,4 +233,29 @@ function fillTheEventsBufferNearCapacity(): void
 function recordEventsBatchSecondsAgo(int $seconds): void
 {
     Cache::store('array')->forever(SendBatchToRanetraceJob::LAST_BATCH_PREFIX.'events', now()->subSeconds($seconds)->timestamp);
+}
+
+/**
+ * Freeze time, buffer an item for each of $features, let $secondsWaited pass,
+ * then pause each of them for $reason, so the pause is in force when the
+ * status is read, as it is when the API sets it again on every attempt. By
+ * default the items have waited one second past the grace of a pause the API
+ * asked for.
+ *
+ * @param  list<string>  $features
+ */
+function pauseFeaturesWithItemsWaiting(array $features, string $reason = '403', int $secondsWaited = DashboardData::PAUSED_DRAIN_GRACE_SECONDS + 1): void
+{
+    test()->freezeTime();
+    $buffer = app(RanetraceBatchBuffer::class);
+
+    foreach ($features as $feature) {
+        $buffer->addItem($feature, ['message' => 'a']);
+    }
+
+    test()->travel($secondsWaited)->seconds();
+
+    foreach ($features as $feature) {
+        app(RanetracePauseManager::class)->setFeaturePause($feature, 900, $reason);
+    }
 }
