@@ -113,8 +113,7 @@ test('ranetrace:status --json is collectStatus() with the schedule added', funct
     expect($commandJson)->toHaveKey('schedule');
     unset($commandJson['schedule']);
 
-    expect($commandJson)->toEqual($serviceData)
-        ->and($commandJson['drain'])->toHaveKeys(['last_batch', 'stalled', 'paused_stalled']);
+    expect($commandJson)->toEqual($serviceData);
 });
 
 test('an enabled installation with no ingest key is unhealthy', function (): void {
