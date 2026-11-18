@@ -50,10 +50,9 @@ final class CoreConfig
      *
      * A value that is not a string is no key: `RANETRACE_KEY=true` arrives
      * from `env()` as a boolean, and a number typed into the published config
-     * as an integer. The shared core throws on such a key, and Laravel's
-     * `blank()` lets it through, so a capture gate built on `blank()` let every
-     * capture start and fail. Every reader of the key asks here, so capture,
-     * the commands, the dashboard and the client agree on one answer.
+     * as an integer. The shared core throws on such a key, so it is read as
+     * missing here. Every reader of the key asks here, so capture, the
+     * commands, the dashboard and the client agree on one answer.
      */
     public static function ingestKey(): string
     {
